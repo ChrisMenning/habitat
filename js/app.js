@@ -13,8 +13,9 @@
 import { LAYERS, GBIF_LAYERS }                         from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
-import { fetchGbifPollinators, fetchGbifPlants,
-         gbifToGeoJSON }                               from './gbif.js';
+import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
+         resolveOccurrenceEstKeys,
+         partitionPlantOccurrences }                   from './gbif.js';
 import { initMap, registerLayer, setLayerFeatures,
          setLayerVisibility, getInteractiveLayerIds,
          showPopup, closePopup, wireInteractions }     from './map.js';
@@ -84,7 +85,9 @@ async function loadObservations() {
 
     // ── GBIF Pollinators ──────────────────────────────────────────────
     if (gbifPollResult.status === 'fulfilled') {
-      const feats = gbifToGeoJSON(gbifPollResult.value.occurrences, 'gbif-pollinators').features;
+      const pollOccs  = gbifPollResult.value.occurrences;
+      const pollEstMap = await resolveOccurrenceEstKeys(pollOccs);
+      const feats = gbifToGeoJSON(pollOccs, 'gbif-pollinators', pollEstMap).features;
       setLayerFeatures('gbif-pollinators', feats);
       counts['gbif-pollinators'] = feats.length;
       gbifCount += feats.length;
@@ -93,15 +96,20 @@ async function loadObservations() {
       counts['gbif-pollinators'] = 0;
     }
 
-    // ── GBIF Plants ───────────────────────────────────────────────────
+    // ── GBIF Plants (native / non-native) ────────────────────────────
     if (gbifPlantResult.status === 'fulfilled') {
-      const feats = gbifToGeoJSON(gbifPlantResult.value.occurrences, 'gbif-plants').features;
-      setLayerFeatures('gbif-plants', feats);
-      counts['gbif-plants'] = feats.length;
-      gbifCount += feats.length;
+      const { native, nonNative } = await partitionPlantOccurrences(gbifPlantResult.value.occurrences);
+      const nativeFeats    = gbifToGeoJSON(native,    'gbif-native-plants').features;
+      const nonNativeFeats = gbifToGeoJSON(nonNative, 'gbif-non-native-plants').features;
+      setLayerFeatures('gbif-native-plants',    nativeFeats);
+      setLayerFeatures('gbif-non-native-plants', nonNativeFeats);
+      counts['gbif-native-plants']     = nativeFeats.length;
+      counts['gbif-non-native-plants'] = nonNativeFeats.length;
+      gbifCount += nativeFeats.length + nonNativeFeats.length;
     } else {
       console.warn('GBIF plants failed:', gbifPlantResult.reason);
-      counts['gbif-plants'] = 0;
+      counts['gbif-native-plants']     = 0;
+      counts['gbif-non-native-plants'] = 0;
     }
 
     updateCounts(counts);

@@ -57,14 +57,14 @@ export const LAYERS = [
     label:       'Other Plants',
     emoji:       '🌱',
     description: 'Introduced, invasive & unconfirmed plants',
-    defaultOn:   true,
+    defaultOn:   false,
   },
   {
     id:          'other-wildlife',
     label:       'Wildlife',
     emoji:       '🐾',
     description: 'Birds, mammals, non-pollinator insects, fungi & more',
-    defaultOn:   true,
+    defaultOn:   false,
   },
 ];
 
@@ -85,11 +85,18 @@ export const GBIF_LAYERS = [
     defaultOn:   true,
   },
   {
-    id:          'gbif-plants',
-    label:       'Plants',
+    id:          'gbif-native-plants',
+    label:       'Native Plants',
     emoji:       '🌾',
-    description: 'Plant records including herbarium specimens',
+    description: 'Native & endemic plant records from herbaria and surveys',
     defaultOn:   true,
+  },
+  {
+    id:          'gbif-non-native-plants',
+    label:       'Non-Native Plants',
+    emoji:       '🪴',
+    description: 'Introduced, naturalised & invasive plant records',
+    defaultOn:   false,
   },
 ];
 
@@ -135,8 +142,9 @@ export const FILL_COLOR_EXPR = [
   'native-plants',    '#22c55e',  // green
   'other-plants',     '#84cc16',  // yellow-green
   // GBIF layers (cool, desaturated — visually distinct from iNat)
-  'gbif-pollinators', '#818cf8',  // indigo
-  'gbif-plants',      '#2dd4bf',  // teal
+  'gbif-pollinators',      '#818cf8',  // indigo
+  'gbif-native-plants',    '#0d9488',  // teal  (native = good)
+  'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
   /* default (other-wildlife) */ '#64748b',
 ];
 
