@@ -20,6 +20,20 @@ import { buildLayerPanel, buildEstLegend, updateCounts,
          setLoading, setStatus, getDefaultDates,
          buildPopupHTML }                              from './ui.js';
 
+// ── Utility ───────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a debounced version of `fn` — calls are delayed by `ms` and
+ * any call within the delay window resets the timer.
+ */
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
 // ── Map setup ─────────────────────────────────────────────────────────────────
 
 const map = initMap('map');
@@ -38,7 +52,9 @@ async function loadObservations() {
   closePopup();
 
   try {
-    const { observations, total } = await fetchObservations(d1, d2);
+    const { observations, total } = await fetchObservations(d1, d2, (loaded, available) => {
+      setStatus(`Loading… ${loaded.toLocaleString()} / ${available.toLocaleString()}`);
+    });
     const geojson = observationsToGeoJSON(observations);
     const byLayer = partitionByLayer(geojson, LAYERS.map(l => l.id));
 
@@ -50,8 +66,10 @@ async function loadObservations() {
       LAYERS.map(l => [l.id, byLayer[l.id].length])
     ));
 
+    const capped = observations.length < total;
     setStatus(
-      `${observations.length.toLocaleString()} / ${total.toLocaleString()} observations`
+      `${observations.length.toLocaleString()} / ${total.toLocaleString()} observations` +
+      (capped ? ' · scroll date range to load more' : '')
     );
 
   } catch (err) {
@@ -81,6 +99,12 @@ map.on('load', () => {
   document.getElementById('date-to').value   = to;
 
   document.getElementById('btn-reload').addEventListener('click', loadObservations);
+
+  // Auto-reload when dates change (debounced so the request only fires once
+  // the user finishes picking, not on every keystroke)
+  const debouncedLoad = debounce(loadObservations, 600);
+  document.getElementById('date-from').addEventListener('change', debouncedLoad);
+  document.getElementById('date-to').addEventListener('change', debouncedLoad);
 
   // Wire map pointer interactions
   const layerIds = getInteractiveLayerIds(LAYERS);

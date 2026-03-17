@@ -19,7 +19,12 @@ export const RADIUS_KM = 15;
 export const WI_PLACE_ID = 59;
 
 export const PER_PAGE  = 200;
-export const MAX_PAGES = 3;   // up to 600 observations per query
+/**
+ * Hard cap on total observations fetched per query.
+ * Increase this for more historical data at the cost of load time.
+ * iNat requests are serial (cursor-based), so each batch of 200 = 1 request.
+ */
+export const MAX_OBS   = 2000;
 
 // ── Layer definitions ────────────────────────────────────────────────────────
 

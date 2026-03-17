@@ -5,7 +5,7 @@
  * The only side-effect is `fetch()`.
  */
 
-import { CENTER, RADIUS_KM, WI_PLACE_ID, PER_PAGE, MAX_PAGES, ESTABLISHMENT } from './config.js';
+import { CENTER, RADIUS_KM, WI_PLACE_ID, PER_PAGE, MAX_OBS, ESTABLISHMENT } from './config.js';
 import { classifyObs, getEstKey } from './classify.js';
 
 const INAT_API_BASE = 'https://api.inaturalist.org/v1/observations';
@@ -13,55 +13,64 @@ const INAT_API_BASE = 'https://api.inaturalist.org/v1/observations';
 // ── Fetching ─────────────────────────────────────────────────────────────────
 
 /**
- * Fetches one page of geo-tagged observations near Green Bay.
+ * Fetches all available observations near Green Bay using cursor-based
+ * pagination (id_below), stopping when there are no more results or when
+ * MAX_OBS is reached.
  *
- * @param {number} page           - 1-based page number
- * @param {string|undefined} d1   - start date (YYYY-MM-DD), optional
- * @param {string|undefined} d2   - end date (YYYY-MM-DD), optional
- * @returns {Promise<{results: object[], total_results: number}>}
- * @throws {Error} if the network request fails or the server returns an error status
- */
-async function fetchPage(page, d1, d2) {
-  const params = new URLSearchParams({
-    lat:      CENTER[1],
-    lng:      CENTER[0],
-    radius:   RADIUS_KM,
-    per_page: PER_PAGE,
-    page,
-    order:           'desc',
-    order_by:        'observed_on',
-    // preferred_place_id sets the *context* for taxon establishment_means and
-    // regional common names WITHOUT acting as a geographic filter (unlike
-    // place_id which restricts results to observations *within* that polygon).
-    // Wisconsin = 59 per https://www.inaturalist.org/places/wisconsin
-    preferred_place_id: WI_PLACE_ID,
-  });
-  params.append('has[]', 'geo');
-  if (d1) params.set('d1', d1);
-  if (d2) params.set('d2', d2);
-
-  const res = await fetch(`${INAT_API_BASE}?${params}`);
-  if (!res.ok) {
-    throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`);
-  }
-  return res.json();
-}
-
-/**
- * Fetches all configured pages of observations in parallel.
+ * Cursor pagination avoids the HTTP 404 that the iNat v1 API returns when
+ * requesting high `page` numbers against large result sets. We sort by `id`
+ * descending and pass the minimum id from each batch as `id_below` for the
+ * next request — this is the pattern documented in the iNat API reference.
  *
- * @param {string|undefined} d1 - start date (YYYY-MM-DD), optional
- * @param {string|undefined} d2 - end date (YYYY-MM-DD), optional
+ * @param {string|undefined} d1          - start date (YYYY-MM-DD), optional
+ * @param {string|undefined} d2          - end date (YYYY-MM-DD), optional
+ * @param {function(number, number): void} [onProgress]
+ *   Called after each page with (loadedSoFar, totalAvailable).
  * @returns {Promise<{observations: object[], total: number}>}
  */
-export async function fetchObservations(d1, d2) {
-  const pages = await Promise.all(
-    Array.from({ length: MAX_PAGES }, (_, i) => fetchPage(i + 1, d1, d2))
-  );
-  return {
-    observations: pages.flatMap(p => p.results),
-    total:        pages[0].total_results ?? 0,
-  };
+export async function fetchObservations(d1, d2, onProgress) {
+  const all = [];
+  let total   = 0;
+  let idBelow = null;
+
+  while (all.length < MAX_OBS) {
+    const params = new URLSearchParams({
+      lat:                CENTER[1],
+      lng:                CENTER[0],
+      radius:             RADIUS_KM,
+      per_page:           PER_PAGE,
+      order:              'desc',
+      order_by:           'id',        // required for id_below cursor to work
+      // preferred_place_id sets Wisconsin context for establishment_means and
+      // regional common names WITHOUT restricting results geographically.
+      preferred_place_id: WI_PLACE_ID,
+    });
+    params.append('has[]', 'geo');
+    if (d1)      params.set('d1',       d1);
+    if (d2)      params.set('d2',       d2);
+    if (idBelow) params.set('id_below', String(idBelow));
+
+    const res = await fetch(`${INAT_API_BASE}?${params}`);
+    if (!res.ok) {
+      throw new Error(`iNaturalist API error: ${res.status} ${res.statusText}`);
+    }
+
+    const data    = await res.json();
+    total         = data.total_results ?? total;
+    const results = data.results ?? [];
+
+    if (results.length === 0) break;
+
+    all.push(...results);
+    onProgress?.(all.length, total);
+
+    if (results.length < PER_PAGE) break; // last page — no more to fetch
+
+    // The cursor for the next request is the smallest id in this batch
+    idBelow = Math.min(...results.map(r => r.id));
+  }
+
+  return { observations: all, total };
 }
 
 // ── GeoJSON conversion ───────────────────────────────────────────────────────
