@@ -20,11 +20,14 @@ export const WI_PLACE_ID = 59;
 
 export const PER_PAGE  = 200;
 /**
- * Hard cap on total observations fetched per query.
- * Increase this for more historical data at the cost of load time.
+ * Hard cap on total iNaturalist observations fetched per query.
  * iNat requests are serial (cursor-based), so each batch of 200 = 1 request.
  */
-export const MAX_OBS   = 2000;
+export const MAX_OBS      = 2000;
+/**
+ * Hard cap on GBIF occurrences fetched per layer per query.
+ */
+export const GBIF_MAX_OBS = 600;
 
 // ── Layer definitions ────────────────────────────────────────────────────────
 
@@ -61,6 +64,31 @@ export const LAYERS = [
     label:       'Wildlife',
     emoji:       '🐾',
     description: 'Birds, mammals, non-pollinator insects, fungi & more',
+    defaultOn:   true,
+  },
+];
+
+/**
+ * GBIF (Global Biodiversity Information Facility) data layers.
+ * Rendered beneath iNaturalist layers so current observations appear on top.
+ * GBIF provides historical depth: museum specimens, herbarium records, and
+ * multi-source research datasets dating back decades.
+ *
+ * @type {Array<{id: string, label: string, emoji: string, description: string, defaultOn: boolean}>}
+ */
+export const GBIF_LAYERS = [
+  {
+    id:          'gbif-pollinators',
+    label:       'Pollinators',
+    emoji:       '🔬',
+    description: 'Butterflies, moths & bees from museums and research surveys',
+    defaultOn:   true,
+  },
+  {
+    id:          'gbif-plants',
+    label:       'Plants',
+    emoji:       '🌾',
+    description: 'Plant records including herbarium specimens',
     defaultOn:   true,
   },
 ];
@@ -102,9 +130,13 @@ export const ESTABLISHMENT = {
  */
 export const FILL_COLOR_EXPR = [
   'match', ['get', 'layer_id'],
-  'pollinators',   '#f97316',
-  'native-plants', '#22c55e',
-  'other-plants',  '#84cc16',
+  // iNaturalist layers (warm, saturated)
+  'pollinators',      '#f97316',  // orange
+  'native-plants',    '#22c55e',  // green
+  'other-plants',     '#84cc16',  // yellow-green
+  // GBIF layers (cool, desaturated — visually distinct from iNat)
+  'gbif-pollinators', '#818cf8',  // indigo
+  'gbif-plants',      '#2dd4bf',  // teal
   /* default (other-wildlife) */ '#64748b',
 ];
 

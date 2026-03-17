@@ -5,7 +5,7 @@
  * HTML escaping is centralised in `esc()` — never skip it for user/API data.
  */
 
-import { LAYERS, ESTABLISHMENT } from './config.js';
+import { ESTABLISHMENT } from './config.js';
 
 // ── Security helper ──────────────────────────────────────────────────────────
 
@@ -28,36 +28,45 @@ export function esc(value) {
 // ── Panel construction ───────────────────────────────────────────────────────
 
 /**
- * Populates the "Layers" panel section with toggle rows for each layer.
+ * Populates the "Layers" panel section with toggle rows, organised into
+ * named groups (e.g. iNaturalist vs GBIF).
  *
- * @param {function(id: string, visible: boolean): void} onToggle
+ * @param {Array<{groupLabel: string, layers: object[]}>} groups
+ * @param {function(id: string, visible: boolean): void}  onToggle
  *   Callback invoked when a toggle changes.
  */
-export function buildLayerPanel(onToggle) {
+export function buildLayerPanel(groups, onToggle) {
   const section = document.getElementById('panel-layers');
 
-  for (const layer of LAYERS) {
-    const wrap = document.createElement('div');
-    wrap.innerHTML = `
-      <label class="layer-row" for="toggle-${esc(layer.id)}">
-        <div class="toggle">
-          <input type="checkbox"
-                 id="toggle-${esc(layer.id)}"
-                 ${layer.defaultOn ? 'checked' : ''}
-                 aria-label="${esc(layer.label)} layer">
-          <div class="toggle-track" aria-hidden="true"></div>
-        </div>
-        <span class="layer-emoji" aria-hidden="true">${layer.emoji}</span>
-        <span class="layer-label">${esc(layer.label)}</span>
-        <span class="layer-count" id="count-${esc(layer.id)}" aria-live="polite">—</span>
-      </label>
-      <p class="layer-desc">${esc(layer.description)}</p>`;
+  for (const { groupLabel, layers } of groups) {
+    const header = document.createElement('p');
+    header.className = 'layer-group-label';
+    header.textContent = groupLabel;
+    section.appendChild(header);
 
-    section.appendChild(wrap);
+    for (const layer of layers) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+        <label class="layer-row" for="toggle-${esc(layer.id)}">
+          <div class="toggle">
+            <input type="checkbox"
+                   id="toggle-${esc(layer.id)}"
+                   ${layer.defaultOn ? 'checked' : ''}
+                   aria-label="${esc(layer.label)} layer">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true">${layer.emoji}</span>
+          <span class="layer-label">${esc(layer.label)}</span>
+          <span class="layer-count" id="count-${esc(layer.id)}" aria-live="polite">—</span>
+        </label>
+        <p class="layer-desc">${esc(layer.description)}</p>`;
 
-    wrap.querySelector('input').addEventListener('change', e => {
-      onToggle(layer.id, /** @type {HTMLInputElement} */ (e.target).checked);
-    });
+      section.appendChild(wrap);
+
+      wrap.querySelector('input').addEventListener('change', e => {
+        onToggle(layer.id, /** @type {HTMLInputElement} */ (e.target).checked);
+      });
+    }
   }
 }
 
@@ -138,21 +147,28 @@ export function getDefaultDates() {
  * @returns {string} safe HTML string
  */
 export function buildPopupHTML(props) {
-  const conf     = ESTABLISHMENT[props.est_key] ?? ESTABLISHMENT.unknown;
-  const imgHtml  = props.image
+  const conf    = ESTABLISHMENT[props.est_key] ?? ESTABLISHMENT.unknown;
+  const isGbif  = props.source === 'gbif';
+
+  const imgHtml = props.image
     ? `<img src="${esc(props.image)}"
             alt="${esc(props.common || props.name)}"
             loading="lazy"
             style="width:100%;height:130px;object-fit:cover;display:block;">`
     : '';
 
+  const sourceHtml = isGbif && props.dataset
+    ? `<span class="popup-source">GBIF · ${esc(props.dataset)}</span>`
+    : '';
+
+  const linkLabel = isGbif ? 'View on GBIF' : 'View on iNaturalist';
+
   return `
     ${imgHtml}
     <div class="popup-body">
       <strong class="popup-name">${esc(props.common || props.name)}</strong>
-      ${props.common
-        ? `<em class="popup-sci">${esc(props.name)}</em>`
-        : ''}
+      ${props.common ? `<em class="popup-sci">${esc(props.name)}</em>` : ''}
+      ${sourceHtml}
       <span class="popup-est-badge"
             style="background: ${esc(conf.color)};">● ${esc(props.est_label || conf.label)}</span>
       <dl class="popup-meta">
@@ -162,6 +178,6 @@ export function buildPopupHTML(props) {
       <a class="popup-link"
          href="${esc(props.url)}"
          target="_blank"
-         rel="noopener noreferrer">View on iNaturalist →</a>
+         rel="noopener noreferrer">${esc(linkLabel)} →</a>
     </div>`;
 }

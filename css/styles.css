@@ -268,6 +268,24 @@ body {
   z-index: 1;
 }
 
+/* ── Layer group label ─────────────────────────────────────────────────────── */
+.layer-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin: 10px 0 2px;
+  padding-top: 6px;
+  border-top: 1px solid #e2e8f0;
+}
+/* suppress the border on the very first group that appears at the top */
+#panel-layers .layer-group-label:first-child {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
 /* ── Popup body ────────────────────────────────────────────────────────────── */
 .popup-body {
   padding: 11px 13px 13px;
@@ -320,3 +338,11 @@ body {
 }
 
 .popup-link:hover { text-decoration: underline; }
+
+.popup-source {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 3px;
+  font-style: italic;
+}

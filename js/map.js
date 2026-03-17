@@ -65,7 +65,15 @@ export function initMap(containerId) {
  * @param {string}  id      - logical layer id (e.g. 'pollinators')
  * @param {boolean} visible - initial visibility
  */
-export function registerLayer(id, visible) {
+/**
+ * @typedef {Object} LayerStyleOptions
+ * @property {boolean} [gbif=false]
+ *   When true, renders with a larger radius and lower opacity so GBIF points
+ *   appear as a subtle historical backdrop behind iNaturalist observations.
+ *   GBIF layers should be registered before iNat layers so they render below.
+ */
+
+export function registerLayer(id, visible, { gbif = false } = {}) {
   _map.addSource(id, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
@@ -76,7 +84,15 @@ export function registerLayer(id, visible) {
     type:   'circle',
     source: id,
     layout: { visibility: visible ? 'visible' : 'none' },
-    paint: {
+    paint: gbif ? {
+      // GBIF: larger, translucent — creates a historical-depth halo effect
+      'circle-radius':       9,
+      'circle-color':        FILL_COLOR_EXPR,
+      'circle-opacity':      0.45,
+      'circle-stroke-color': STROKE_COLOR_EXPR,
+      'circle-stroke-width': 1.5,
+    } : {
+      // iNaturalist: full opacity, solid dot
       'circle-radius':       7,
       'circle-color':        FILL_COLOR_EXPR,
       'circle-opacity':      0.92,

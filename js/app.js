@@ -10,9 +10,11 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS }                                      from './config.js';
+import { LAYERS, GBIF_LAYERS }                         from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
+import { fetchGbifPollinators, fetchGbifPlants,
+         gbifToGeoJSON }                               from './gbif.js';
 import { initMap, registerLayer, setLayerFeatures,
          setLayerVisibility, getInteractiveLayerIds,
          showPopup, closePopup, wireInteractions }     from './map.js';
@@ -50,30 +52,68 @@ async function loadObservations() {
 
   setLoading(true);
   closePopup();
+  setStatus('Loading iNaturalist + GBIF…');
 
   try {
-    const { observations, total } = await fetchObservations(d1, d2, (loaded, available) => {
-      setStatus(`Loading… ${loaded.toLocaleString()} / ${available.toLocaleString()}`);
-    });
-    const geojson = observationsToGeoJSON(observations);
-    const byLayer = partitionByLayer(geojson, LAYERS.map(l => l.id));
+    // Fire all three data sources in parallel; failures in one source do not
+    // block the others (Promise.allSettled never rejects).
+    const [inatResult, gbifPollResult, gbifPlantResult] = await Promise.allSettled([
+      fetchObservations(d1, d2),
+      fetchGbifPollinators(d1, d2),
+      fetchGbifPlants(d1, d2),
+    ]);
 
-    for (const layer of LAYERS) {
-      setLayerFeatures(layer.id, byLayer[layer.id]);
+    const counts = {};
+    let inatObs = 0, inatTotal = 0, gbifCount = 0;
+
+    // ── iNaturalist ──────────────────────────────────────────────────────
+    if (inatResult.status === 'fulfilled') {
+      const { observations, total } = inatResult.value;
+      inatObs   = observations.length;
+      inatTotal = total;
+      const geojson = observationsToGeoJSON(observations);
+      const byLayer = partitionByLayer(geojson, LAYERS.map(l => l.id));
+      for (const layer of LAYERS) {
+        setLayerFeatures(layer.id, byLayer[layer.id]);
+        counts[layer.id] = byLayer[layer.id].length;
+      }
+    } else {
+      console.error('iNaturalist failed:', inatResult.reason);
+      for (const l of LAYERS) counts[l.id] = 0;
     }
 
-    updateCounts(Object.fromEntries(
-      LAYERS.map(l => [l.id, byLayer[l.id].length])
-    ));
+    // ── GBIF Pollinators ──────────────────────────────────────────────
+    if (gbifPollResult.status === 'fulfilled') {
+      const feats = gbifToGeoJSON(gbifPollResult.value.occurrences, 'gbif-pollinators').features;
+      setLayerFeatures('gbif-pollinators', feats);
+      counts['gbif-pollinators'] = feats.length;
+      gbifCount += feats.length;
+    } else {
+      console.warn('GBIF pollinators failed:', gbifPollResult.reason);
+      counts['gbif-pollinators'] = 0;
+    }
 
-    const capped = observations.length < total;
+    // ── GBIF Plants ───────────────────────────────────────────────────
+    if (gbifPlantResult.status === 'fulfilled') {
+      const feats = gbifToGeoJSON(gbifPlantResult.value.occurrences, 'gbif-plants').features;
+      setLayerFeatures('gbif-plants', feats);
+      counts['gbif-plants'] = feats.length;
+      gbifCount += feats.length;
+    } else {
+      console.warn('GBIF plants failed:', gbifPlantResult.reason);
+      counts['gbif-plants'] = 0;
+    }
+
+    updateCounts(counts);
+
+    const capped = inatObs < inatTotal;
     setStatus(
-      `${observations.length.toLocaleString()} / ${total.toLocaleString()} observations` +
-      (capped ? ' · scroll date range to load more' : '')
+      `iNat: ${inatObs.toLocaleString()} / ${inatTotal.toLocaleString()}${capped ? ' ▲' : ''}` +
+      ` · GBIF: ${gbifCount.toLocaleString()}`
     );
 
   } catch (err) {
-    console.error('Failed to load observations:', err);
+    console.error('Failed to load:', err);
     setStatus('Error — check console');
   } finally {
     setLoading(false);
@@ -84,13 +124,23 @@ async function loadObservations() {
 
 map.on('load', () => {
 
-  // Register a GeoJSON source + circle layer for each logical group
+  // Register GBIF layers FIRST so they render below iNaturalist layers
+  for (const layer of GBIF_LAYERS) {
+    registerLayer(layer.id, layer.defaultOn, { gbif: true });
+  }
+  // iNaturalist layers on top
   for (const layer of LAYERS) {
     registerLayer(layer.id, layer.defaultOn);
   }
 
-  // Build the side-panel UI
-  buildLayerPanel((id, visible) => setLayerVisibility(id, visible));
+  // Build the side-panel UI with named source groups
+  buildLayerPanel(
+    [
+      { groupLabel: 'iNaturalist', layers: LAYERS      },
+      { groupLabel: 'GBIF',        layers: GBIF_LAYERS },
+    ],
+    (id, visible) => setLayerVisibility(id, visible)
+  );
   buildEstLegend();
 
   // Populate date inputs with defaults
@@ -107,7 +157,8 @@ map.on('load', () => {
   document.getElementById('date-to').addEventListener('change', debouncedLoad);
 
   // Wire map pointer interactions
-  const layerIds = getInteractiveLayerIds(LAYERS);
+  // Click interactions on all layers from both sources
+  const layerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS]);
   wireInteractions(layerIds, (lngLat, props) => showPopup(lngLat, buildPopupHTML(props)));
 
   // Initial data load
