@@ -91,12 +91,48 @@ body {
   border-top: 1px solid #f1f5f9;
 }
 
+/* Collapsible summary used as panel section header */
+details > summary.panel-collapsible {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+details > summary.panel-collapsible::after {
+  content: '\25B6';
+  font-size: 7px;
+  margin-left: auto;
+  color: #9ca3af;
+  transition: transform 0.18s;
+  display: inline-block;
+}
+details[open] > summary.panel-collapsible::after {
+  transform: rotate(90deg);
+}
+details > summary.panel-collapsible::-webkit-details-marker { display: none; }
+details > summary:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+#panel-dates-inner {
+  margin-top: 8px;
+}
+
+#panel-layers {
+  margin-top: 10px;
+}
+
 .panel-title {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #94a3b8;
+  letter-spacing: 0.07em;
+  color: #4b5563;
   margin-bottom: 9px;
 }
 
@@ -161,7 +197,7 @@ body {
 
 .layer-count {
   font-size: 10px;
-  color: #64748b;
+  color: #4b5563;
   background: #f1f5f9;
   padding: 1px 6px;
   border-radius: 10px;
@@ -170,8 +206,8 @@ body {
 }
 
 .layer-desc {
-  font-size: 10px;
-  color: #94a3b8;
+  font-size: 11px;
+  color: #6b7280;
   padding-left: 40px;
   margin-top: 2px;
   margin-bottom: 7px;
@@ -193,9 +229,9 @@ body {
 }
 
 .date-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
-  color: #94a3b8;
+  color: #4b5563;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -212,12 +248,12 @@ body {
   cursor: pointer;
 }
 
-.date-input:focus { border-color: #16a34a; }
+.date-input:focus { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25); }
 
 .reload-btn {
   width: 100%;
   padding: 7px;
-  background: #16a34a;
+  background: #15803d;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -227,8 +263,9 @@ body {
   transition: background 0.15s;
 }
 
-.reload-btn:hover    { background: #15803d; }
-.reload-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.reload-btn:hover         { background: #166534; }
+.reload-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.reload-btn:disabled      { background: #94a3b8; cursor: not-allowed; }
 
 /* ── Establishment legend ──────────────────────────────────────────────────── */
 .est-row {
@@ -274,7 +311,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: #4b5563;
   margin: 10px 0 2px;
   padding-top: 6px;
   border-top: 1px solid #e2e8f0;
@@ -326,7 +363,7 @@ body {
   margin-top: 7px;
 }
 
-.popup-meta dt { color: #94a3b8; font-weight: 600; }
+.popup-meta dt { color: #6b7280; font-weight: 600; }
 
 .popup-link {
   display: inline-block;
@@ -337,12 +374,13 @@ body {
   text-decoration: none;
 }
 
-.popup-link:hover { text-decoration: underline; }
+.popup-link:hover        { text-decoration: underline; }
+.popup-link:focus-visible { outline: 2px solid #14532d; outline-offset: 2px; border-radius: 2px; }
 
 .popup-source {
   display: block;
   font-size: 10px;
-  color: #94a3b8;
+  color: #6b7280;
   margin-top: 3px;
   font-style: italic;
 }
@@ -373,6 +411,23 @@ body {
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* Waystation legend swatch — violet circle with centred diamond glyph */
+.area-legend-waystation {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px #8b5cf6;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6px;
+  line-height: 1;
+  color: #fff;
+  font-weight: 900;
 }
 
 /* ── Hazard badge in popup ─────────────────────────────────────────────────── */

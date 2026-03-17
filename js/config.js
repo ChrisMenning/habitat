@@ -238,8 +238,8 @@ export const FILL_COLOR_EXPR = [
   'gbif-pollinators',      '#818cf8',  // indigo
   'gbif-native-plants',    '#0d9488',  // teal  (native = good)
   'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
-  // Waystation points
-  'waystations',           '#f59e0b',  // amber — monarch orange
+  // Waystation points (violet — distinct from any sighting layer)
+  'waystations',           '#8b5cf6',  // violet
   // Hazard point layers
   'dnr-pfas',              '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',
@@ -256,5 +256,6 @@ export const STROKE_COLOR_EXPR = [
   'introduced',  '#c2410c',
   'naturalised', '#ea580c',
   'invasive',    '#dc2626',
+  'waystation',  '#ffffff',   // white ring on violet waystation circles
   /* default (unknown) */ '#d1d5db',
 ];

@@ -23,6 +23,7 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
 import { waystationGeoJSON }                          from './waystations.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
+         registerEmojiImages,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
@@ -203,6 +204,15 @@ async function loadObservations() {
 
 map.on('load', () => {
 
+  // Register emoji sprites used by icon-image symbol layers.
+  // Must be called before any registerLayer / registerAreaMarkersLayer call.
+  // 🔭 binoculars = species sightings  🌸 flower = pollinator corridor sites  🦋 butterfly = waystations
+  registerEmojiImages({
+    'icon-binoculars': '🔭',
+    'icon-hummingbird': '🌸',
+    'icon-butterfly':   '🦋',
+  });
+
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
     registerAreaLayer(layer.id, layer.defaultOn, layer.fillColor, layer.outlineColor);
@@ -213,27 +223,31 @@ map.on('load', () => {
   const corridorCfg = AREA_LAYERS.find(l => l.id === 'gbcc-corridor');
   registerAreaMarkersLayer(
     'gbcc-corridor', corridorCfg.defaultOn,
-    corridorCfg.fillColor, corridorCfg.outlineColor
+    corridorCfg.fillColor, corridorCfg.outlineColor,
+    'icon-hummingbird'
   );
 
   // 2. Hazard point layers — above polygons, below observation points
   for (const layer of HAZARD_LAYERS) {
-    registerLayer(layer.id, layer.defaultOn);
+    registerLayer(layer.id, layer.defaultOn, { radius: 7 });
   }
 
   // 2b. Waystation static layer — above hazards
+  // Rendered as a large violet circle with a monarch butterfly icon overlay.
   for (const layer of WAYSTATION_LAYER) {
-    registerLayer(layer.id, layer.defaultOn);
+    registerLayer(layer.id, layer.defaultOn, {
+      radius: 11, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly',
+    });
   }
 
   // 3. GBIF observation layers — above hazards
   for (const layer of GBIF_LAYERS) {
-    registerLayer(layer.id, layer.defaultOn, { gbif: true });
+    registerLayer(layer.id, layer.defaultOn, { gbif: true, symbol: 'icon-binoculars' });
   }
 
   // 4. iNaturalist layers — topmost
   for (const layer of LAYERS) {
-    registerLayer(layer.id, layer.defaultOn);
+    registerLayer(layer.id, layer.defaultOn, { symbol: 'icon-binoculars' });
   }
 
   // Build the side-panel UI with named source groups

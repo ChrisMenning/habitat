@@ -51,6 +51,35 @@ export function initMap(containerId) {
   return _map;
 }
 
+// ── Emoji image sprites ──────────────────────────────────────────────────────
+
+/**
+ * Draws emoji glyphs onto off-screen canvases and registers them as MapLibre
+ * image sprites so they can be referenced by `icon-image` in symbol layers.
+ *
+ * Must be called inside (or after) the map 'load' event.
+ *
+ * @param {Record<string, string>} imageMap  - { imageId: '🔭' } pairs
+ * @param {number} [size=24]                 - canvas dimension in px
+ */
+export function registerEmojiImages(imageMap, size = 24) {
+  for (const [id, emoji] of Object.entries(imageMap)) {
+    const canvas  = document.createElement('canvas');
+    canvas.width  = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.font        = `${size * 0.8}px serif`;
+    ctx.textAlign   = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillText(emoji, size / 2, size / 2);
+    const imgData = ctx.getImageData(0, 0, size, size);
+    if (!_map.hasImage(id)) {
+      _map.addImage(id, imgData, { pixelRatio: 2 });
+    }
+  }
+}
+
 // ── Layer management ──────────────────────────────────────────────────────────
 
 /**
@@ -67,39 +96,63 @@ export function initMap(containerId) {
  */
 /**
  * @typedef {Object} LayerStyleOptions
- * @property {boolean} [gbif=false]
- *   When true, renders with a larger radius and lower opacity so GBIF points
- *   appear as a subtle historical backdrop behind iNaturalist observations.
- *   GBIF layers should be registered before iNat layers so they render below.
+ * @property {boolean}     [gbif=false]    True for GBIF historical backdrop (larger, translucent).
+ * @property {number|null} [radius]        Circle radius in px — overrides the type default.
+ * @property {number|null} [strokeWidth]   Stroke width in px — overrides the type default.
+ * @property {number|null} [opacity]       Fill opacity — overrides the type default.
+ * @property {string|null} [symbol]        Unicode character rendered as a centred symbol overlay.
  */
 
-export function registerLayer(id, visible, { gbif = false } = {}) {
+export function registerLayer(id, visible, {
+  gbif        = false,
+  radius      = null,
+  strokeWidth = null,
+  opacity     = null,
+  symbol      = null,
+} = {}) {
   _map.addSource(id, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   });
+
+  // Design language:
+  //   iNat observations  — small solid dots  (6 px, full opacity)
+  //   GBIF historical    — larger halo blobs  (8 px, translucent)
+  //   Hazard / special   — caller supplies radius via options
+  const r  = radius      ?? (gbif ? 8    : 6);
+  const sw = strokeWidth ?? (gbif ? 1    : 1.5);
+  const op = opacity     ?? (gbif ? 0.40 : 0.92);
 
   _map.addLayer({
     id:     `points-${id}`,
     type:   'circle',
     source: id,
     layout: { visibility: visible ? 'visible' : 'none' },
-    paint: gbif ? {
-      // GBIF: larger, translucent — creates a historical-depth halo effect
-      'circle-radius':       9,
+    paint: {
+      'circle-radius':       r,
       'circle-color':        FILL_COLOR_EXPR,
-      'circle-opacity':      0.45,
+      'circle-opacity':      op,
       'circle-stroke-color': STROKE_COLOR_EXPR,
-      'circle-stroke-width': 1.5,
-    } : {
-      // iNaturalist: full opacity, solid dot
-      'circle-radius':       7,
-      'circle-color':        FILL_COLOR_EXPR,
-      'circle-opacity':      0.92,
-      'circle-stroke-color': STROKE_COLOR_EXPR,
-      'circle-stroke-width': 2,
+      'circle-stroke-width': sw,
     },
   });
+
+  // Optional emoji icon overlaid on the circle.
+  // Registered via registerEmojiImages() before layer creation.
+  if (symbol) {
+    _map.addLayer({
+      id:     `symbol-${id}`,
+      type:   'symbol',
+      source: id,
+      layout: {
+        visibility:              visible ? 'visible' : 'none',
+        'icon-image':            symbol,
+        'icon-size':             0.7,
+        'icon-allow-overlap':    true,
+        'icon-ignore-placement': true,
+      },
+    });
+  }
 }
 
 /**
@@ -119,7 +172,11 @@ export function setLayerFeatures(id, features) {
  * @param {boolean} visible
  */
 export function setLayerVisibility(id, visible) {
-  _map.setLayoutProperty(`points-${id}`, 'visibility', visible ? 'visible' : 'none');
+  const vis = visible ? 'visible' : 'none';
+  _map.setLayoutProperty(`points-${id}`, 'visibility', vis);
+  if (_map.getLayer(`symbol-${id}`)) {
+    _map.setLayoutProperty(`symbol-${id}`, 'visibility', vis);
+  }
 }
 
 /**
@@ -192,8 +249,9 @@ export function setAreaFeatures(id, geojson) {
  * @param {boolean} visible      - initial visibility (should match the area layer)
  * @param {string}  color        - fill colour for the circle
  * @param {string}  outlineColor - stroke colour for the circle
+ * @param {string}  [icon]       - emoji image id (registered via registerEmojiImages) to overlay
  */
-export function registerAreaMarkersLayer(id, visible, color, outlineColor) {
+export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon = null) {
   _map.addSource(`area-markers-${id}`, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
@@ -205,7 +263,7 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor) {
     source: `area-markers-${id}`,
     layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
-      'circle-radius':       8,
+      'circle-radius':       10,
       'circle-color':        color,
       'circle-opacity':      0.95,
       'circle-stroke-color': outlineColor,
@@ -219,10 +277,17 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor) {
     source: `area-markers-${id}`,
     layout: {
       visibility:    visible ? 'visible' : 'none',
+      ...(icon ? {
+        'icon-image':            icon,
+        'icon-size':             0.7,
+        'icon-allow-overlap':    true,
+        'icon-ignore-placement': true,
+        'icon-offset':           [0, 0],
+      } : {}),
       'text-field':  ['get', 'name'],
       'text-font':   ['Noto Sans Regular'],
       'text-size':   11,
-      'text-offset': [0, 1.3],
+      'text-offset': [0, icon ? 1.5 : 1.3],
       'text-anchor': 'top',
     },
     paint: {

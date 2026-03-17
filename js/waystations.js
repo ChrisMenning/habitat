@@ -44,7 +44,7 @@ export function waystationGeoJSON() {
       properties: {
         data_source:  'waystation',
         layer_id:     'waystations',
-        est_key:      'unknown',
+        est_key:      'waystation',
         ws_id:        w.id,
         name:         w.habitat  || w.registrant,
         registrant:   w.registrant,

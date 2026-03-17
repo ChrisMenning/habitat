@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Green Bay — iNaturalist Sightings</title>
+  <title>Bay Hive</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
   <!-- suppress favicon 404 -->
   <link rel="icon" href="data:,">
@@ -19,8 +19,8 @@
 
 <header id="header">
   <div id="header-text">
-    <h1>🌿 Green Bay — iNaturalist Sightings</h1>
-    <p>Nature observations · 15 km radius</p>
+    <h1>🐝 Bay Hive</h1>
+    <p>Public Data Intelligence for Pollinator Operations in the Green Bay area.</p>
   </div>
   <div id="status" aria-live="polite">Loading…</div>
 </header>
@@ -34,33 +34,37 @@
 
   <div id="panel" role="complementary" aria-label="Map controls">
 
-    <section class="panel-section" id="panel-dates">
-      <h2 class="panel-title">Date Range</h2>
-      <div class="date-row">
-        <div class="date-group">
-          <label class="date-label" for="date-from">From</label>
-          <input type="date" id="date-from" class="date-input">
-        </div>
-        <div class="date-group">
-          <label class="date-label" for="date-to">To</label>
-          <input type="date" id="date-to" class="date-input">
-        </div>
-      </div>
-      <button id="btn-reload" class="reload-btn">&#x21BA; Load Observations</button>
-    </section>
+    <section class="panel-section" id="panel-sightings">
+      <details open>
+        <summary class="panel-title panel-collapsible">&#x1F52D; Sightings</summary>
 
-    <section class="panel-section" id="panel-layers">
-      <h2 class="panel-title">Observation Layers</h2>
-      <!-- populated by ui.js -->
+        <div id="panel-dates-inner">
+          <div class="date-row">
+            <div class="date-group">
+              <label class="date-label" for="date-from">From</label>
+              <input type="date" id="date-from" class="date-input">
+            </div>
+            <div class="date-group">
+              <label class="date-label" for="date-to">To</label>
+              <input type="date" id="date-to" class="date-input">
+            </div>
+          </div>
+          <button id="btn-reload" class="reload-btn">&#x21BA; Load Observations</button>
+        </div>
+
+        <div id="panel-layers">
+          <!-- populated by ui.js -->
+        </div>
+      </details>
     </section>
 
     <section class="panel-section" id="panel-areas">
-      <h2 class="panel-title">Protected Areas &amp; Hazards</h2>
+      <h2 class="panel-title">Protected Areas, Waystations &amp; Hazards</h2>
       <!-- populated by ui.js -->
     </section>
 
     <section class="panel-section" id="panel-area-legend">
-      <h2 class="panel-title">Area &amp; Hazard Legend</h2>
+      <h2 class="panel-title">Map Layer Legend</h2>
       <!-- populated by ui.js -->
     </section>
 

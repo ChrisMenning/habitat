@@ -1,0 +1,137 @@
+[
+  {
+    "id": 7455,
+    "reg": "N.E.W. Master Gardener Volunteer Association",
+    "habitat": "Community Treatment Center Butterfly Garden",
+    "addr": "3150 Gershwin Dr, Green Bay, WI 54311",
+    "type": "org",
+    "lat": 44.5223194,
+    "lon": -87.9252742
+  },
+  {
+    "id": 12514,
+    "reg": "Bay Beach Wildlife Sanctuary",
+    "habitat": "OAK School Garden",
+    "addr": "1660 East Shore Dr, Green Bay, WI 54302",
+    "type": "nature_center",
+    "lat": 44.5285485,
+    "lon": -87.9785992
+  },
+  {
+    "id": 4306,
+    "reg": "Lori and Bob Casey",
+    "habitat": "Windy Rock Pines",
+    "addr": "2385 Autumn Ridge Trl, Suamico, WI 54313",
+    "type": "home",
+    "lat": 44.6056079,
+    "lon": -88.1165083
+  },
+  {
+    "id": 5860,
+    "reg": "Dave Rotter",
+    "habitat": "Rielly's Retreat",
+    "addr": "513 Cornelius Dr, Green Bay, WI 54311",
+    "type": "home",
+    "lat": 44.5106478,
+    "lon": -87.9276586
+  },
+  {
+    "id": 8768,
+    "reg": "Julie Macier",
+    "habitat": "Grammy's Waystation",
+    "addr": "2470 Newberry Ave, Green Bay, WI 54302",
+    "type": "home",
+    "lat": 44.4984283,
+    "lon": -87.9585773
+  },
+  {
+    "id": 12790,
+    "reg": "Sarah, Mark, Gwendolyn, Judah, and Leopoldo Valentine",
+    "habitat": "Valentine Homestead",
+    "addr": "3026 Nicolet Dr, Green Bay, WI 54311",
+    "type": "home",
+    "lat": 44.5543046,
+    "lon": -87.9115035
+  },
+  {
+    "id": 26833,
+    "reg": "Ann & Doug Wichman",
+    "habitat": "Pollinator Prairie",
+    "addr": "2867 Josephine Cir, Green Bay, WI 54311",
+    "type": "home",
+    "lat": 44.5135712,
+    "lon": -87.938784
+  },
+  {
+    "id": 35594,
+    "reg": "Donna Semrau",
+    "habitat": "No Sweat Ranch",
+    "addr": "4511 Nicolet Dr, Green Bay, WI 54311",
+    "type": "home",
+    "lat": 44.5633072,
+    "lon": -87.9042146
+  },
+  {
+    "id": 39155,
+    "reg": "Jessica and Nikolas Meurett",
+    "habitat": "The Shire",
+    "addr": "1308 Eliza St, Green Bay, WI 54301",
+    "type": "home",
+    "lat": 44.4960536,
+    "lon": -88.0054576
+  },
+  {
+    "id": 40790,
+    "reg": "Steve & Veronica Krenek",
+    "habitat": "Misty Mountains Monarchs",
+    "addr": "2064 Mystic Hills Ter, Suamico, WI 54313",
+    "type": "home",
+    "lat": 44.5969016,
+    "lon": -88.1054186
+  },
+  {
+    "id": 40818,
+    "reg": "Jeremy & Carol Voldsness",
+    "habitat": "Voldsness' Roost on the Hill",
+    "addr": "2681 S Webster Ave, Green Bay, WI 54301",
+    "type": "home",
+    "lat": 44.506773,
+    "lon": -88.007306
+  },
+  {
+    "id": 45890,
+    "reg": "Dave & Leigh Begalske",
+    "habitat": "Begalske's House of Wings",
+    "addr": "1823 Fiesta Ln, Green Bay, WI 54302",
+    "type": "home",
+    "lat": 44.4858592,
+    "lon": -87.9840165
+  },
+  {
+    "id": 46881,
+    "reg": "Randy and Julie Gummin",
+    "habitat": "Jewel's Haven",
+    "addr": "2298 Westline Rd, Suamico, WI 54313",
+    "type": "home",
+    "lat": 44.6033838,
+    "lon": -88.1299592
+  },
+  {
+    "id": 48804,
+    "reg": "Randy & Debbie Rosera",
+    "habitat": "Rosera Gardens!",
+    "addr": "2575 Robinson Ave, Green Bay, WI 54311",
+    "type": "home",
+    "lat": 44.4791108,
+    "lon": -87.9551992
+  },
+  {
+    "id": 42976,
+    "reg": "Sue Cravillion",
+    "habitat": "Cravillion Park",
+    "addr": "3701 Robin Ln, Suamico, WI 54313",
+    "type": "home",
+    "lat": 44.6303854,
+    "lon": -88.1272027
+  }
+]

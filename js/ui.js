@@ -111,13 +111,13 @@ export function buildAreaLegend() {
     section.appendChild(row);
   }
 
-  // Waystation layer (circle — amber)
+  // Waystation layer (violet circle with diamond glyph)
   const wsRow = document.createElement('div');
   wsRow.className = 'area-legend-row';
   wsRow.innerHTML = `
-    <div class="area-legend-circle"
-         style="background:#f59e0b;"
-         aria-hidden="true"></div>
+    <div class="area-legend-waystation"
+         style="background:#8b5cf6;"
+         aria-hidden="true">&#9670;</div>
     <span>${esc(WAYSTATION_LAYER[0].label)}</span>`;
   section.appendChild(wsRow);
 
