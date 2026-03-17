@@ -22,8 +22,39 @@
     <h1>🐝 Bay Hive</h1>
     <p>Public Data Intelligence for Pollinator Operations in the Green Bay area.</p>
   </div>
-  <div id="status" aria-live="polite">Loading…</div>
+  <div id="header-actions">
+    <button id="btn-export" class="header-btn" title="Export report">📄 Export</button>
+    <div id="status" aria-live="polite">Loading…</div>
+  </div>
 </header>
+
+<!-- ── Intelligence summary bar ────────────────────────────────────────────── -->
+<div id="intel-bar" aria-label="Situational summary">
+  <div class="intel-stat" id="intel-corridor">
+    <span class="intel-val" id="intel-val-corridor">—</span>
+    <span class="intel-lbl">🌸 Corridor sites</span>
+  </div>
+  <div class="intel-stat" id="intel-waystation">
+    <span class="intel-val" id="intel-val-waystation">—</span>
+    <span class="intel-lbl">🦋 Waystations</span>
+  </div>
+  <div class="intel-stat" id="intel-inat">
+    <span class="intel-val" id="intel-val-inat">—</span>
+    <span class="intel-lbl">🔭 iNat sightings</span>
+  </div>
+  <div class="intel-stat" id="intel-gbif">
+    <span class="intel-val" id="intel-val-gbif">—</span>
+    <span class="intel-lbl">🔬 GBIF records</span>
+  </div>
+  <div class="intel-stat intel-stat--alert" id="intel-alerts">
+    <span class="intel-val" id="intel-val-alerts">—</span>
+    <span class="intel-lbl">⚡ Alerts</span>
+  </div>
+  <div class="intel-stat intel-stat--cache" id="intel-cache">
+    <span class="intel-val" id="intel-val-cache">—</span>
+    <span class="intel-lbl">🗄 Data source</span>
+  </div>
+</div>
 
 <div id="map">
 
@@ -34,9 +65,48 @@
 
   <div id="panel" role="complementary" aria-label="Map controls">
 
+    <!-- ── PRIMARY: Habitat investment programs ──────────────────────────── -->
+    <section class="panel-section panel-primary" id="panel-habitat">
+      <h2 class="panel-title">Habitat Programs</h2>
+      <p class="panel-section-note">Active pollinator habitat sites in the Green Bay area.</p>
+      <div id="panel-habitat-inner">
+        <!-- populated by ui.js -->
+      </div>
+    </section>
+
+    <!-- ── SECONDARY: Background area context ────────────────────────────── -->
+    <section class="panel-section" id="panel-areas">
+      <details>
+        <summary class="panel-title panel-collapsible">Conservation Areas &amp; Hazards</summary>
+        <div id="panel-areas-inner">
+          <!-- populated by ui.js -->
+        </div>
+      </details>
+    </section>
+
+    <!-- ── ALERTS ────────────────────────────────────────────────────────── -->
+    <section class="panel-section" id="panel-alerts">
+      <details>
+        <summary class="panel-title panel-collapsible">
+          Intelligence Alerts
+          <span id="alerts-header-count" class="alerts-badge"></span>
+        </summary>
+        <div id="alerts-list" aria-live="polite">
+          <!-- populated by alerts.js -->
+        </div>
+      </details>
+    </section>
+
+    <!-- ── TERTIARY: Sightings for impact correlation ──────────────────────── -->
     <section class="panel-section" id="panel-sightings">
-      <details open>
-        <summary class="panel-title panel-collapsible">&#x1F52D; Sightings</summary>
+      <details>
+        <summary class="panel-title panel-collapsible">🔭 Sightings</summary>
+        <p class="panel-section-note">Observe species activity near habitat sites.</p>
+
+        <!-- Filter chips -->
+        <div id="panel-filter-chips">
+          <!-- populated by filters.js -->
+        </div>
 
         <div id="panel-dates-inner">
           <div class="date-row">
@@ -49,7 +119,7 @@
               <input type="date" id="date-to" class="date-input">
             </div>
           </div>
-          <button id="btn-reload" class="reload-btn">&#x21BA; Load Observations</button>
+          <button id="btn-reload" class="reload-btn">↺ Load Observations</button>
         </div>
 
         <div id="panel-layers">
@@ -58,21 +128,45 @@
       </details>
     </section>
 
-    <section class="panel-section" id="panel-areas">
-      <h2 class="panel-title">Protected Areas, Waystations &amp; Hazards</h2>
-      <!-- populated by ui.js -->
-    </section>
-
     <section class="panel-section" id="panel-area-legend">
-      <h2 class="panel-title">Map Layer Legend</h2>
-      <!-- populated by ui.js -->
+      <details>
+        <summary class="panel-title panel-collapsible">Map Layer Legend</summary>
+        <div id="panel-area-legend-inner">
+          <!-- populated by ui.js -->
+        </div>
+      </details>
     </section>
 
     <section class="panel-section" id="panel-est">
-      <h2 class="panel-title">Establishment &middot; ring color</h2>
-      <!-- populated by ui.js -->
+      <details>
+        <summary class="panel-title panel-collapsible">Establishment · ring color</summary>
+        <div id="panel-est-inner">
+          <!-- populated by ui.js -->
+        </div>
+      </details>
     </section>
 
+  </div>
+</div>
+
+<!-- ── Site detail drawer ───────────────────────────────────────────────────── -->
+<div id="site-drawer" role="complementary" aria-label="Site details" aria-hidden="true">
+  <button id="site-drawer-close" class="drawer-close" aria-label="Close site details">✕</button>
+  <div id="site-drawer-body">
+    <!-- populated by drawer.js -->
+  </div>
+</div>
+
+<!-- ── Timeline scrubber ────────────────────────────────────────────────────── -->
+<div id="timeline" aria-label="Year range filter">
+  <div id="timeline-label" aria-live="polite">All years</div>
+  <div id="timeline-track" role="group" aria-label="Drag handles to filter by year">
+    <div class="timeline-fill"></div>
+    <div class="timeline-ticks"></div>
+    <div class="timeline-handle" data-handle="start" tabindex="0" role="slider"
+         aria-label="Start year" aria-valuemin="2000" aria-valuemax="2026"></div>
+    <div class="timeline-handle" data-handle="end" tabindex="0" role="slider"
+         aria-label="End year" aria-valuemin="2000" aria-valuemax="2026"></div>
   </div>
 </div>
 

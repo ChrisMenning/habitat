@@ -381,7 +381,7 @@ export function wireInteractions(layerIds, onFeatureClick) {
   _map.on('click', e => {
     const features = _map.queryRenderedFeatures(e.point, { layers: layerIds });
     if (features.length) {
-      onFeatureClick(e.lngLat, features[0].properties);
+      onFeatureClick(e.lngLat, features[0].properties, features[0]);
     }
   });
 

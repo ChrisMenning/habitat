@@ -76,7 +76,7 @@ export function buildLayerPanel(groups, onToggle, container = null) {
  * Populates the "Establishment · ring color" legend section.
  */
 export function buildEstLegend() {
-  const section = document.getElementById('panel-est');
+  const section = document.getElementById('panel-est-inner');
   const keys    = ['native', 'endemic', 'introduced', 'invasive', 'unknown'];
 
   for (const key of keys) {
@@ -97,7 +97,7 @@ export function buildEstLegend() {
  * Shows a filled rectangle swatch for each polygon layer.
  */
 export function buildAreaLegend() {
-  const section = document.getElementById('panel-area-legend');
+  const section = document.getElementById('panel-area-legend-inner');
   if (!section) return;
 
   for (const layer of AREA_LAYERS) {
