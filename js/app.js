@@ -17,7 +17,7 @@ import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
          resolveOccurrenceEstKeys,
          partitionPlantOccurrences }                   from './gbif.js';
 import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
-         fetchPesticideMonitoring }                    from './areas.js';
+         fetchChemicalHazards }                       from './areas.js';
 import { initMap, registerLayer, registerAreaLayer,
          setLayerFeatures, setAreaFeatures,
          setLayerVisibility, setAreaVisibility,
@@ -63,14 +63,14 @@ async function loadObservations() {
     // Fire all data sources in parallel; failures in one source do not
     // block the others (Promise.allSettled never rejects).
     const [inatResult, gbifPollResult, gbifPlantResult,
-           padusResult, snaResult, dnrResult, wqpResult] = await Promise.allSettled([
+           padusResult, snaResult, dnrResult, pfasResult] = await Promise.allSettled([
       fetchObservations(d1, d2),
       fetchGbifPollinators(d1, d2),
       fetchGbifPlants(d1, d2),
       fetchPadUs(),
       fetchDnrSna(),
       fetchDnrManagedLands(),
-      fetchPesticideMonitoring(),
+      fetchChemicalHazards(),
     ]);
 
     const counts = {};
@@ -148,13 +148,13 @@ async function loadObservations() {
       counts['dnr-managed'] = 0;
     }
 
-    // ── WQP Pesticide Monitoring ──────────────────────────────────────
-    if (wqpResult.status === 'fulfilled') {
-      setLayerFeatures('wqp-pesticide', wqpResult.value.features);
-      counts['wqp-pesticide'] = wqpResult.value.features.length;
+    // ── WI DNR PFAS Chemical Hazard Sites ───────────────────────────────────
+    if (pfasResult.status === 'fulfilled') {
+      setLayerFeatures('dnr-pfas', pfasResult.value.features);
+      counts['dnr-pfas'] = pfasResult.value.features.length;
     } else {
-      console.warn('WQP failed:', wqpResult.reason);
-      counts['wqp-pesticide'] = 0;
+      console.warn('PFAS sites failed:', pfasResult.reason);
+      counts['dnr-pfas'] = 0;
     }
 
     updateCounts(counts);

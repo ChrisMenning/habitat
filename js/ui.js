@@ -266,23 +266,23 @@ export function buildAreaPopupHTML(props) {
       </div>`;
   }
 
-  if (src === 'wqp') {
+  if (src === 'dnr-pfas') {
     const rows = [
-      props.site_type     && ['Water body',   props.site_type],
-      props.county        && ['County',        props.county],
-      props.org           && ['Agency',        props.org],
-      props.result_count != null && ['Samples', `${props.result_count} pesticide readings`],
+      props.year        && ['Year sampled',  props.year],
+      props.pfos        && ['PFOS (ng/L)',    props.pfos],
+      props.pfoa        && ['PFOA (ng/L)',    props.pfoa],
+      props.surface_water && ['Surface water', 'Detected'],
     ].filter(Boolean);
 
     return `
       <div class="popup-body">
         <strong class="popup-name">${esc(props.name)}</strong>
-        <span class="popup-source area-hazard-badge">⚠️ Pesticide Monitoring Station</span>
-        <dl class="popup-meta">
+        <span class="popup-source area-hazard-badge">⚠️ PFAS Contamination Site · WI DNR</span>
+        ${rows.length ? `<dl class="popup-meta">
           ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
-        </dl>
+        </dl>` : ''}
         ${props.url
-          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">View on WQP →</a>`
+          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">DNR report →</a>`
           : ''}
       </div>`;
   }

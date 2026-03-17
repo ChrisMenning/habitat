@@ -8,8 +8,8 @@
  *     https://dnrmaps.wi.gov/arcgis/rest/services/ER_Biotics/ER_Biotics_WGS84_Managed_Lands/MapServer/1
  *   WI DNR Lands — WI DNR Managed Properties (polygon)
  *     https://dnrmaps.wi.gov/arcgis/rest/services/ER_Biotics/ER_Biotics_WGS84_Managed_Lands/MapServer/3
- *   WQP          — USGS Water Quality Portal pesticide monitoring stations (point)
- *     https://www.waterqualitydata.us/Station/search
+ *   WI DNR PFAS  — PFAS chemical contamination sites in surface water & fish (point)
+ *     https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_PFAS_SITES_AND_DATA/MapServer/0
  *
  * All polygon queries use the ArcGIS REST FeatureServer/MapServer query endpoint
  * with an envelope geometry filter and outSR=4326 so features arrive in WGS 84.
@@ -174,48 +174,43 @@ export async function fetchDnrManagedLands() {
   return raw;
 }
 
-// ── WQP Pesticide Monitoring ──────────────────────────────────────────────────
+// ── WI DNR PFAS Chemical Contamination Sites ─────────────────────────────────
 
-const WQP_STATION_URL = 'https://www.waterqualitydata.us/Station/search';
+const DNR_PFAS_URL =
+  'https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_PFAS_SITES_AND_DATA/MapServer/0/query';
 
 /**
- * Fetches USGS Water Quality Portal monitoring stations that recorded
- * pesticide measurements within the app's bounding box.
+ * Fetches Wisconsin DNR PFAS (per- and polyfluoroalkyl substances) sample
+ * sites — surface water and fish tissue — within the app's bounding box.
  *
- * Returns a GeoJSON FeatureCollection with normalised properties that are
- * compatible with the standard circle-layer format (layer_id, est_key).
+ * PFAS are persistent synthetic chemicals found in waterways near Green Bay
+ * that bioaccumulate up the food chain and are hazardous to pollinators,
+ * birds, and other wildlife.
+ *
+ * Returns a GeoJSON FeatureCollection compatible with the standard
+ * circle-layer format (layer_id, est_key).
  *
  * @returns {Promise<GeoJSON.FeatureCollection>}
  */
-export async function fetchPesticideMonitoring() {
-  const params = new URLSearchParams({
-    bBox:               `${BBOX.minX},${BBOX.minY},${BBOX.maxX},${BBOX.maxY}`,
-    characteristicGroup: 'Pesticides',
-    mimeType:           'geojson',
+export async function fetchChemicalHazards() {
+  const raw = await arcgisQuery(DNR_PFAS_URL, {
+    outFields: 'PRIMARY_STATION_NAME,DATE_YEAR,SURFACE_WATER_FLAG,PFOS_MEASURE,PFOA_MEASURE,PDF_PRIMARY_LINK',
   });
 
-  const res = await fetch(`${WQP_STATION_URL}?${params.toString()}`);
-  if (!res.ok) throw new Error(`WQP request failed: ${res.status}`);
-  const raw = await res.json();
-
-  // WQP returns a FeatureCollection of point stations.
-  // We normalise properties to the circle-layer schema used by all iNat/GBIF layers.
   raw.features = (raw.features ?? []).map(f => ({
     ...f,
     properties: {
-      layer_id:        'wqp-pesticide',
-      est_key:         'unknown',
-      data_source:     'wqp',
-      // Display fields
-      name:            f.properties.MonitoringLocationName         || 'Monitoring Station',
-      common:          '',
-      org:             f.properties.OrganizationFormalName         || '',
-      site_type:       f.properties.MonitoringLocationTypeName     || '',
-      activity_count:  f.properties.activityCount                  ?? 0,
-      result_count:    f.properties.resultCount                    ?? 0,
-      state:           f.properties.StateName                      || '',
-      county:          f.properties.CountyName                     || '',
-      url:             f.properties.siteUrl                        || '',
+      layer_id:     'dnr-pfas',
+      est_key:      'unknown',
+      data_source:  'dnr-pfas',
+      name:         f.properties.PRIMARY_STATION_NAME || 'PFAS Site',
+      common:       '',
+      year:         f.properties.DATE_YEAR            || '',
+      surface_water: f.properties.SURFACE_WATER_FLAG === 'Y',
+      fish_tissue:  f.properties.FISH_FLAG            === 'Y',
+      pfos:         f.properties.PFOS_MEASURE         || '',
+      pfoa:         f.properties.PFOA_MEASURE         || '',
+      url:          f.properties.PDF_PRIMARY_LINK     || '',
       // popup compat
       date:  '',
       user:  '',

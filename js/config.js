@@ -151,10 +151,10 @@ export const AREA_LAYERS = [
  */
 export const HAZARD_LAYERS = [
   {
-    id:          'wqp-pesticide',
-    label:       'Pesticide Monitoring',
+    id:          'dnr-pfas',
+    label:       'PFAS Chemical Sites',
     emoji:       '⚠️',
-    description: 'USGS WQP stations · waterways monitored for pesticide presence',
+    description: 'WI DNR · PFAS forever-chemical detections in surface water & fish',
     defaultOn:   true,
   },
 ];
@@ -205,7 +205,7 @@ export const FILL_COLOR_EXPR = [
   'gbif-native-plants',    '#0d9488',  // teal  (native = good)
   'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
   // Hazard point layers
-  'wqp-pesticide',         '#ef4444',  // red   (hazard indicator)
+  'dnr-pfas',              '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',
 ];
 
