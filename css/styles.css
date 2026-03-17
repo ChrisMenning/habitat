@@ -68,19 +68,90 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Side panel ────────────────────────────────────────────────────────────── */
+/* ── Side panel — layer controls (left) ────────────────────────────────────── */
 #panel {
   position: absolute;
   top: 12px;
-  right: 8px;
+  left: 8px;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.14);
   z-index: 5;
-  min-width: 222px;
+  width: 230px;
   max-height: calc(100% - 24px);
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* ── Alerts panel — separate floating element (beside layer panel) ─────────── */
+#alerts-panel {
+  position: absolute;
+  top: 12px;
+  left: 246px;
+  width: 264px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 10px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+  background: #fff;
+  /* Amber top accent — visually distinct from the neutral layer panel */
+  border-top: 3px solid #f59e0b;
+}
+
+#alerts-panel-header {
+  background: #1c1917;
+  color: #fef3c7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 7px 7px 0 0;
+  flex-shrink: 0;
+}
+
+.alerts-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #fde68a;
+  flex: 1;
+}
+
+/* Collapse/expand toggle for the alerts panel */
+.alerts-panel-toggle {
+  background: none;
+  border: none;
+  color: #fde68a;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+.alerts-panel-toggle:hover         { background: rgba(255,255,255,0.12); }
+.alerts-panel-toggle:focus-visible { outline: 2px solid #fde68a; outline-offset: 1px; }
+.alerts-panel-toggle[aria-expanded="false"] { transform: rotate(-90deg); }
+
+/* When collapsed via JS: hide body */
+#alerts-panel.alerts-panel--collapsed #alerts-panel-body { display: none; }
+
+#alerts-panel-body {
+  transition: none;
+}
+
+#panel-alerts {
+  padding: 8px 12px 10px;
+}
+
+/* Keep the badge readable on the dark header */
+#alerts-panel .alerts-badge {
+  background: rgba(255,255,255,0.12);
+  color: #fde68a;
 }
 
 .panel-section {

@@ -50,7 +50,7 @@ export const LAYERS = [
     label:       'Native Plants',
     emoji:       '🌿',
     description: 'Native & endemic plant species',
-    defaultOn:   true,
+    defaultOn:   false,
   },
   {
     id:          'other-plants',
@@ -90,7 +90,7 @@ export const GBIF_LAYERS = [
     label:       'Native Plants',
     emoji:       '🌾',
     description: 'Native & endemic plant records from herbaria and surveys',
-    defaultOn:   true,
+    defaultOn:   false,
   },
   {
     id:          'gbif-non-native-plants',
@@ -119,7 +119,7 @@ export const AREA_LAYERS = [
     label:        'Protected Areas',
     emoji:        '🛡️',
     description:  'USGS PAD-US v3.0 · federal, state, local & tribal protected lands',
-    defaultOn:    true,
+    defaultOn:    false,
     fillColor:    '#16a34a',
     outlineColor: '#15803d',
   },

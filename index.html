@@ -65,7 +65,8 @@
     <span>Fetching observations…</span>
   </div>
 
-  <div id="panel" role="complementary" aria-label="Map controls">
+  <!-- ── Layer controls panel (left) ─────────────────────────────────────── -->
+  <div id="panel" role="complementary" aria-label="Map layer controls">
 
     <!-- ── PRIMARY: Habitat investment programs ──────────────────────────── -->
     <section class="panel-section panel-primary" id="panel-habitat">
@@ -82,19 +83,6 @@
         <summary class="panel-title panel-collapsible">Conservation Areas &amp; Hazards</summary>
         <div id="panel-areas-inner">
           <!-- populated by ui.js -->
-        </div>
-      </details>
-    </section>
-
-    <!-- ── ALERTS ────────────────────────────────────────────────────────── -->
-    <section class="panel-section" id="panel-alerts">
-      <details>
-        <summary class="panel-title panel-collapsible">
-          Intelligence Alerts
-          <span id="alerts-header-count" class="alerts-badge"></span>
-        </summary>
-        <div id="alerts-list" aria-live="polite">
-          <!-- populated by alerts.js -->
         </div>
       </details>
     </section>
@@ -148,6 +136,23 @@
       </details>
     </section>
 
+  </div>
+
+  <!-- ── Alerts panel (separate, beside layer panel) ───────────────────── -->
+  <div id="alerts-panel" role="complementary" aria-label="Intelligence Alerts">
+    <div id="alerts-panel-header">
+      <span class="alerts-panel-title">⚡ Alerts</span>
+      <span id="alerts-header-count" class="alerts-badge"></span>
+      <button id="alerts-panel-toggle" class="alerts-panel-toggle" aria-expanded="true" aria-label="Toggle alerts panel">▼</button>
+    </div>
+    <div id="alerts-panel-body">
+      <!-- ── Keep section wrapper so existing JS selectors still work ── -->
+      <section id="panel-alerts">
+        <div id="alerts-list" aria-live="polite">
+          <!-- populated by alerts.js -->
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 

@@ -204,8 +204,12 @@ export function renderAlerts(alerts, onFocus = null) {
   }
 
   // Auto-expand the alerts panel so the user sees them immediately
-  const details = document.querySelector('#panel-alerts details');
-  if (details) details.open = true;
+  const alertsPanel = document.getElementById('alerts-panel');
+  if (alertsPanel) {
+    alertsPanel.classList.remove('alerts-panel--collapsed');
+    const toggle = document.getElementById('alerts-panel-toggle');
+    if (toggle) { toggle.textContent = '▼'; toggle.setAttribute('aria-expanded', 'true'); }
+  }
 
   for (const alert of alerts) {
     const hasGeo = alert.coords?.length > 0;

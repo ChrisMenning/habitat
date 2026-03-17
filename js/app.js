@@ -515,12 +515,26 @@ map.on('load', () => {
     if (!hits.length) clearAlertHighlight();
   });
 
-  // Intel-bar alerts stat → open the Alerts panel and scroll it into view
+  // Alerts panel collapse/expand toggle
+  const alertsToggleBtn = document.getElementById('alerts-panel-toggle');
+  if (alertsToggleBtn) {
+    alertsToggleBtn.addEventListener('click', () => {
+      const panel    = document.getElementById('alerts-panel');
+      const expanded = alertsToggleBtn.getAttribute('aria-expanded') === 'true';
+      panel.classList.toggle('alerts-panel--collapsed', expanded);
+      alertsToggleBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      alertsToggleBtn.textContent = expanded ? '▶' : '▼';
+    });
+  }
+
+  // Intel-bar alerts stat → expand and scroll the alerts panel into view
   const openAlertsPanel = () => {
-    const details = document.querySelector('#panel-alerts details');
-    if (details) {
-      details.open = true;
-      details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const panel = document.getElementById('alerts-panel');
+    if (panel) {
+      panel.classList.remove('alerts-panel--collapsed');
+      const toggle = document.getElementById('alerts-panel-toggle');
+      if (toggle) { toggle.textContent = '▼'; toggle.setAttribute('aria-expanded', 'true'); }
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   };
   document.getElementById('intel-alerts').addEventListener('click', openAlertsPanel);

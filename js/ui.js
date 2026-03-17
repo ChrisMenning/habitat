@@ -212,7 +212,7 @@ export function setStatus(text) {
 export function getDefaultDates() {
   const today = new Date();
   const from  = new Date(today);
-  from.setFullYear(today.getFullYear() - 3);
+  from.setFullYear(today.getFullYear() - 1);
   return {
     from: from.toISOString().slice(0, 10),
     to:   today.toISOString().slice(0, 10),
