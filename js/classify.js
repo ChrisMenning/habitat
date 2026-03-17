@@ -19,20 +19,31 @@ import { ESTABLISHMENT } from './config.js';
  * @returns {keyof typeof ESTABLISHMENT}
  */
 export function getEstKey(obs) {
-  const em = obs.taxon?.establishment_means;
-  if (!em) return 'unknown';
+  const taxon = obs.taxon;
+  if (!taxon) return 'unknown';
 
-  const raw = (typeof em === 'string'
-    ? em
-    : (em.establishment_means ?? '')
-  ).toLowerCase().trim();
+  const em = taxon.establishment_means;
+
+  // The v1 API returns establishment_means as either a plain string or a
+  // nested object: { establishment_means: "native", place: { ... } }
+  const raw = em
+    ? (typeof em === 'string' ? em : (em.establishment_means ?? '')).toLowerCase().trim()
+    : '';
 
   // Normalise American English spelling returned by some API responses
-  const normalised = raw === 'naturalized' ? 'naturalised' : raw;
+  const key = raw === 'naturalized' ? 'naturalised' : raw;
 
-  return Object.prototype.hasOwnProperty.call(ESTABLISHMENT, normalised)
-    ? normalised
-    : 'unknown';
+  if (Object.prototype.hasOwnProperty.call(ESTABLISHMENT, key) && key !== '') {
+    return key;
+  }
+
+  // Fallback: the v1 API also exposes top-level booleans computed from place
+  // context. Use them when the establishment_means string is absent.
+  if (taxon.endemic)   return 'endemic';
+  if (taxon.native)    return 'native';
+  if (taxon.introduced) return 'introduced';
+
+  return 'unknown';
 }
 
 // ── Pollinator detection ─────────────────────────────────────────────────────

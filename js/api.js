@@ -28,22 +28,13 @@ async function fetchPage(page, d1, d2) {
     radius:   RADIUS_KM,
     per_page: PER_PAGE,
     page,
-    order:    'desc',
-    order_by: 'observed_on',
-    // NOTE: place_id is intentionally omitted here.
-    //
-    // When provided, it acts as a geographic *filter* (AND with lat/lng/radius)
-    // AND as context for taxon.establishment_means. Using it as a filter is
-    // harmless when the search area is fully inside the place, but an incorrect
-    // place_id (or one whose polygon doesn't cleanly contain the radius) will
-    // silently return zero results. Omitting it avoids that fragility.
-    //
-    // Without place_id the API still returns establishment_means but relative
-    // to broader global/national data. Our getEstKey() handles absent values
-    // gracefully by returning 'unknown'.
-    //
-    // To re-enable: add  place_id: WI_PLACE_ID  (verify the correct ID first
-    // at https://www.inaturalist.org/places/wisconsin).
+    order:           'desc',
+    order_by:        'observed_on',
+    // preferred_place_id sets the *context* for taxon establishment_means and
+    // regional common names WITHOUT acting as a geographic filter (unlike
+    // place_id which restricts results to observations *within* that polygon).
+    // Wisconsin = 59 per https://www.inaturalist.org/places/wisconsin
+    preferred_place_id: WI_PLACE_ID,
   });
   params.append('has[]', 'geo');
   if (d1) params.set('d1', d1);
