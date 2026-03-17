@@ -183,6 +183,16 @@ export const WAYSTATION_LAYER = [
   },
 ];
 
+export const HNP_LAYER = [
+  {
+    id:          'hnp',
+    label:       'Homegrown National Park',
+    emoji:       '🌿',
+    description: 'Registered native plant yards contributing to local biodiversity (Homegrown National Park)',
+    defaultOn:   true,
+  },
+];
+
 export const HAZARD_LAYERS = [
   {
     id:          'dnr-pfas',
@@ -240,6 +250,8 @@ export const FILL_COLOR_EXPR = [
   'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
   // Waystation points (violet — distinct from any sighting layer)
   'waystations',           '#8b5cf6',  // violet
+  // Homegrown National Park native planting yards
+  'hnp',                   '#10b981',  // emerald — native planting yards
   // Hazard point layers
   'dnr-pfas',              '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',
@@ -257,5 +269,6 @@ export const STROKE_COLOR_EXPR = [
   'naturalised', '#ea580c',
   'invasive',    '#dc2626',
   'waystation',  '#ffffff',   // white ring on violet waystation circles
+  'hnp',         '#065f46',   // dark green ring on emerald HNP circles
   /* default (unknown) */ '#d1d5db',
 ];

@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
@@ -21,6 +21,7 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          fetchChemicalHazards,
          corridorCentroids }                          from './areas.js';
 import { waystationGeoJSON }                          from './waystations.js';
+import { fetchHnpYards }                              from './hnp.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
          registerVectorIcons,
@@ -122,7 +123,7 @@ async function loadObservations() {
     const [
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
-      corridorResult, treatmentResult, pfasResult,
+      corridorResult, treatmentResult, pfasResult, hnpResult,
     ] = await Promise.allSettled([
 
       // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
@@ -160,6 +161,7 @@ async function loadObservations() {
       withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor),
       withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments),
       withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards),
+      withCache('area/hnp',            AREA_TTL, fetchHnpYards),
     ]);
 
     const counts = {};
@@ -259,7 +261,14 @@ async function loadObservations() {
       console.warn('PFAS sites failed:', pfasResult.reason);
       counts['dnr-pfas'] = 0;
     }
-
+    // ── Homegrown National Park native planting yards ────────────────────
+    if (hnpResult.status === 'fulfilled') {
+      setLayerFeatures('hnp', hnpResult.value.features);
+      counts['hnp'] = hnpResult.value.features.length;
+    } else {
+      console.warn('HNP failed:', hnpResult.reason);
+      counts['hnp'] = 0;
+    }
     updateCounts(counts);
 
     const capped     = inatObs < inatTotal;
@@ -284,7 +293,8 @@ async function loadObservations() {
     const corridorFeats    = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
     const waystationFeats  = waystationGeoJSON().features;
     const pfasFeats        = pfasResult.status      === 'fulfilled' ? pfasResult.value.features     : [];
-    const allHabitatFeats  = [...corridorFeats, ...waystationFeats];
+    const hnpFeats         = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
+    const allHabitatFeats  = [...corridorFeats, ...waystationFeats, ...hnpFeats];
 
     // Drawer data
     setDrawerSightings(allPollinatorFeatures);
@@ -402,6 +412,13 @@ map.on('load', () => {
     });
   }
 
+  // 2c. Homegrown National Park native planting yards — immediately after waystations
+  for (const layer of HNP_LAYER) {
+    registerLayer(layer.id, layer.defaultOn, {
+      radius: 9, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
+    });
+  }
+
   // 3. GBIF observation layers — above hazards
   // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
   for (const layer of GBIF_LAYERS) {
@@ -428,6 +445,7 @@ map.on('load', () => {
     [
       { groupLabel: 'Pollinator Corridor · GBCC', layers: habitatAreaLayers  },
       { groupLabel: 'Monarch Watch Waystations',  layers: WAYSTATION_LAYER   },
+      { groupLabel: 'Homegrown National Park',    layers: HNP_LAYER          },
     ],
     areaOrPointVisibility,
     document.getElementById('panel-habitat-inner')
@@ -511,7 +529,7 @@ map.on('load', () => {
   });
 
   // Wire click interactions on all layers (points + polygon fills)
-  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER]);
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
   wireInteractions(
     [...areaLayerIds, ...pointLayerIds],

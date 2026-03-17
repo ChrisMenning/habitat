@@ -7,10 +7,11 @@
  * No npm dependencies — uses only Node.js built-ins.
  */
 
-const http = require('http');
-const fs   = require('fs');
-const path = require('path');
-const url  = require('url');
+const http  = require('http');
+const https = require('https');
+const fs    = require('fs');
+const path  = require('path');
+const url   = require('url');
 
 const PORT    = 3000;
 const ROOT    = __dirname;
@@ -24,8 +25,32 @@ const MIME = {
   '.ico':  'image/x-icon',
 };
 
+// ── Proxy endpoint ────────────────────────────────────────────────────────────
+// Proxies GET /api/hnp-plantings → HNP guest API (which has no CORS headers).
+const HNP_UPSTREAM = 'https://map.homegrownnationalpark.org/api/guest/map/plantings?countryCode=US';
+
+function proxyHnp(res) {
+  https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
+    res.writeHead(upstream.statusCode, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=900',  // 15 min
+    });
+    upstream.pipe(res);
+  }).on('error', err => {
+    res.writeHead(502);
+    res.end(JSON.stringify({ error: err.message }));
+  });
+}
+
 const server = http.createServer((req, res) => {
   const pathname = url.parse(req.url).pathname;
+
+  // Proxy: HNP guest API (no CORS headers on their server)
+  if (pathname === '/api/hnp-plantings') {
+    proxyHnp(res);
+    return;
+  }
 
   // Normalise: treat / as /index.html
   const relative = pathname === '/' ? '/index.html' : pathname;

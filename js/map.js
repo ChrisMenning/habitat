@@ -83,6 +83,35 @@ export function registerVectorIcons() {
       ctx.beginPath(); ctx.arc(cx, cy, s * 0.14, 0, 2 * Math.PI); ctx.fill();
     },
 
+    // Leaf — used on Homegrown National Park native planting yard markers
+    'icon-park': ctx => {
+      ctx.fillStyle   = 'rgba(255,255,255,0.95)';
+      const cx = s * 0.5, cy = s * 0.5;
+      // Leaf body: rotated ellipse (pointing upper-right)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-Math.PI / 4);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s * 0.16, s * 0.34, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.restore();
+      // Stem: short diagonal line from center toward lower-left
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth   = s * 0.08;
+      ctx.lineCap     = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - s * 0.18, cy + s * 0.24);
+      ctx.stroke();
+      // Center vein: thin line along leaf axis
+      ctx.lineWidth = s * 0.04;
+      ctx.strokeStyle = 'rgba(16,185,129,0.5)';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.22, cy + s * 0.22);
+      ctx.lineTo(cx + s * 0.22, cy - s * 0.22);
+      ctx.stroke();
+    },
+
     // Butterfly — used on Monarch Watch Waystation markers
     'icon-butterfly': ctx => {
       ctx.fillStyle   = 'rgba(255,255,255,0.95)';

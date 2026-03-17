@@ -411,6 +411,18 @@ export function buildAreaPopupHTML(props) {
       </div>`;
   }
 
+  if (src === 'hnp') {
+    const isOrg = props.org_type === 'ORGANIZATIONS';
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source">🌿 Homegrown National Park${isOrg ? ' · Organization' : ''}</span>
+        <a class="popup-link"
+           href="https://homegrownnationalpark.org/"
+           target="_blank" rel="noopener noreferrer">About HNP →</a>
+      </div>`;
+  }
+
   // Fallback — should never occur
   return `<div class="popup-body"><strong>${esc(props.name || 'Feature')}</strong></div>`;
 }
