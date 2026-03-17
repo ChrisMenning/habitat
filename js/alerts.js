@@ -59,6 +59,8 @@ export function computeAlerts({
   waystationFeatures = [],
   pfasFeatures       = [],
   pollinatorSightings = [],
+  hnpFeatures        = [],
+  cdlStats           = null,
 }) {
   const alerts = [];
 
@@ -165,6 +167,114 @@ export function computeAlerts({
         key:    'site-clusters',
         text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
         coords: clusteredSiteCoords,
+      });
+    }
+  }
+
+  // ── Alert: Isolated habitat — no neighbour within 2 km ───────────────────
+  // A site with no neighbour is a habitat island: pollinators can't move
+  // between it and the broader network, limiting corridor effectiveness.
+  const ISOLATION_KM = 2.0;
+  const allHabitat = [
+    ...corridorFeatures.map(f  => ({ coord: centroid(f),  name: f.properties.name || 'Corridor site',  kind: 'corridor'  })),
+    ...waystationFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || f.properties.registrant || 'Waystation', kind: 'waystation' })),
+    ...hnpFeatures.map(f        => ({ coord: centroid(f), name: f.properties.name || 'HNP yard',        kind: 'hnp'       })),
+  ];
+  if (allHabitat.length >= 2) {
+    const isolated = allHabitat.filter(site =>
+      !allHabitat.some(other => other !== site && distKm(site.coord, other.coord) < ISOLATION_KM)
+    );
+    if (isolated.length > 0) {
+      const labels = isolated.slice(0, 3).map(s => s.name);
+      const extra  = isolated.length > 3 ? ` +${isolated.length - 3} more` : '';
+      alerts.push({
+        level:  'opportunity',
+        icon:   '🏝️',
+        key:    'isolated-habitat',
+        text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. Connecting these with additional plantings would strengthen corridor resilience.`,
+        coords: isolated.map(s => s.coord),
+      });
+    }
+  }
+
+  // ── Alert: Corridor connectivity gap ─────────────────────────────────────
+  // Among corridor sites specifically, find the widest gap between any two
+  // sites that are still reasonably close (< 8 km).  A gap > 2.5 km is
+  // enough to strand many native bees whose foraging range is 0.5–3 km.
+  if (corridorFeatures.length >= 2) {
+    const cSites = corridorFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || 'Corridor site' }));
+    let maxGap = 0, gapPair = null;
+    for (let i = 0; i < cSites.length; i++) {
+      for (let j = i + 1; j < cSites.length; j++) {
+        const d = distKm(cSites[i].coord, cSites[j].coord);
+        if (d > maxGap && d < 8) { maxGap = d; gapPair = [cSites[i], cSites[j]]; }
+      }
+    }
+    if (gapPair && maxGap >= 2.5) {
+      alerts.push({
+        level:  'info',
+        icon:   '🔗',
+        key:    'connectivity-gap',
+        text:   `Corridor connectivity gap: the widest inter-site distance is ${maxGap.toFixed(1)} km (between "${gapPair[0].name}" and "${gapPair[1].name}"). Most native bees forage < 2 km — a stepping-stone planting here would close the gap.`,
+        coords: [gapPair[0].coord, gapPair[1].coord],
+      });
+    }
+  }
+
+  // ── Alert: Pollinator mismatch (CDL-based) ───────────────────────────────
+  // High bee-dependent crop acreage + low habitat site density → unmet
+  // pollination demand.  Thresholds are calibrated for a 15 km radius.
+  if (cdlStats) {
+    const { beePct, beeOfCropPct, topBeeCrops } = cdlStats;
+    // Estimate rough habitat coverage: each site's planting supports ~0.8 km²
+    const SITE_COVER_KM2 = 0.8;
+    const REGION_KM2     = Math.PI * (15 ** 2);   // ~707 km² for 15 km radius
+    const habitatCount   = allHabitat.length;
+    const coveragePct    = (habitatCount * SITE_COVER_KM2 / REGION_KM2) * 100;
+
+    if (beePct > 8 && coveragePct < 12) {
+      const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
+      alerts.push({
+        level:  'warn',
+        icon:   '⚖️',
+        key:    'mismatch-high',
+        text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region. Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
+        coords: [],
+      });
+    } else if (beePct > 4) {
+      const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
+      alerts.push({
+        level:  'opportunity',
+        icon:   '⚖️',
+        key:    'mismatch-moderate',
+        text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}). Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
+        coords: [],
+      });
+    }
+  }
+
+  // ── Alert: Regional service gap (quadrant analysis) ──────────────────────
+  // Divide the bbox into four quadrants and flag any without a single habitat
+  // site — indicating areas with no programmatic pollinator support at all.
+  if (allHabitat.length > 0) {
+    // Use the centroid of all sites as the dividing point so sparsely-covered
+    // halves are detected even when data is asymmetric.
+    const avgLng = allHabitat.reduce((s, h) => s + h.coord[0], 0) / allHabitat.length;
+    const avgLat = allHabitat.reduce((s, h) => s + h.coord[1], 0) / allHabitat.length;
+    const quadrants = [
+      { name: 'Northwest',  test: ([lo, la]) => lo < avgLng && la >= avgLat },
+      { name: 'Northeast',  test: ([lo, la]) => lo >= avgLng && la >= avgLat },
+      { name: 'Southwest',  test: ([lo, la]) => lo < avgLng && la < avgLat  },
+      { name: 'Southeast',  test: ([lo, la]) => lo >= avgLng && la < avgLat  },
+    ];
+    const empty = quadrants.filter(q => !allHabitat.some(h => q.test(h.coord)));
+    if (empty.length > 0) {
+      alerts.push({
+        level:  'opportunity',
+        icon:   '📍',
+        key:    'regional-gap',
+        text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered HNP yard or waystation there would begin corridor coverage.`,
+        coords: [],
       });
     }
   }

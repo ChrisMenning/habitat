@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
@@ -22,11 +22,13 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          corridorCentroids }                          from './areas.js';
 import { waystationGeoJSON }                          from './waystations.js';
 import { fetchHnpYards }                              from './hnp.js';
+import { fetchCdlStats }                              from './landcover.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
          registerVectorIcons,
+         registerRasterLayer,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
-         setLayerVisibility, setAreaVisibility,
+         setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions,
          showAlertHighlight, clearAlertHighlight, fitToCoords } from './map.js';
@@ -123,7 +125,7 @@ async function loadObservations() {
     const [
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
-      corridorResult, treatmentResult, pfasResult, hnpResult,
+      corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
     ] = await Promise.allSettled([
 
       // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
@@ -162,6 +164,7 @@ async function loadObservations() {
       withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments),
       withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards),
       withCache('area/hnp',            AREA_TTL, fetchHnpYards),
+      withCache('area/cdl-stats',      AREA_TTL, fetchCdlStats),
     ]);
 
     const counts = {};
@@ -269,6 +272,9 @@ async function loadObservations() {
       console.warn('HNP failed:', hnpResult.reason);
       counts['hnp'] = 0;
     }
+
+    const cdlStats = cdlStatsResult.status === 'fulfilled' ? cdlStatsResult.value : null;
+    if (!cdlStats) console.warn('CDL stats failed:', cdlStatsResult.reason);
     updateCounts(counts);
 
     const capped     = inatObs < inatTotal;
@@ -323,10 +329,12 @@ async function loadObservations() {
 
     // Alerts
     const alerts = computeAlerts({
-      corridorFeatures:   corridorFeats,
-      waystationFeatures: waystationFeats,
-      pfasFeatures:       pfasFeats,
+      corridorFeatures:    corridorFeats,
+      waystationFeatures:  waystationFeats,
+      pfasFeatures:        pfasFeats,
       pollinatorSightings: allPollinatorFeatures,
+      hnpFeatures:         hnpFeats,
+      cdlStats,
     });
     renderAlerts(alerts, alert => {
       if (!alert.coords?.length) return;
@@ -385,6 +393,15 @@ map.on('load', () => {
   // 🌸 flower = pollinator corridor site pins  🦋 butterfly = waystation markers
   registerVectorIcons();
 
+  // 0. Raster background layers — rendered beneath all vector layers
+  for (const layer of RASTER_LAYERS) {
+    registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
+  }
+  // 0b. NLCD per-class raster layers (16 toggleable land-cover types)
+  for (const layer of NLCD_LAYERS) {
+    registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
+  }
+
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
     registerAreaLayer(layer.id, layer.defaultOn, layer.fillColor, layer.outlineColor);
@@ -435,8 +452,13 @@ map.on('load', () => {
   // Conservation = background land protection + treatments + hazards
   const habitatAreaLayers     = AREA_LAYERS.filter(l => l.id === 'gbcc-corridor');
   const conservationLayers    = AREA_LAYERS.filter(l => l.id !== 'gbcc-corridor');
+  const rasterLayerIds = new Set([
+    ...RASTER_LAYERS.map(l => l.id),
+    ...NLCD_LAYERS.map(l => l.id),
+  ]);
   const areaOrPointVisibility = (id, visible) => {
     if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
+    else if (rasterLayerIds.has(id)) setRasterLayerVisibility(id, visible);
     else setLayerVisibility(id, visible);
   };
 
@@ -460,6 +482,24 @@ map.on('load', () => {
     ],
     areaOrPointVisibility,
     document.getElementById('panel-areas-inner')
+  );
+
+  // ── Land Cover Analysis (NLCD classes + CDL, collapsed) ──────────────────────
+  // Group the 16 NLCD classes by their semantic group property.
+  const nlcdByGroup = NLCD_LAYERS.reduce((acc, l) => {
+    (acc[l.group] = acc[l.group] || []).push(l);
+    return acc;
+  }, {});
+  buildLayerPanel(
+    [
+      ...Object.entries(nlcdByGroup).map(([g, layers]) => ({
+        groupLabel: `NLCD · ${g}`,
+        layers,
+      })),
+      { groupLabel: 'Cropland Data Layer (USDA)', layers: RASTER_LAYERS },
+    ],
+    areaOrPointVisibility,
+    document.getElementById('panel-landcover-inner')
   );
 
   // ── Sightings (tertiary, for impact correlation, collapsed) ──────────────────

@@ -409,6 +409,47 @@ export function setAreaVisibility(id, visible) {
   }
 }
 
+// ── Raster WMS layers ─────────────────────────────────────────────────────────
+
+/**
+ * Registers a WMS raster layer (e.g. NLCD, CDL) as a MapLibre raster source
+ * and layer.  Must be called early in the layer stack (before vector layers)
+ * so it renders beneath all polygon and point overlays.
+ *
+ * @param {string}  id         - logical layer id (no 'raster-' prefix needed)
+ * @param {boolean} visible    - initial visibility
+ * @param {string}  tileUrl    - WMS tile URL with {bbox-epsg-3857} placeholder
+ * @param {string}  [attribution]
+ */
+export function registerRasterLayer(id, visible, tileUrl, attribution = '') {
+  _map.addSource(`${id}-source`, {
+    type:        'raster',
+    tiles:       [tileUrl],
+    tileSize:    256,
+    attribution,
+  });
+  _map.addLayer({
+    id:     `raster-${id}`,
+    type:   'raster',
+    source: `${id}-source`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint:  { 'raster-opacity': 0.65 },
+  });
+}
+
+/**
+ * Shows or hides a registered raster layer.
+ *
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+export function setRasterLayerVisibility(id, visible) {
+  const layerId = `raster-${id}`;
+  if (_map.getLayer(layerId)) {
+    _map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  }
+}
+
 /**
  * Returns the fill layer ids used for pointer hit-testing on area layers.
  * The fill layer covers the polygon interior and is the natural click target.

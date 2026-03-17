@@ -193,6 +193,112 @@ export const HNP_LAYER = [
   },
 ];
 
+/**
+ * Returns a relative tile URL served by the local dev server's NLCD proxy.
+ * The proxy fetches the full NLCD WMS tile and filters pixels server-side,
+ * returning only the requested land-cover class as a transparent PNG.
+ *
+ * @param {number} code  - NLCD pixel value (e.g. 11 for Open Water)
+ * @returns {string}
+ */
+function nlcdClassTileUrl(code) {
+  return `/api/nlcd-tile/${code}/{z}/{x}/{y}`;
+}
+
+/**
+ * NLCD 2021 individual land-cover class layers.
+ *
+ * Each entry maps to one of the 16 official NLCD classes and produces a
+ * separate raster tile layer showing only that class (others transparent).
+ * Classes are grouped by semantic category for panel display.
+ *
+ * Official colors/values from: https://www.mrlc.gov/data/legends/national-land-cover-database-class-legend-and-description
+ *
+ * @type {Array<{id:string, label:string, emoji:string, description:string,
+ *               defaultOn:boolean, color:string, nlcdCode:number, group:string,
+ *               tileUrl:string, attribution:string}>}
+ */
+export const NLCD_LAYERS = [
+  // ── Water ──────────────────────────────────────────────────────────────
+  { code: 11, group: 'Water',       emoji: '💧', color: '#476ba1', label: 'Open Water',
+    description: 'Streams, lakes, ponds, reservoirs, and estuaries' },
+  { code: 12, group: 'Water',       emoji: '🧊', color: '#d1defa', label: 'Perennial Ice/Snow',
+    description: 'Permanent snow and ice — minimal in Wisconsin' },
+  // ── Developed ──────────────────────────────────────────────────────────
+  { code: 21, group: 'Developed',   emoji: '🌿', color: '#ddc9c9', label: 'Developed · Open Space',
+    description: 'Lawns, parks, golf courses — impervious surface < 20%' },
+  { code: 22, group: 'Developed',   emoji: '🏚', color: '#d89382', label: 'Developed · Low Intensity',
+    description: 'Residential — 20–49% impervious surface' },
+  { code: 23, group: 'Developed',   emoji: '🏗', color: '#ec0000', label: 'Developed · Medium Intensity',
+    description: 'Suburban — 50–79% impervious surface' },
+  { code: 24, group: 'Developed',   emoji: '🏙', color: '#ab0000', label: 'Developed · High Intensity',
+    description: 'Urban core, industrial — ≥ 80% impervious surface' },
+  // ── Barren ─────────────────────────────────────────────────────────────
+  { code: 31, group: 'Barren',      emoji: '🪨', color: '#b3afa4', label: 'Barren Land',
+    description: 'Soil, sand, clay, rock with < 15% vegetation cover' },
+  // ── Forest ─────────────────────────────────────────────────────────────
+  { code: 41, group: 'Forest',      emoji: '🍂', color: '#68ab63', label: 'Deciduous Forest',
+    description: 'Deciduous trees with > 20% canopy — key edge habitat' },
+  { code: 42, group: 'Forest',      emoji: '🌲', color: '#1c6330', label: 'Evergreen Forest',
+    description: 'Coniferous trees with > 20% canopy' },
+  { code: 43, group: 'Forest',      emoji: '🌳', color: '#b5c98e', label: 'Mixed Forest',
+    description: 'Mixed deciduous/evergreen — neither type dominates' },
+  // ── Shrubland / Grassland ──────────────────────────────────────────────
+  { code: 52, group: 'Shrubland',   emoji: '🌿', color: '#ccba7c', label: 'Shrub/Scrub',
+    description: 'Shrubs < 5 m tall — important transition habitat for pollinators' },
+  { code: 71, group: 'Grassland',   emoji: '🌾', color: '#e2e2c1', label: 'Grassland/Herbaceous',
+    description: 'Graminoids and forbs — untilled, < 20% woody canopy' },
+  // ── Agriculture ────────────────────────────────────────────────────────
+  { code: 81, group: 'Agriculture', emoji: '🐄', color: '#dbd93d', label: 'Pasture/Hay',
+    description: 'Planted/cultivated grasses and legumes for grazing or hay' },
+  { code: 82, group: 'Agriculture', emoji: '🌽', color: '#aa7028', label: 'Cultivated Crops',
+    description: 'Row crops, field crops — high fragmentation pressure zone' },
+  // ── Wetlands ───────────────────────────────────────────────────────────
+  { code: 90, group: 'Wetlands',    emoji: '🪵', color: '#bad9eb', label: 'Woody Wetlands',
+    description: 'Forested and shrub wetlands with seasonally saturated soils' },
+  { code: 95, group: 'Wetlands',    emoji: '🌊', color: '#70a3ba', label: 'Emergent Herbaceous Wetlands',
+    description: 'Marshes and wet meadows — emergent herbaceous vegetation' },
+].map(cls => ({
+  id:          `nlcd-${cls.code}`,
+  label:       cls.label,
+  emoji:       cls.emoji,
+  description: cls.description,
+  defaultOn:   false,
+  color:       cls.color,
+  nlcdCode:    cls.code,
+  group:       cls.group,
+  tileUrl:     nlcdClassTileUrl(cls.code),
+  attribution: '<a href="https://www.mrlc.gov/" target="_blank">MRLC NLCD 2021</a>',
+}));
+
+/**
+ * Raster WMS overlay layers — rendered beneath all vector layers.
+ * Each entry has a `tileUrl` (MapLibre-format WMS tile URL with {bbox-epsg-3857})
+ * and an `attribution` string.
+ *
+ * NLCD 2021 individual class tiles are in NLCD_LAYERS above.
+ * CDL:  CDL WMS also open; statistics are proxied through serve.js (/api/cdl-stats).
+ *
+ * @type {Array<{id:string,label:string,emoji:string,description:string,defaultOn:boolean,tileUrl:string,attribution:string}>}
+ */
+export const RASTER_LAYERS = [
+  {
+    id:          'cdl',
+    label:       'Cropland Types (CDL 2023)',
+    emoji:       '🌾',
+    description: 'USDA NASS Cropland Data Layer — full crop-type palette for identifying habitat leverage areas',
+    defaultOn:   false,
+    tileUrl:
+      'https://nassgeodata.gmu.edu/CropScape/wms' +
+      '?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap' +
+      '&LAYERS=cdl_2023&STYLES=' +
+      '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
+      '&SRS=EPSG%3A3857&WIDTH=256&HEIGHT=256' +
+      '&BBOX={bbox-epsg-3857}',
+    attribution: '<a href="https://nassgeodata.gmu.edu/CropScape/" target="_blank">USDA NASS CDL 2023</a>',
+  },
+];
+
 export const HAZARD_LAYERS = [
   {
     id:          'dnr-pfas',
