@@ -5,7 +5,7 @@
  * HTML escaping is centralised in `esc()` — never skip it for user/API data.
  */
 
-import { ESTABLISHMENT, AREA_LAYERS, HAZARD_LAYERS } from './config.js';
+import { ESTABLISHMENT, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER } from './config.js';
 
 // ── Security helper ──────────────────────────────────────────────────────────
 
@@ -111,7 +111,17 @@ export function buildAreaLegend() {
     section.appendChild(row);
   }
 
-  // Hazard layer (circle)
+  // Waystation layer (circle — amber)
+  const wsRow = document.createElement('div');
+  wsRow.className = 'area-legend-row';
+  wsRow.innerHTML = `
+    <div class="area-legend-circle"
+         style="background:#f59e0b;"
+         aria-hidden="true"></div>
+    <span>${esc(WAYSTATION_LAYER[0].label)}</span>`;
+  section.appendChild(wsRow);
+
+  // Hazard layer (circle — red)
   const hazardRow = document.createElement('div');
   hazardRow.className = 'area-legend-row';
   hazardRow.innerHTML = `
@@ -299,6 +309,41 @@ export function buildAreaPopupHTML(props) {
         ${rows.length ? `<dl class="popup-meta">
           ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
         </dl>` : ''}
+      </div>`;
+  }
+
+  if (src === 'waystation') {
+    const typeLabels = {
+      home:             'Private garden',
+      school:           'School',
+      zoo:              'Zoo',
+      nature_center:    'Nature / Education Center',
+      org:              'Organization',
+      community:        'Neighborhood / Community',
+      place_of_worship: 'Religious institution',
+    };
+    const rows = [
+      props.registrant !== props.name && ['Registrant', props.registrant],
+      props.registered               && ['Registered',   props.registered],
+      props.size                     && ['Habitat size', props.size],
+      props.type                     && ['Setting',      typeLabels[props.type] ?? props.type],
+    ].filter(Boolean);
+
+    const approxNotice = props.approximate
+      ? `<p class="popup-approx">&#9432; Approximate location — precise address not confirmed in public records. Placed within zip code area only.</p>`
+      : '';
+
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name || props.registrant)}</strong>
+        <span class="popup-source">🦋 Monarch Watch Waystation #${esc(props.ws_id)}</span>
+        ${approxNotice}
+        ${rows.length ? `<dl class="popup-meta">
+          ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>` : ''}
+        <a class="popup-link"
+           href="https://www.monarchwatch.org/waystations/"
+           target="_blank" rel="noopener noreferrer">About Waystations →</a>
       </div>`;
   }
 

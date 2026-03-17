@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS }     from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
@@ -20,6 +20,7 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          fetchPollinatorCorridor, fetchCorridorTreatments,
          fetchChemicalHazards,
          corridorCentroids }                          from './areas.js';
+import { waystationGeoJSON }                          from './waystations.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
@@ -220,6 +221,11 @@ map.on('load', () => {
     registerLayer(layer.id, layer.defaultOn);
   }
 
+  // 2b. Waystation static layer — above hazards
+  for (const layer of WAYSTATION_LAYER) {
+    registerLayer(layer.id, layer.defaultOn);
+  }
+
   // 3. GBIF observation layers — above hazards
   for (const layer of GBIF_LAYERS) {
     registerLayer(layer.id, layer.defaultOn, { gbif: true });
@@ -240,8 +246,9 @@ map.on('load', () => {
   );
   buildLayerPanel(
     [
-      { groupLabel: 'Protected Areas', layers: AREA_LAYERS    },
-      { groupLabel: 'Hazards',         layers: HAZARD_LAYERS  },
+      { groupLabel: 'Protected Areas', layers: AREA_LAYERS      },
+      { groupLabel: 'Waystations',     layers: WAYSTATION_LAYER },
+      { groupLabel: 'Hazards',         layers: HAZARD_LAYERS    },
     ],
     (id, visible) => {
       if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
@@ -265,8 +272,11 @@ map.on('load', () => {
   document.getElementById('date-from').addEventListener('change', debouncedLoad);
   document.getElementById('date-to').addEventListener('change', debouncedLoad);
 
+  // Load static waystation GeoJSON immediately (no async fetch needed)
+  setLayerFeatures('waystations', waystationGeoJSON().features);
+
   // Wire click interactions on all layers (points + polygon fills)
-  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS]);
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
   wireInteractions(
     [...areaLayerIds, ...pointLayerIds],

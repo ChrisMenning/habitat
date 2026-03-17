@@ -167,6 +167,22 @@ export const AREA_LAYERS = [
  *
  * @type {Array<{id:string, label:string, emoji:string, description:string, defaultOn:boolean}>}
  */
+/**
+ * Monarch Waystation point layer — rendered as circles above polygon layers.
+ * Data is static (baked into waystations.js) so no API call is needed.
+ *
+ * @type {Array<{id:string, label:string, emoji:string, description:string, defaultOn:boolean}>}
+ */
+export const WAYSTATION_LAYER = [
+  {
+    id:          'waystations',
+    label:       'Monarch Waystations',
+    emoji:       '🦋',
+    description: 'Monarch Watch certified waystation habitats (locations confirmed via Brown County parcel records)',
+    defaultOn:   true,
+  },
+];
+
 export const HAZARD_LAYERS = [
   {
     id:          'dnr-pfas',
@@ -222,6 +238,8 @@ export const FILL_COLOR_EXPR = [
   'gbif-pollinators',      '#818cf8',  // indigo
   'gbif-native-plants',    '#0d9488',  // teal  (native = good)
   'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
+  // Waystation points
+  'waystations',           '#f59e0b',  // amber — monarch orange
   // Hazard point layers
   'dnr-pfas',              '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',
