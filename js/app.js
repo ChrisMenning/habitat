@@ -17,9 +17,12 @@ import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
          resolveOccurrenceEstKeys,
          partitionPlantOccurrences }                   from './gbif.js';
 import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
-         fetchChemicalHazards }                       from './areas.js';
+         fetchPollinatorCorridor, fetchCorridorTreatments,
+         fetchChemicalHazards,
+         corridorCentroids }                          from './areas.js';
 import { initMap, registerLayer, registerAreaLayer,
-         setLayerFeatures, setAreaFeatures,
+         registerAreaMarkersLayer,
+         setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions }     from './map.js';
@@ -63,13 +66,16 @@ async function loadObservations() {
     // Fire all data sources in parallel; failures in one source do not
     // block the others (Promise.allSettled never rejects).
     const [inatResult, gbifPollResult, gbifPlantResult,
-           padusResult, snaResult, dnrResult, pfasResult] = await Promise.allSettled([
+           padusResult, snaResult, dnrResult,
+           corridorResult, treatmentResult, pfasResult] = await Promise.allSettled([
       fetchObservations(d1, d2),
       fetchGbifPollinators(d1, d2),
       fetchGbifPlants(d1, d2),
       fetchPadUs(),
       fetchDnrSna(),
       fetchDnrManagedLands(),
+      fetchPollinatorCorridor(),
+      fetchCorridorTreatments(),
       fetchChemicalHazards(),
     ]);
 
@@ -148,7 +154,26 @@ async function loadObservations() {
       counts['dnr-managed'] = 0;
     }
 
-    // ── WI DNR PFAS Chemical Hazard Sites ───────────────────────────────────
+    // ── GBCC Pollinator Corridor ──────────────────────────────────────
+    if (corridorResult.status === 'fulfilled') {
+      setAreaFeatures('gbcc-corridor', corridorResult.value);
+      setAreaMarkersFeatures('gbcc-corridor', corridorCentroids(corridorResult.value));
+      counts['gbcc-corridor'] = corridorResult.value.features.length;
+    } else {
+      console.warn('GBCC corridor failed:', corridorResult.reason);
+      counts['gbcc-corridor'] = 0;
+    }
+
+    // ── GBCC Habitat Treatments ───────────────────────────────────────
+    if (treatmentResult.status === 'fulfilled') {
+      setAreaFeatures('gbcc-treatment', treatmentResult.value);
+      counts['gbcc-treatment'] = treatmentResult.value.features.length;
+    } else {
+      console.warn('GBCC treatments failed:', treatmentResult.reason);
+      counts['gbcc-treatment'] = 0;
+    }
+
+    // ── WI DNR PFAS Chemical Hazard Sites ────────────────────────────
     if (pfasResult.status === 'fulfilled') {
       setLayerFeatures('dnr-pfas', pfasResult.value.features);
       counts['dnr-pfas'] = pfasResult.value.features.length;
@@ -181,6 +206,14 @@ map.on('load', () => {
   for (const layer of AREA_LAYERS) {
     registerAreaLayer(layer.id, layer.defaultOn, layer.fillColor, layer.outlineColor);
   }
+
+  // Corridor pin markers — circle + label above the fill polygons so small
+  // planting areas remain visible at any zoom level
+  const corridorCfg = AREA_LAYERS.find(l => l.id === 'gbcc-corridor');
+  registerAreaMarkersLayer(
+    'gbcc-corridor', corridorCfg.defaultOn,
+    corridorCfg.fillColor, corridorCfg.outlineColor
+  );
 
   // 2. Hazard point layers — above polygons, below observation points
   for (const layer of HAZARD_LAYERS) {

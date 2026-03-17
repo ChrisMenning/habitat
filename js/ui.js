@@ -266,6 +266,42 @@ export function buildAreaPopupHTML(props) {
       </div>`;
   }
 
+  if (src === 'gbcc-corridor') {
+    const rows = [
+      props.area_sqft  && ['Area',       `${(+props.area_sqft).toLocaleString()} sq ft`],
+      props.plant_list && ['Plant list', props.plant_list],
+    ].filter(Boolean);
+
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source">🦋 NE Wisconsin Pollinator Corridor · GBCC</span>
+        ${rows.length ? `<dl class="popup-meta">
+          ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>` : ''}
+        <a class="popup-link"
+           href="https://storymaps.arcgis.com/stories/9f4ca337f8ed486ab8422be9ef8015a3"
+           target="_blank" rel="noopener noreferrer">Corridor StoryMap →</a>
+      </div>`;
+  }
+
+  if (src === 'gbcc-treatment') {
+    const rows = [
+      props.treatment_type && ['Treatment',  props.treatment_type],
+      props.date           && ['Date',        props.date],
+      props.acres          && ['Area',        `${props.acres} acres`],
+    ].filter(Boolean);
+
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.treatment_type || 'Habitat Treatment')}</strong>
+        <span class="popup-source">🌱 GBCC Habitat Restoration Treatment</span>
+        ${rows.length ? `<dl class="popup-meta">
+          ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>` : ''}
+      </div>`;
+  }
+
   if (src === 'dnr-pfas') {
     const rows = [
       props.year        && ['Year sampled',  props.year],

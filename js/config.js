@@ -141,6 +141,24 @@ export const AREA_LAYERS = [
     fillColor:    '#7c3aed',
     outlineColor: '#6d28d9',
   },
+  {
+    id:           'gbcc-corridor',
+    label:        'Pollinator Corridor',
+    emoji:        '🦋',
+    description:  'NE Wisconsin Pollinator Corridor · mapped planting areas (Green Bay Conservation Corps)',
+    defaultOn:    true,
+    fillColor:    '#f59e0b',
+    outlineColor: '#d97706',
+  },
+  {
+    id:           'gbcc-treatment',
+    label:        'Habitat Treatments',
+    emoji:        '🌱',
+    description:  'GBCC restoration sites · invasive removal & re-planting treatments',
+    defaultOn:    false,
+    fillColor:    '#a3e635',
+    outlineColor: '#65a30d',
+  },
 ];
 
 /**

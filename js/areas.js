@@ -2,14 +2,18 @@
  * areas.js — Protected area polygons and pesticide hazard monitoring points.
  *
  * Data sources:
- *   PAD-US v3.0  — USGS Protected Areas Database (polygon)
+ *   PAD-US v3.0     — USGS Protected Areas Database (polygon)
  *     https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Public_Access/FeatureServer/0
- *   WI DNR SNA   — Wisconsin State Natural Areas (polygon)
+ *   WI DNR SNA      — Wisconsin State Natural Areas (polygon)
  *     https://dnrmaps.wi.gov/arcgis/rest/services/ER_Biotics/ER_Biotics_WGS84_Managed_Lands/MapServer/1
- *   WI DNR Lands — WI DNR Managed Properties (polygon)
+ *   WI DNR Lands    — WI DNR Managed Properties (polygon)
  *     https://dnrmaps.wi.gov/arcgis/rest/services/ER_Biotics/ER_Biotics_WGS84_Managed_Lands/MapServer/3
- *   WI DNR PFAS  — PFAS chemical contamination sites in surface water & fish (point)
+ *   WI DNR PFAS     — PFAS chemical contamination sites in surface water & fish (point)
  *     https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_PFAS_SITES_AND_DATA/MapServer/0
+ *   GBCC Corridor   — NE Wisconsin Pollinator Corridor planting areas (polygon)
+ *     https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services/PollinatorCorridor_gdb/FeatureServer/1
+ *   GBCC Treatments — Green Bay Conservation Corps habitat restoration treatments (polygon)
+ *     https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services/Treatment_Public/FeatureServer/0
  *
  * All polygon queries use the ArcGIS REST FeatureServer/MapServer query endpoint
  * with an envelope geometry filter and outSR=4326 so features arrive in WGS 84.
@@ -168,6 +172,94 @@ export async function fetchDnrManagedLands() {
     properties: {
       data_source: 'dnr-managed',
       name:        f.properties.PROP_NAME || 'DNR Land',
+    },
+  }));
+
+  return raw;
+}
+
+// ── GBCC: NE Wisconsin Pollinator Corridor ───────────────────────────────────
+
+const GBCC_BASE = 'https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services';
+
+/**
+ * Fetches NE Wisconsin Pollinator Corridor planting area polygons from the
+ * Green Bay Conservation Corps (GBCC) ArcGIS feature service.
+ *
+ * These are the mapped habitat parcels that form the pollinator corridor
+ * across Green Bay identified in the NE Wisconsin Pollinator Corridor Project
+ * (https://storymaps.arcgis.com/stories/9f4ca337f8ed486ab8422be9ef8015a3).
+ *
+ * @returns {Promise<GeoJSON.FeatureCollection>}
+ */
+export async function fetchPollinatorCorridor() {
+  const raw = await arcgisQuery(`${GBCC_BASE}/PollinatorCorridor_gdb/FeatureServer/1/query`, {
+    outFields: 'Park,Area,PlantList',
+  });
+
+  raw.features = raw.features.map(f => ({
+    ...f,
+    properties: {
+      data_source: 'gbcc-corridor',
+      name:        f.properties.Park      || 'Corridor Planting',
+      area_sqft:   f.properties.Area      || 0,
+      plant_list:  f.properties.PlantList || '',
+    },
+  }));
+
+  return raw;
+}
+
+/**
+ * Computes a Point FeatureCollection from corridor polygon features, placing a
+ * centroid marker at the visual centre of each planting area polygon.
+ * Markers carry the same properties as the source polygon so popups work.
+ *
+ * @param {GeoJSON.FeatureCollection} geojson - polygon FeatureCollection from fetchPollinatorCorridor
+ * @returns {GeoJSON.FeatureCollection}
+ */
+export function corridorCentroids(geojson) {
+  const features = geojson.features.map(f => {
+    // Support both Polygon and MultiPolygon — use first outer ring either way
+    const ring = f.geometry.type === 'MultiPolygon'
+      ? f.geometry.coordinates[0][0]
+      : f.geometry.coordinates[0];
+    const pts = ring.slice(0, -1); // drop closing vertex (same as first)
+    const lng = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+    const lat = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    return {
+      type:       'Feature',
+      geometry:   { type: 'Point', coordinates: [lng, lat] },
+      properties: { ...f.properties },
+    };
+  });
+  return { type: 'FeatureCollection', features };
+}
+
+/**
+ * Fetches GBCC habitat restoration treatment polygons for the app's bounding box.
+ * These mark areas where invasive species removal and re-planting has occurred.
+ *
+ * @returns {Promise<GeoJSON.FeatureCollection>}
+ */
+export async function fetchCorridorTreatments() {
+  const raw = await arcgisQuery(`${GBCC_BASE}/Treatment_Public/FeatureServer/0/query`, {
+    outFields: 'Type_of_Treatment,Treatment_Date_and_Time,AcresMapped',
+  });
+
+  raw.features = raw.features.map(f => ({
+    ...f,
+    properties: {
+      data_source:    'gbcc-treatment',
+      name:           f.properties.Type_of_Treatment || 'Habitat Treatment',
+      treatment_type: f.properties.Type_of_Treatment || '',
+      // epoch ms → readable date string
+      date:           f.properties.Treatment_Date_and_Time
+                        ? new Date(f.properties.Treatment_Date_and_Time).toLocaleDateString()
+                        : '',
+      acres:          f.properties.AcresMapped
+                        ? +f.properties.AcresMapped.toFixed(2)
+                        : 0,
     },
   }));
 

@@ -183,6 +183,67 @@ export function setAreaFeatures(id, geojson) {
 }
 
 /**
+ * Registers a circle + text-label marker layer for a polygon area layer.
+ * Markers sit above the polygon fill so small areas remain visible when
+ * zoomed out.  Centroid GeoJSON is supplied separately via setAreaMarkersFeatures.
+ * Must be called after the corresponding registerAreaLayer call.
+ *
+ * @param {string}  id           - same logical id as the area layer
+ * @param {boolean} visible      - initial visibility (should match the area layer)
+ * @param {string}  color        - fill colour for the circle
+ * @param {string}  outlineColor - stroke colour for the circle
+ */
+export function registerAreaMarkersLayer(id, visible, color, outlineColor) {
+  _map.addSource(`area-markers-${id}`, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  _map.addLayer({
+    id:     `circle-markers-${id}`,
+    type:   'circle',
+    source: `area-markers-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'circle-radius':       8,
+      'circle-color':        color,
+      'circle-opacity':      0.95,
+      'circle-stroke-color': outlineColor,
+      'circle-stroke-width': 2,
+    },
+  });
+
+  _map.addLayer({
+    id:     `label-markers-${id}`,
+    type:   'symbol',
+    source: `area-markers-${id}`,
+    layout: {
+      visibility:    visible ? 'visible' : 'none',
+      'text-field':  ['get', 'name'],
+      'text-font':   ['Noto Sans Regular'],
+      'text-size':   11,
+      'text-offset': [0, 1.3],
+      'text-anchor': 'top',
+    },
+    paint: {
+      'text-color':      '#78350f',
+      'text-halo-color': '#fffbeb',
+      'text-halo-width': 1.5,
+    },
+  });
+}
+
+/**
+ * Replaces all features in a registered marker layer source.
+ *
+ * @param {string}                    id
+ * @param {GeoJSON.FeatureCollection} geojson - Point FeatureCollection
+ */
+export function setAreaMarkersFeatures(id, geojson) {
+  _map.getSource(`area-markers-${id}`)?.setData(geojson);
+}
+
+/**
  * Shows or hides a polygon area layer (both fill and outline sublayers).
  *
  * @param {string}  id
@@ -192,6 +253,11 @@ export function setAreaVisibility(id, visible) {
   const vis = visible ? 'visible' : 'none';
   _map.setLayoutProperty(`fill-${id}`,    'visibility', vis);
   _map.setLayoutProperty(`outline-${id}`, 'visibility', vis);
+  // Also toggle marker layers when present (e.g. gbcc-corridor)
+  if (_map.getLayer(`circle-markers-${id}`)) {
+    _map.setLayoutProperty(`circle-markers-${id}`, 'visibility', vis);
+    _map.setLayoutProperty(`label-markers-${id}`,  'visibility', vis);
+  }
 }
 
 /**
@@ -202,7 +268,15 @@ export function setAreaVisibility(id, visible) {
  * @returns {string[]}
  */
 export function getInteractiveAreaLayerIds(layers) {
-  return layers.map(l => `fill-${l.id}`);
+  const ids = [];
+  for (const l of layers) {
+    ids.push(`fill-${l.id}`);
+    // Include circle marker layer if one was registered for this area layer
+    if (_map.getLayer(`circle-markers-${l.id}`)) {
+      ids.push(`circle-markers-${l.id}`);
+    }
+  }
+  return ids;
 }
 
 // ── Popup management ──────────────────────────────────────────────────────────
