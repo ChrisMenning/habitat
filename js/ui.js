@@ -94,42 +94,85 @@ export function buildEstLegend() {
 
 /**
  * Populates the area-type color legend in #panel-area-legend.
- * Shows a filled rectangle swatch for each polygon layer.
+ * Each row is a toggle button — clicking it calls onToggle(id, visible)
+ * and visually dims the row when turned off.
+ *
+ * @param {function(id: string, visible: boolean): void} [onToggle]
  */
-export function buildAreaLegend() {
+export function buildAreaLegend(onToggle = null) {
   const section = document.getElementById('panel-area-legend-inner');
   if (!section) return;
 
-  for (const layer of AREA_LAYERS) {
-    const row = document.createElement('div');
-    row.className = 'area-legend-row';
-    row.innerHTML = `
-      <div class="area-legend-swatch"
-           style="background:${esc(layer.fillColor)};border-color:${esc(layer.outlineColor)};"
-           aria-hidden="true"></div>
-      <span>${esc(layer.label)}</span>`;
-    section.appendChild(row);
+  /** Tracks current on/off state per layer id. */
+  const state = {};
+
+  /**
+   * Creates one legend row as a <button> (when onToggle supplied) or a <div>.
+   * @param {string}  id         — logical layer id
+   * @param {string}  swatchHtml — inner HTML for the colour indicator
+   * @param {string}  labelText  — plain text label
+   * @param {boolean} defaultOn  — initial visibility
+   */
+  function makeRow(id, swatchHtml, labelText, defaultOn) {
+    state[id] = defaultOn;
+
+    const el = document.createElement(onToggle ? 'button' : 'div');
+    el.className = `area-legend-row${defaultOn ? '' : ' area-legend-row--off'}`;
+    if (onToggle) {
+      el.type  = 'button';
+      el.title = `Toggle ${labelText}`;
+    }
+
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = labelText;
+
+    const swatchWrap = document.createElement('span');
+    swatchWrap.innerHTML = swatchHtml;
+
+    el.appendChild(swatchWrap.firstElementChild);
+    el.appendChild(labelSpan);
+
+    if (onToggle) {
+      el.addEventListener('click', () => {
+        state[id] = !state[id];
+        el.classList.toggle('area-legend-row--off', !state[id]);
+        onToggle(id, state[id]);
+      });
+    }
+
+    section.appendChild(el);
   }
 
-  // Waystation layer (violet circle with diamond glyph)
-  const wsRow = document.createElement('div');
-  wsRow.className = 'area-legend-row';
-  wsRow.innerHTML = `
-    <div class="area-legend-waystation"
-         style="background:#8b5cf6;"
-         aria-hidden="true">&#9670;</div>
-    <span>${esc(WAYSTATION_LAYER[0].label)}</span>`;
-  section.appendChild(wsRow);
+  for (const layer of AREA_LAYERS) {
+    makeRow(
+      layer.id,
+      `<div class="area-legend-swatch"
+           style="background:${esc(layer.fillColor)};border-color:${esc(layer.outlineColor)};"
+           aria-hidden="true"></div>`,
+      layer.label,
+      layer.defaultOn,
+    );
+  }
 
-  // Hazard layer (circle — red)
-  const hazardRow = document.createElement('div');
-  hazardRow.className = 'area-legend-row';
-  hazardRow.innerHTML = `
-    <div class="area-legend-circle"
+  // Waystation layer (violet circle)
+  makeRow(
+    WAYSTATION_LAYER[0].id,
+    `<div class="area-legend-waystation"
+         style="background:#8b5cf6;"
+         aria-hidden="true">&#9670;</div>`,
+    WAYSTATION_LAYER[0].label,
+    WAYSTATION_LAYER[0].defaultOn,
+  );
+
+  // Hazard layer (red circle)
+  makeRow(
+    HAZARD_LAYERS[0].id,
+    `<div class="area-legend-circle"
          style="background:#ef4444;"
-         aria-hidden="true"></div>
-    <span>${esc(HAZARD_LAYERS[0].label)}</span>`;
-  section.appendChild(hazardRow);
+         aria-hidden="true"></div>`,
+    HAZARD_LAYERS[0].label,
+    HAZARD_LAYERS[0].defaultOn,
+  );
 }
 
 // ── Status updates ───────────────────────────────────────────────────────────

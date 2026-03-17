@@ -76,11 +76,14 @@ export function computeAlerts({
     );
     if (nearby.length > 0) {
       const names = nearby.map(s => s.properties.name || s.properties.registrant || 'Site').slice(0, 2);
+      // Gather all relevant coords: PFAS site + nearby habitat sites
+      const allCoords = [pfasCoord, ...nearby.map(centroid)];
       alerts.push({
-        level: 'warn',
-        icon:  '⚠️',
-        key:   `pfas-${pfas.properties.name}`,
-        text:  `PFAS site "${pfas.properties.name}" is within 1 km of ${names.join(', ')}${nearby.length > 2 ? ` +${nearby.length - 2} more` : ''}.`,
+        level:  'warn',
+        icon:   '⚠️',
+        key:    `pfas-${pfas.properties.name}`,
+        text:   `PFAS site "${pfas.properties.name}" is within 1 km of ${names.join(', ')}${nearby.length > 2 ? ` +${nearby.length - 2} more` : ''}.`,
+        coords: allCoords,
       });
     }
   }
@@ -96,10 +99,11 @@ export function computeAlerts({
   if (unsupportedSites.length > 0) {
     const names = unsupportedSites.map(s => s.properties.name || s.properties.registrant || 'Site').slice(0, 3);
     alerts.push({
-      level: 'info',
-      icon:  'ℹ️',
-      key:   'unsupported-sites',
-      text:  `${unsupportedSites.length} habitat site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
+      level:  'info',
+      icon:   'ℹ️',
+      key:    'unsupported-sites',
+      text:   `${unsupportedSites.length} habitat site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
+      coords: unsupportedSites.map(centroid),
     });
   }
 
@@ -127,11 +131,12 @@ export function computeAlerts({
   if (opportunityClusters.length > 0) {
     const total = opportunityClusters.reduce((s, c) => s + c.count, 0);
     alerts.push({
-      level: 'opportunity',
-      icon:  '🌱',
-      key:   'opportunity-zones',
-      text:  `${opportunityClusters.length} area${opportunityClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.`,
+      level:    'opportunity',
+      icon:     '🌱',
+      key:      'opportunity-zones',
+      text:     `${opportunityClusters.length} area${opportunityClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.`,
       clusters: opportunityClusters,
+      coords:   opportunityClusters.map(c => c.coord),
     });
   }
 
@@ -139,22 +144,27 @@ export function computeAlerts({
   if (habitatSites.length >= 2) {
     const CLUSTER_RADIUS_KM = 0.3;
     let clusterCount = 0;
+    const clusteredSiteCoords = [];
     const seen = new Set();
     for (let i = 0; i < habitatSites.length; i++) {
       for (let j = i + 1; j < habitatSites.length; j++) {
         if (seen.has(j)) continue;
         if (distKm(centroid(habitatSites[i]), centroid(habitatSites[j])) <= CLUSTER_RADIUS_KM) {
           clusterCount++;
+          seen.add(i);
           seen.add(j);
         }
       }
     }
+    // Collect coords of all sites that are part of some connected pair
+    for (const idx of seen) clusteredSiteCoords.push(centroid(habitatSites[idx]));
     if (clusterCount > 0) {
       alerts.push({
-        level: 'positive',
-        icon:  '✅',
-        key:   'site-clusters',
-        text:  `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
+        level:  'positive',
+        icon:   '✅',
+        key:    'site-clusters',
+        text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
+        coords: clusteredSiteCoords,
       });
     }
   }
@@ -168,9 +178,12 @@ export function computeAlerts({
  * Renders alert items into the #alerts-list container.
  * Clears any previous alerts first.
  *
- * @param {Alert[]} alerts
+ * @param {object[]}  alerts
+ * @param {function(alert: object): void} [onFocus]
+ *   Optional callback. When provided, each alert is rendered as a keyboard-
+ *   focusable button. Clicking / pressing Enter fires onFocus(alert).
  */
-export function renderAlerts(alerts) {
+export function renderAlerts(alerts, onFocus = null) {
   const container = document.getElementById('alerts-list');
   if (!container) return;
 
@@ -190,10 +203,36 @@ export function renderAlerts(alerts) {
     return;
   }
 
+  // Auto-expand the alerts panel so the user sees them immediately
+  const details = document.querySelector('#panel-alerts details');
+  if (details) details.open = true;
+
   for (const alert of alerts) {
-    const item = document.createElement('div');
-    item.className = `alert-item alert-item--${alert.level}`;
-    item.innerHTML = `<span class="alert-icon" aria-hidden="true">${alert.icon}</span><span class="alert-text">${alert.text}</span>`;
+    const hasGeo = alert.coords?.length > 0;
+    const clickable = onFocus && hasGeo;
+
+    // Use a <button> when the alert is actionable so it gets keyboard focus
+    // and screen-reader affordance; plain <div> otherwise.
+    const item = document.createElement(clickable ? 'button' : 'div');
+    item.className = `alert-item alert-item--${alert.level}${clickable ? ' alert-item--clickable' : ''}`;
+    if (clickable) {
+      item.type = 'button';
+      item.title = 'Click to zoom map to these locations';
+    }
+
+    const hint = clickable
+      ? `<span class="alert-zoom-hint" aria-hidden="true">🔍</span>`
+      : '';
+
+    item.innerHTML =
+      `<span class="alert-icon" aria-hidden="true">${alert.icon}</span>` +
+      `<span class="alert-text">${alert.text}</span>` +
+      hint;
+
+    if (clickable) {
+      item.addEventListener('click', () => onFocus(alert));
+    }
+
     container.appendChild(item);
   }
 }

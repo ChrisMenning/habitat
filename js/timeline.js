@@ -97,10 +97,15 @@ function _render() {
       : `${_startYear} – ${_endYear}`;
   }
 
-  // Tick marks
+  // Tick marks — rebuild whenever the year range changes
   const ticks = container.querySelector('.timeline-ticks');
-  if (ticks && !ticks.children.length) {
-    _buildTicks(ticks);
+  if (ticks) {
+    const rangeKey = `${_minYear}-${_maxYear}`;
+    if (ticks.dataset.rangeKey !== rangeKey) {
+      ticks.innerHTML = '';
+      _buildTicks(ticks);
+      ticks.dataset.rangeKey = rangeKey;
+    }
   }
 }
 

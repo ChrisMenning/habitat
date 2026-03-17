@@ -128,7 +128,11 @@ export function setHabitatCoords(coords) {
  */
 export function applyFilters() {
   for (const [layerId, features] of _allFeatures) {
-    const filtered = _active.size === 0 ? features : features.filter(passes);
+    // Skip iteration only when there is truly nothing to filter.
+    // _datePredicate must also be absent, otherwise the timeline range is ignored.
+    const filtered = (_active.size === 0 && !_datePredicate)
+      ? features
+      : features.filter(passes);
     _onFilter?.(layerId, filtered);
   }
 }

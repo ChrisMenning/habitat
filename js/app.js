@@ -23,11 +23,12 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
 import { waystationGeoJSON }                          from './waystations.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
-         registerEmojiImages,
+         registerVectorIcons,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
-         showPopup, closePopup, wireInteractions }     from './map.js';
+         showPopup, closePopup, wireInteractions,
+         showAlertHighlight, clearAlertHighlight, fitToCoords } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
          setLoading, setStatus, getDefaultDates,
          buildPopupHTML, buildAreaPopupHTML }          from './ui.js';
@@ -317,16 +318,25 @@ async function loadObservations() {
       pfasFeatures:       pfasFeats,
       pollinatorSightings: allPollinatorFeatures,
     });
-    renderAlerts(alerts);
+    renderAlerts(alerts, alert => {
+      if (!alert.coords?.length) return;
+      showAlertHighlight(alert.coords, alert.level);
+      fitToCoords(alert.coords, { padding: 100, maxZoom: 15 });
+    });
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
+
+    // Combined pollinator count: iNat pollinators + GBIF pollinators
+    const pollinatorCount =
+      (byLayer['pollinators']?.length ?? 0) +
+      (gbifPollResult.status === 'fulfilled' ? gbifPollResult.value.length : 0);
 
     // Intel bar
     updateIntelBar({
       corridorCount:    counts['gbcc-corridor'] ?? 0,
       waystationCount:  56,
-      inatCount:        inatObs,
+      inatCount:        pollinatorCount,
       gbifCount,
       alertCount:       alerts.length,
       fromCache:        networkFetches === 0,
@@ -360,14 +370,10 @@ async function loadObservations() {
 
 map.on('load', () => {
 
-  // Register emoji sprites used by icon-image symbol layers.
-  // Must be called before any registerLayer / registerAreaMarkersLayer call.
-  // 🔭 binoculars = species sightings  🌸 flower = pollinator corridor sites  🦋 butterfly = waystations
-  registerEmojiImages({
-    'icon-binoculars': '🔭',
-    'icon-hummingbird': '🌸',
-    'icon-butterfly':   '🦋',
-  });
+  // Register white vector icon sprites.
+  // Must be called before registerAreaMarkersLayer and waystation registerLayer.
+  // 🌸 flower = pollinator corridor site pins  🦋 butterfly = waystation markers
+  registerVectorIcons();
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -397,13 +403,14 @@ map.on('load', () => {
   }
 
   // 3. GBIF observation layers — above hazards
+  // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
   for (const layer of GBIF_LAYERS) {
-    registerLayer(layer.id, layer.defaultOn, { gbif: true, symbol: 'icon-binoculars' });
+    registerLayer(layer.id, layer.defaultOn, { gbif: true });
   }
 
   // 4. iNaturalist layers — topmost
   for (const layer of LAYERS) {
-    registerLayer(layer.id, layer.defaultOn, { symbol: 'icon-binoculars' });
+    registerLayer(layer.id, layer.defaultOn);
   }
 
   // Build the side-panel UI
@@ -446,7 +453,7 @@ map.on('load', () => {
     (id, visible) => setLayerVisibility(id, visible)
   );
   buildEstLegend();
-  buildAreaLegend();
+  buildAreaLegend(areaOrPointVisibility);
 
   // Populate date inputs with defaults
   const { from, to } = getDefaultDates();
@@ -483,6 +490,25 @@ map.on('load', () => {
 
   // Drawer close button
   document.getElementById('site-drawer-close').addEventListener('click', closeDrawer);
+
+  // Clicking empty map space clears any active alert highlight
+  map.on('click', e => {
+    const hits = map.queryRenderedFeatures(e.point);
+    if (!hits.length) clearAlertHighlight();
+  });
+
+  // Intel-bar alerts stat → open the Alerts panel and scroll it into view
+  const openAlertsPanel = () => {
+    const details = document.querySelector('#panel-alerts details');
+    if (details) {
+      details.open = true;
+      details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  document.getElementById('intel-alerts').addEventListener('click', openAlertsPanel);
+  document.getElementById('intel-alerts').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlertsPanel(); }
+  });
 
   // Wire click interactions on all layers (points + polygon fills)
   const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER]);

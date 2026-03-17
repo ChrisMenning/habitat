@@ -40,13 +40,15 @@
   </div>
   <div class="intel-stat" id="intel-inat">
     <span class="intel-val" id="intel-val-inat">—</span>
-    <span class="intel-lbl">🔭 iNat sightings</span>
+    <span class="intel-lbl">� Pollinators sighted</span>
   </div>
   <div class="intel-stat" id="intel-gbif">
     <span class="intel-val" id="intel-val-gbif">—</span>
     <span class="intel-lbl">🔬 GBIF records</span>
   </div>
-  <div class="intel-stat intel-stat--alert" id="intel-alerts">
+  <div class="intel-stat intel-stat--alert" id="intel-alerts"
+       role="button" tabindex="0" aria-label="View intelligence alerts"
+       title="Click to open alerts panel">
     <span class="intel-val" id="intel-val-alerts">—</span>
     <span class="intel-lbl">⚡ Alerts</span>
   </div>
@@ -159,7 +161,10 @@
 
 <!-- ── Timeline scrubber ────────────────────────────────────────────────────── -->
 <div id="timeline" aria-label="Year range filter">
-  <div id="timeline-label" aria-live="polite">All years</div>
+  <div id="timeline-header">
+    <span id="timeline-caption">🦋 Wildlife sightings</span>
+    <span id="timeline-label" aria-live="polite">All years</span>
+  </div>
   <div id="timeline-track" role="group" aria-label="Drag handles to filter by year">
     <div class="timeline-fill"></div>
     <div class="timeline-ticks"></div>
