@@ -1,0 +1,322 @@
+/* ── Reset & base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+#header {
+  background: #14532d;
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+#header h1 { font-size: 1rem; font-weight: 600; letter-spacing: 0.01em; }
+#header p  { font-size: 0.75rem; opacity: 0.75; margin-top: 1px; }
+
+#status {
+  margin-left: auto;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ── Map container ─────────────────────────────────────────────────────────── */
+#map { flex: 1; position: relative; }
+
+/* ── Loading indicator ─────────────────────────────────────────────────────── */
+#loading {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 12px;
+  color: #333;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #14532d;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Side panel ────────────────────────────────────────────────────────────── */
+#panel {
+  position: absolute;
+  top: 12px;
+  right: 8px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.14);
+  z-index: 5;
+  min-width: 222px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.panel-section {
+  padding: 10px 14px 12px;
+}
+
+.panel-section + .panel-section {
+  border-top: 1px solid #f1f5f9;
+}
+
+.panel-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 9px;
+}
+
+/* ── Layer toggles ─────────────────────────────────────────────────────────── */
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: #e2e8f0;
+  border-radius: 9px;
+  transition: background 0.2s;
+  cursor: pointer;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.toggle input:checked + .toggle-track               { background: #16a34a; }
+.toggle input:checked + .toggle-track::after        { transform: translateX(14px); }
+.toggle input:focus-visible + .toggle-track         { outline: 2px solid #16a34a; outline-offset: 2px; }
+
+.layer-emoji { font-size: 14px; line-height: 1; }
+
+.layer-label {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.layer-count {
+  font-size: 10px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 26px;
+  text-align: center;
+}
+
+.layer-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  padding-left: 40px;
+  margin-top: 2px;
+  margin-bottom: 7px;
+  line-height: 1.4;
+}
+
+/* ── Date controls ─────────────────────────────────────────────────────────── */
+.date-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.date-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.date-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.date-input {
+  width: 100%;
+  font-size: 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 4px 5px;
+  color: #334155;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+}
+
+.date-input:focus { border-color: #16a34a; }
+
+.reload-btn {
+  width: 100%;
+  padding: 7px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.reload-btn:hover    { background: #15803d; }
+.reload-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* ── Establishment legend ──────────────────────────────────────────────────── */
+.est-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 11px;
+  color: #374151;
+}
+
+.est-row:last-child { margin-bottom: 0; }
+
+.est-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid transparent; /* border-color set inline */
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* ── MapLibre popup overrides ──────────────────────────────────────────────── */
+.maplibregl-popup-content {
+  padding: 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  max-width: 240px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: #fff !important;
+  font-size: 16px;
+  padding: 4px 8px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+/* ── Popup body ────────────────────────────────────────────────────────────── */
+.popup-body {
+  padding: 11px 13px 13px;
+}
+
+.popup-name {
+  display: block;
+  font-size: 13px;
+  line-height: 1.3;
+  color: #1e293b;
+}
+
+.popup-sci {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.popup-est-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 6px;
+}
+
+.popup-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  font-size: 11px;
+  color: #555;
+  margin-top: 7px;
+}
+
+.popup-meta dt { color: #94a3b8; font-weight: 600; }
+
+.popup-link {
+  display: inline-block;
+  margin-top: 9px;
+  font-size: 11px;
+  color: #14532d;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.popup-link:hover { text-decoration: underline; }
