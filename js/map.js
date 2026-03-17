@@ -132,6 +132,79 @@ export function getInteractiveLayerIds(layers) {
   return layers.map(l => `points-${l.id}`);
 }
 
+// ── Polygon area layers ───────────────────────────────────────────────────────
+
+/**
+ * Registers a polygon area layer (fill + outline) for one dataset.
+ * Area layers are added BEFORE point layers so they appear underneath.
+ *
+ * @param {string}  id           - logical layer id (e.g. 'padus')
+ * @param {boolean} visible      - initial visibility
+ * @param {string}  fillColor    - CSS color for the polygon fill
+ * @param {string}  outlineColor - CSS color for the polygon outline
+ */
+export function registerAreaLayer(id, visible, fillColor, outlineColor) {
+  _map.addSource(`area-${id}`, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  _map.addLayer({
+    id:     `fill-${id}`,
+    type:   'fill',
+    source: `area-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'fill-color':   fillColor,
+      'fill-opacity': 0.22,
+    },
+  });
+
+  _map.addLayer({
+    id:     `outline-${id}`,
+    type:   'line',
+    source: `area-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color': outlineColor,
+      'line-width': 1.5,
+    },
+  });
+}
+
+/**
+ * Replaces all features in a registered polygon area source.
+ *
+ * @param {string}                    id
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setAreaFeatures(id, geojson) {
+  _map.getSource(`area-${id}`)?.setData(geojson);
+}
+
+/**
+ * Shows or hides a polygon area layer (both fill and outline sublayers).
+ *
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+export function setAreaVisibility(id, visible) {
+  const vis = visible ? 'visible' : 'none';
+  _map.setLayoutProperty(`fill-${id}`,    'visibility', vis);
+  _map.setLayoutProperty(`outline-${id}`, 'visibility', vis);
+}
+
+/**
+ * Returns the fill layer ids used for pointer hit-testing on area layers.
+ * The fill layer covers the polygon interior and is the natural click target.
+ *
+ * @param {Array<{id: string}>} layers
+ * @returns {string[]}
+ */
+export function getInteractiveAreaLayerIds(layers) {
+  return layers.map(l => `fill-${l.id}`);
+}
+
 // ── Popup management ──────────────────────────────────────────────────────────
 
 /** @type {import('maplibre-gl').Popup|null} */

@@ -10,18 +10,22 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS }                         from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS }     from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
          resolveOccurrenceEstKeys,
          partitionPlantOccurrences }                   from './gbif.js';
-import { initMap, registerLayer, setLayerFeatures,
-         setLayerVisibility, getInteractiveLayerIds,
+import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
+         fetchPesticideMonitoring }                    from './areas.js';
+import { initMap, registerLayer, registerAreaLayer,
+         setLayerFeatures, setAreaFeatures,
+         setLayerVisibility, setAreaVisibility,
+         getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions }     from './map.js';
-import { buildLayerPanel, buildEstLegend, updateCounts,
+import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
          setLoading, setStatus, getDefaultDates,
-         buildPopupHTML }                              from './ui.js';
+         buildPopupHTML, buildAreaPopupHTML }          from './ui.js';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
@@ -56,12 +60,17 @@ async function loadObservations() {
   setStatus('Loading iNaturalist + GBIF…');
 
   try {
-    // Fire all three data sources in parallel; failures in one source do not
+    // Fire all data sources in parallel; failures in one source do not
     // block the others (Promise.allSettled never rejects).
-    const [inatResult, gbifPollResult, gbifPlantResult] = await Promise.allSettled([
+    const [inatResult, gbifPollResult, gbifPlantResult,
+           padusResult, snaResult, dnrResult, wqpResult] = await Promise.allSettled([
       fetchObservations(d1, d2),
       fetchGbifPollinators(d1, d2),
       fetchGbifPlants(d1, d2),
+      fetchPadUs(),
+      fetchDnrSna(),
+      fetchDnrManagedLands(),
+      fetchPesticideMonitoring(),
     ]);
 
     const counts = {};
@@ -112,6 +121,42 @@ async function loadObservations() {
       counts['gbif-non-native-plants'] = 0;
     }
 
+    // ── PAD-US protected areas ────────────────────────────────────────
+    if (padusResult.status === 'fulfilled') {
+      setAreaFeatures('padus', padusResult.value);
+      counts['padus'] = padusResult.value.features.length;
+    } else {
+      console.warn('PAD-US failed:', padusResult.reason);
+      counts['padus'] = 0;
+    }
+
+    // ── WI DNR State Natural Areas ────────────────────────────────────
+    if (snaResult.status === 'fulfilled') {
+      setAreaFeatures('dnr-sna', snaResult.value);
+      counts['dnr-sna'] = snaResult.value.features.length;
+    } else {
+      console.warn('WI DNR SNA failed:', snaResult.reason);
+      counts['dnr-sna'] = 0;
+    }
+
+    // ── WI DNR Managed Lands ──────────────────────────────────────────
+    if (dnrResult.status === 'fulfilled') {
+      setAreaFeatures('dnr-managed', dnrResult.value);
+      counts['dnr-managed'] = dnrResult.value.features.length;
+    } else {
+      console.warn('WI DNR Managed Lands failed:', dnrResult.reason);
+      counts['dnr-managed'] = 0;
+    }
+
+    // ── WQP Pesticide Monitoring ──────────────────────────────────────
+    if (wqpResult.status === 'fulfilled') {
+      setLayerFeatures('wqp-pesticide', wqpResult.value.features);
+      counts['wqp-pesticide'] = wqpResult.value.features.length;
+    } else {
+      console.warn('WQP failed:', wqpResult.reason);
+      counts['wqp-pesticide'] = 0;
+    }
+
     updateCounts(counts);
 
     const capped = inatObs < inatTotal;
@@ -132,11 +177,22 @@ async function loadObservations() {
 
 map.on('load', () => {
 
-  // Register GBIF layers FIRST so they render below iNaturalist layers
+  // 1. Polygon area layers FIRST — they render at the bottom of the stack
+  for (const layer of AREA_LAYERS) {
+    registerAreaLayer(layer.id, layer.defaultOn, layer.fillColor, layer.outlineColor);
+  }
+
+  // 2. Hazard point layers — above polygons, below observation points
+  for (const layer of HAZARD_LAYERS) {
+    registerLayer(layer.id, layer.defaultOn);
+  }
+
+  // 3. GBIF observation layers — above hazards
   for (const layer of GBIF_LAYERS) {
     registerLayer(layer.id, layer.defaultOn, { gbif: true });
   }
-  // iNaturalist layers on top
+
+  // 4. iNaturalist layers — topmost
   for (const layer of LAYERS) {
     registerLayer(layer.id, layer.defaultOn);
   }
@@ -149,7 +205,19 @@ map.on('load', () => {
     ],
     (id, visible) => setLayerVisibility(id, visible)
   );
+  buildLayerPanel(
+    [
+      { groupLabel: 'Protected Areas', layers: AREA_LAYERS    },
+      { groupLabel: 'Hazards',         layers: HAZARD_LAYERS  },
+    ],
+    (id, visible) => {
+      if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
+      else setLayerVisibility(id, visible);
+    },
+    document.getElementById('panel-areas')
+  );
   buildEstLegend();
+  buildAreaLegend();
 
   // Populate date inputs with defaults
   const { from, to } = getDefaultDates();
@@ -164,10 +232,16 @@ map.on('load', () => {
   document.getElementById('date-from').addEventListener('change', debouncedLoad);
   document.getElementById('date-to').addEventListener('change', debouncedLoad);
 
-  // Wire map pointer interactions
-  // Click interactions on all layers from both sources
-  const layerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS]);
-  wireInteractions(layerIds, (lngLat, props) => showPopup(lngLat, buildPopupHTML(props)));
+  // Wire click interactions on all layers (points + polygon fills)
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS]);
+  const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
+  wireInteractions(
+    [...areaLayerIds, ...pointLayerIds],
+    (lngLat, props) => {
+      const html = props.data_source ? buildAreaPopupHTML(props) : buildPopupHTML(props);
+      showPopup(lngLat, html);
+    }
+  );
 
   // Initial data load
   loadObservations();

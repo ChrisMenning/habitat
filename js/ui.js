@@ -5,7 +5,7 @@
  * HTML escaping is centralised in `esc()` — never skip it for user/API data.
  */
 
-import { ESTABLISHMENT } from './config.js';
+import { ESTABLISHMENT, AREA_LAYERS, HAZARD_LAYERS } from './config.js';
 
 // ── Security helper ──────────────────────────────────────────────────────────
 
@@ -34,9 +34,11 @@ export function esc(value) {
  * @param {Array<{groupLabel: string, layers: object[]}>} groups
  * @param {function(id: string, visible: boolean): void}  onToggle
  *   Callback invoked when a toggle changes.
+ * @param {HTMLElement|null} [container]
+ *   Optional container element. Defaults to #panel-layers.
  */
-export function buildLayerPanel(groups, onToggle) {
-  const section = document.getElementById('panel-layers');
+export function buildLayerPanel(groups, onToggle, container = null) {
+  const section = container ?? document.getElementById('panel-layers');
 
   for (const { groupLabel, layers } of groups) {
     const header = document.createElement('p');
@@ -88,6 +90,36 @@ export function buildEstLegend() {
       <span>${esc(conf.label)}</span>`;
     section.appendChild(row);
   }
+}
+
+/**
+ * Populates the area-type color legend in #panel-area-legend.
+ * Shows a filled rectangle swatch for each polygon layer.
+ */
+export function buildAreaLegend() {
+  const section = document.getElementById('panel-area-legend');
+  if (!section) return;
+
+  for (const layer of AREA_LAYERS) {
+    const row = document.createElement('div');
+    row.className = 'area-legend-row';
+    row.innerHTML = `
+      <div class="area-legend-swatch"
+           style="background:${esc(layer.fillColor)};border-color:${esc(layer.outlineColor)};"
+           aria-hidden="true"></div>
+      <span>${esc(layer.label)}</span>`;
+    section.appendChild(row);
+  }
+
+  // Hazard layer (circle)
+  const hazardRow = document.createElement('div');
+  hazardRow.className = 'area-legend-row';
+  hazardRow.innerHTML = `
+    <div class="area-legend-circle"
+         style="background:#ef4444;"
+         aria-hidden="true"></div>
+    <span>${esc(HAZARD_LAYERS[0].label)}</span>`;
+  section.appendChild(hazardRow);
 }
 
 // ── Status updates ───────────────────────────────────────────────────────────
@@ -180,4 +212,81 @@ export function buildPopupHTML(props) {
          target="_blank"
          rel="noopener noreferrer">${esc(linkLabel)} →</a>
     </div>`;
+}
+
+// ── Area / hazard popup ───────────────────────────────────────────────────────
+
+/**
+ * Builds popup HTML for polygon area features (PAD-US, DNR SNA, DNR Managed)
+ * and hazard monitoring stations (WQP pesticide).
+ *
+ * @param {Record<string, unknown>} props - feature.properties
+ * @returns {string} safe HTML string
+ */
+export function buildAreaPopupHTML(props) {
+  const src = props.data_source;
+
+  if (src === 'padus') {
+    const rows = [
+      props.manager      && ['Manager',      props.manager],
+      props.manager_type && ['Type',          props.manager_type],
+      props.designation  && ['Designation',   props.designation],
+      props.public_access && ['Access',       props.public_access],
+      props.gap_status   && ['Protection',    props.gap_status],
+    ].filter(Boolean);
+
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source">USGS PAD-US v3.0</span>
+        <dl class="popup-meta">
+          ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>
+      </div>`;
+  }
+
+  if (src === 'dnr-sna') {
+    const acresLabel = props.acres ? `${(+props.acres).toFixed(0)} acres` : null;
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source">WI DNR State Natural Area</span>
+        ${acresLabel ? `<dl class="popup-meta"><dt>Area</dt><dd>${esc(acresLabel)}</dd></dl>` : ''}
+        ${props.url
+          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">SNA details →</a>`
+          : ''}
+      </div>`;
+  }
+
+  if (src === 'dnr-managed') {
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source">WI DNR Managed Land</span>
+      </div>`;
+  }
+
+  if (src === 'wqp') {
+    const rows = [
+      props.site_type     && ['Water body',   props.site_type],
+      props.county        && ['County',        props.county],
+      props.org           && ['Agency',        props.org],
+      props.result_count != null && ['Samples', `${props.result_count} pesticide readings`],
+    ].filter(Boolean);
+
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.name)}</strong>
+        <span class="popup-source area-hazard-badge">⚠️ Pesticide Monitoring Station</span>
+        <dl class="popup-meta">
+          ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+        </dl>
+        ${props.url
+          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">View on WQP →</a>`
+          : ''}
+      </div>`;
+  }
+
+  // Fallback — should never occur
+  return `<div class="popup-body"><strong>${esc(props.name || 'Feature')}</strong></div>`;
 }

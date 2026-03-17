@@ -77,6 +77,7 @@ export const LAYERS = [
  * @type {Array<{id: string, label: string, emoji: string, description: string, defaultOn: boolean}>}
  */
 export const GBIF_LAYERS = [
+
   {
     id:          'gbif-pollinators',
     label:       'Pollinators',
@@ -97,6 +98,64 @@ export const GBIF_LAYERS = [
     emoji:       '🪴',
     description: 'Introduced, naturalised & invasive plant records',
     defaultOn:   false,
+  },
+];
+
+// ── Protected area polygon layers ────────────────────────────────────────────
+
+/**
+ * Polygon layers sourced from USGS PAD-US and Wisconsin DNR.
+ * These are rendered as filled polygons beneath all point layers.
+ *
+ * Each entry also carries `fillColor` and `outlineColor` paint values
+ * used directly in maplibre-gl layer paint objects (not shared expressions,
+ * since every area layer has its own distinct color).
+ *
+ * @type {Array<{id:string, label:string, emoji:string, description:string, defaultOn:boolean, fillColor:string, outlineColor:string}>}
+ */
+export const AREA_LAYERS = [
+  {
+    id:           'padus',
+    label:        'Protected Areas',
+    emoji:        '🛡️',
+    description:  'USGS PAD-US v3.0 · federal, state, local & tribal protected lands',
+    defaultOn:    true,
+    fillColor:    '#16a34a',
+    outlineColor: '#15803d',
+  },
+  {
+    id:           'dnr-sna',
+    label:        'State Natural Areas',
+    emoji:        '🌳',
+    description:  'WI DNR State Natural Areas · preserved natural communities',
+    defaultOn:    true,
+    fillColor:    '#0891b2',
+    outlineColor: '#0e7490',
+  },
+  {
+    id:           'dnr-managed',
+    label:        'DNR Managed Lands',
+    emoji:        '🏕️',
+    description:  'WI DNR managed properties · wildlife areas, forests & parks',
+    defaultOn:    false,
+    fillColor:    '#7c3aed',
+    outlineColor: '#6d28d9',
+  },
+];
+
+/**
+ * Hazard point layers — rendered as circles on top of polygon area layers
+ * but below iNat/GBIF sighting circles.
+ *
+ * @type {Array<{id:string, label:string, emoji:string, description:string, defaultOn:boolean}>}
+ */
+export const HAZARD_LAYERS = [
+  {
+    id:          'wqp-pesticide',
+    label:       'Pesticide Monitoring',
+    emoji:       '⚠️',
+    description: 'USGS WQP stations · waterways monitored for pesticide presence',
+    defaultOn:   true,
   },
 ];
 
@@ -145,6 +204,8 @@ export const FILL_COLOR_EXPR = [
   'gbif-pollinators',      '#818cf8',  // indigo
   'gbif-native-plants',    '#0d9488',  // teal  (native = good)
   'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
+  // Hazard point layers
+  'wqp-pesticide',         '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',
 ];
 
