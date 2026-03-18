@@ -1,3 +1,6 @@
 # API keys — never commit credentials
+api-keys.txt
 nass-key.txt
 nass-key,txt
+noaa-token.txt
+ebird-key.txt

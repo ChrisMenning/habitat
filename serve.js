@@ -17,6 +17,46 @@ const url   = require('url');
 const PORT    = 3000;
 const ROOT    = __dirname;
 
+// ── Centralised API key loader ────────────────────────────────────────────────
+// All credentials live in a single ./api-keys.txt file (gitignored).
+// Format: one KEY=value per line; lines starting with # are ignored.
+// Environment variables always take precedence over the file.
+//
+// Supported keys:
+//   NASS_API_KEY  — USDA NASS QuickStats  https://quickstats.nass.usda.gov/api
+//   EBIRD_API_KEY — Cornell eBird         https://ebird.org/api/keygen
+//   NOAA_CDO_TOKEN — NOAA CDO / NCEI      https://www.ncdc.noaa.gov/cdo-web/token
+//
+// Legacy single-key files (nass-key.txt, ebird-key.txt, noaa-token.txt) are
+// still read as a last resort so existing setups keep working without changes.
+
+let _apiKeys = null;
+function loadApiKeys() {
+  if (_apiKeys) return _apiKeys;
+  _apiKeys = {};
+  try {
+    const raw = fs.readFileSync(path.join(ROOT, 'api-keys.txt'), 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq < 1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const val = trimmed.slice(eq + 1).trim();
+      if (key && val) _apiKeys[key] = val;
+    }
+  } catch { /* file absent — env vars or legacy files will be used */ }
+  return _apiKeys;
+}
+
+function getApiKey(envName, legacyFile) {
+  if (process.env[envName]) return process.env[envName].trim();
+  const keys = loadApiKeys();
+  if (keys[envName]) return keys[envName];
+  try { return fs.readFileSync(path.join(ROOT, legacyFile), 'utf8').trim(); }
+  catch { return ''; }
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css':  'text/css; charset=utf-8',
@@ -66,14 +106,23 @@ function proxyCdlStats(res) {
         res.end(JSON.stringify({ error: 'CDL service did not return a data URL' }));
         return;
       }
-      // Step 2: fetch the actual JSON data file
+      // Step 2: fetch the actual JSON data file.
+      // NB: CropScape returns JS object literal syntax with unquoted keys
+      // (e.g. {success:true, rows:[...]}) which is not valid JSON.
+      // We buffer the response and quote bare identifier keys before forwarding.
       https.get(match[1], { timeout: 15000 }, jsonRes => {
-        res.writeHead(jsonRes.statusCode, {
-          'Content-Type':                'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control':               'public, max-age=86400',  // 24 h
+        let raw = '';
+        jsonRes.on('data', chunk => { raw += chunk; });
+        jsonRes.on('end', () => {
+          // Quote unquoted object keys:  {foo:  →  {"foo":
+          const fixed = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*:)/g, '$1"$2"$3');
+          res.writeHead(jsonRes.statusCode, {
+            'Content-Type':                'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control':               'public, max-age=86400',  // 24 h
+          });
+          res.end(fixed);
         });
-        jsonRes.pipe(res);
       }).on('error', err => {
         res.writeHead(502);
         res.end(JSON.stringify({ error: err.message }));
@@ -522,9 +571,7 @@ async function proxyCdlFringe(res) {
 // to CDL-only analysis.
 
 function getNassApiKey() {
-  if (process.env.NASS_API_KEY) return process.env.NASS_API_KEY.trim();
-  try { return fs.readFileSync(path.join(ROOT, 'nass-key.txt'), 'utf8').trim(); }
-  catch { return ''; }
+  return getApiKey('NASS_API_KEY', 'nass-key.txt');
 }
 
 function nassGet(params, cb) {
@@ -654,6 +701,87 @@ function proxyQuickStats(res) {
   }, (err, data) => { if (!err) cropsData = data; if (--pending === 0) finish(); });
 }
 
+// ── NOAA GHCND daily-summaries proxy ─────────────────────────────────────────
+// Proxies GET /api/noaa/ghcnd?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+// → NCEI Access Data Service daily-summaries endpoint.
+// Requires a free NOAA CDO token from https://www.ncdc.noaa.gov/cdo-web/token
+// (the NCDC URL is correct and still active despite the old domain name).
+//   Option A: NOAA_CDO_TOKEN=your_token node serve.js
+//   Option B: create ./noaa-token.txt containing only your token
+// Without a token the endpoint returns { available: false } and live GDD is skipped.
+
+const NOAA_STATION_ID = 'USW00014898';  // Green Bay Austin Straubel Airport
+
+function getNoaaToken() {
+  return getApiKey('NOAA_CDO_TOKEN', 'noaa-token.txt');
+}
+
+// Server-side 12-hour cache so repeated browser loads don't hammer NOAA.
+let _ghcndCache = { key: '', data: null, time: 0 };
+
+function proxyNoaaGhcnd(reqUrl, res) {
+  const token = getNoaaToken();
+  if (!token) {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({
+      available: false,
+      reason: 'No NOAA CDO token. Get a free one at https://www.ncdc.noaa.gov/cdo-web/token ' +
+              'then set NOAA_CDO_TOKEN env var or create ./noaa-token.txt',
+    }));
+    return;
+  }
+
+  const qs        = url.parse(reqUrl, true).query ?? {};
+  const year      = new Date().getFullYear();
+  const startDate = qs.startDate ?? `${year}-01-01`;
+  const endDate   = qs.endDate   ?? new Date().toISOString().slice(0, 10);
+  const cacheKey  = `${startDate}-${endDate}`;
+
+  if (_ghcndCache.key === cacheKey && _ghcndCache.data &&
+      (Date.now() - _ghcndCache.time) < 12 * 60 * 60 * 1000) {
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=43200',
+    });
+    res.end(_ghcndCache.data);
+    return;
+  }
+
+  const nceiPath =
+    `/access/services/data/v1?dataset=daily-summaries` +
+    `&stations=${NOAA_STATION_ID}` +
+    `&startDate=${encodeURIComponent(startDate)}` +
+    `&endDate=${encodeURIComponent(endDate)}` +
+    `&dataTypes=TMAX,TMIN&format=json&units=standard`;
+
+  https.get(
+    {
+      hostname: 'www.ncei.noaa.gov',
+      path:     nceiPath,
+      timeout:  20000,
+      headers:  { token, 'User-Agent': 'habitat-map/1.0' },
+    },
+    upstream => {
+      const chunks = [];
+      upstream.on('data', c => chunks.push(c));
+      upstream.on('end', () => {
+        const body        = Buffer.concat(chunks);
+        _ghcndCache       = { key: cacheKey, data: body, time: Date.now() };
+        res.writeHead(200, {
+          'Content-Type':                'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control':               'public, max-age=43200',
+        });
+        res.end(body);
+      });
+    },
+  ).on('error', err => {
+    res.writeHead(502);
+    res.end(JSON.stringify({ error: err.message }));
+  });
+}
+
 // ── eBird recent-observations proxy ─────────────────────────────────────────
 // Proxies GET /api/ebird?back=N → Cornell eBird API /data/obs/geo/recent.
 // Requires a free eBird API key from https://ebird.org/api/keygen
@@ -662,9 +790,7 @@ function proxyQuickStats(res) {
 // Without a key the endpoint returns { available: false } and the layer is skipped.
 
 function getEbirdApiKey() {
-  if (process.env.EBIRD_API_KEY) return process.env.EBIRD_API_KEY.trim();
-  try { return fs.readFileSync(path.join(ROOT, 'ebird-key.txt'), 'utf8').trim(); }
-  catch { return ''; }
+  return getApiKey('EBIRD_API_KEY', 'ebird-key.txt');
 }
 
 // Green Bay, WI center for the eBird geo/recent endpoint
@@ -736,6 +862,12 @@ const server = http.createServer((req, res) => {
   // Proxy: eBird recent observations near Green Bay
   if (pathname === '/api/ebird') {
     proxyEbird(req.url, res);
+    return;
+  }
+
+  // Proxy: NOAA GHCND daily-summaries (current-year TMAX/TMIN for GDD accumulation)
+  if (pathname === '/api/noaa/ghcnd') {
+    proxyNoaaGhcnd(req.url, res);
     return;
   }
 

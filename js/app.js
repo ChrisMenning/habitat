@@ -57,6 +57,7 @@ import { setExportData, exportReport, exportMapPng }  from './export.js';
 import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
 import { fetchEbirdObservations }                      from './ebird.js';
+import { initClimatePanel, getClimateState }            from './climate.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -380,7 +381,7 @@ async function loadObservations() {
 
     const cdlStats   = cdlStatsResult.status   === 'fulfilled' ? cdlStatsResult.value   : null;
     const quickStats  = quickStatsResult.status  === 'fulfilled' ? quickStatsResult.value  : null;
-    if (!cdlStats) console.warn('CDL stats failed:', cdlStatsResult.reason);
+    if (!cdlStats) console.warn('CDL stats unavailable (API returned null or failed)');
     updateCounts(counts);
 
     const capped     = inatObs < inatTotal;
@@ -451,6 +452,7 @@ async function loadObservations() {
       hnpFeatures:         hnpFeats,
       cdlStats,
       quickStats,
+      climateData:         getClimateState(),
     });
     renderAlerts(alerts, alert => {
       if (!alert.coords?.length) return;
@@ -723,6 +725,9 @@ map.on('load', async () => {
 
   // Load static waystation GeoJSON immediately (no async fetch needed)
   setLayerFeatures('waystations', waystationGeoJSON().features);
+
+  // Climate panel — fire-and-forget; caches for 30 days so subsequent loads are instant.
+  initClimatePanel();
 
   // Filter chips
   buildFilterChips(document.getElementById('panel-filter-chips'));

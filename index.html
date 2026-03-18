@@ -141,6 +141,17 @@
       </details>
     </section>
 
+    <!-- ── CLIMATE CONTEXT ───────────────────────────────────────────────────── -->
+    <section class="panel-section" id="panel-climate">
+      <details>
+        <summary class="panel-title panel-collapsible">🌡 Climate</summary>
+        <p class="panel-section-note">Growing season context — GDD accumulation, frost dates, and thermal phenology for pollinator planning.</p>
+        <div id="panel-climate-inner">
+          <!-- populated by climate.js -->
+        </div>
+      </details>
+    </section>
+
     <!-- ── TERTIARY: Sightings for impact correlation ──────────────────────── -->
     <section class="panel-section" id="panel-sightings">
       <details>
@@ -293,6 +304,27 @@
       <h3>🗺️ Map Layer Legend</h3>
       <p>The <strong>Map Layer Legend</strong> section in the left panel shows color swatches for every polygon area layer. Click a swatch row to toggle that layer on/off directly from the legend. The <strong>Establishment · ring color</strong> section explains the colored outer ring on iNaturalist sighting dots (green = native, red = introduced/invasive, gray = unknown).</p>
 
+    </div>
+  </div>
+</div>
+
+<!-- ── Climate Ribbon modal ─────────────────────────────────────────────────── -->
+<div id="modal-climate" class="modal-overlay" role="dialog" aria-modal="true"
+     aria-labelledby="modal-climate-title" hidden>
+  <div class="modal-box modal-box--wide">
+    <div class="modal-header">
+      <h2 id="modal-climate-title">🌡 Climate Ribbon — Green Bay, WI</h2>
+      <button class="modal-close" aria-label="Close climate ribbon">✕</button>
+    </div>
+    <div class="modal-body" id="modal-climate-body">
+      <!-- SVG inserted by climate.js -->
+    </div>
+    <div class="climate-ribbon-legend" aria-hidden="true">
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#6ee7b7" stroke-width="2"/></svg> Avg temp</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#6b7280" stroke-width="2" stroke-dasharray="4,3"/></svg> Normal GDD</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#f59e0b" stroke-width="2"/></svg> Current GDD</span>
+      <span class="crl-item"><svg width="10" height="10"><rect width="10" height="10" fill="rgba(96,165,250,0.4)"/></svg> Spring frost risk</span>
+      <span class="crl-item"><svg width="10" height="10"><rect width="10" height="10" fill="rgba(251,191,36,0.4)"/></svg> Fall frost risk</span>
     </div>
   </div>
 </div>

@@ -1466,3 +1466,147 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
   outline: 2px solid #34d399;
   outline-offset: 2px;
 }
+
+/* ── Climate panel ─────────────────────────────────────────────────────────── */
+.climate-loading {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.climate-note {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.climate-note code {
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.2);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 10px;
+  color: #6ee7b7;
+}
+
+.climate-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+.climate-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6b7280;
+}
+.climate-stat-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d1fae5;
+}
+
+.gdd-pct-deviation {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.gdd-above { color: #34d399; }
+.gdd-below { color: #f59e0b; }
+
+/* GDD progress bar */
+.climate-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.climate-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.climate-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+.climate-progress-label {
+  font-size: 10px;
+  color: #9ca3af;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frost dates */
+.climate-frost {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #1e3a22;
+}
+.climate-frost-detail {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* "View Climate Ribbon" button row */
+.climate-ribbon-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #1e3a22;
+}
+.climate-ribbon-btn {
+  width: 100%;
+  padding: 7px 12px;
+  background: rgba(52,211,153,0.1);
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 6px;
+  color: #6ee7b7;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.climate-ribbon-btn:hover         { background: rgba(52,211,153,0.18); border-color: #34d399; }
+.climate-ribbon-btn:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
+
+/* ── Climate Ribbon modal ──────────────────────────────────────────────────── */
+.modal-box--wide {
+  max-width: 880px;
+}
+
+#modal-climate-body {
+  padding: 16px 20px 8px;
+  overflow-x: auto;
+}
+
+.climate-ribbon-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 20px 16px;
+  border-top: 1px solid rgba(52,211,153,0.12);
+  flex-shrink: 0;
+}
+.crl-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.climate-ribbon-empty {
+  color: #9ca3af;
+  font-size: 12px;
+  padding: 16px 0;
+}

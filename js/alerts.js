@@ -87,6 +87,7 @@ export function computeAlerts({
   hnpFeatures        = [],
   cdlStats           = null,
   quickStats         = null,
+  climateData        = null,
 }) {
   const alerts = [];
 
@@ -385,6 +386,46 @@ export function computeAlerts({
         text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered HNP yard or waystation there would begin corridor coverage.`,
         coords: [],
         layers: ['gbcc-corridor', 'waystations', 'hnp'],
+      });
+    }
+  }
+
+  // ── Alert: Below-Normal GDD ───────────────────────────────────────────────
+  // Fires May–Sep when accumulated GDD is more than 15% below the 30-year normal.
+  if (climateData?.pctDeviation != null && climateData.pctDeviation < -15) {
+    const month = new Date().getMonth() + 1;   // 1-based
+    if (month >= 5 && month <= 9) {
+      const deficit = Math.abs(Math.round(climateData.pctDeviation));
+      alerts.push({
+        level:  'info',
+        icon:   'ℹ️',
+        key:    'gdd-below-normal',
+        text:   `GDD accumulation is ${deficit}% below the 1991–2020 normal for this date. Pollinator emergence and bloom timing may be running late this season.`,
+        coords: [],
+        layers: [],
+      });
+    }
+  }
+
+  // ── Alert: Late Season Frost Risk ─────────────────────────────────────────
+  // Fires when today is within 14 calendar days of the 50% probability first fall frost.
+  const fallFrost50Doy = climateData?.frost?.fallFrost32?.p50;
+  if (fallFrost50Doy != null) {
+    const today    = new Date();
+    const yearDoy  = Math.round((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    const daysAway = fallFrost50Doy - yearDoy;
+    if (daysAway >= 0 && daysAway <= 14) {
+      // doyToLabel is imported from climate.js via the climateData caller in app.js;
+      // derive the label here to avoid a circular import.
+      const frostDate = new Date(2010, 0, fallFrost50Doy)
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      alerts.push({
+        level:  'warn',
+        icon:   '⚠️',
+        key:    'fall-frost-risk',
+        text:   `First fall frost likely within ~2 weeks (50% probability ~${frostDate}). Annual plantings at corridor sites may be approaching end of season.`,
+        coords: [],
+        layers: [],
       });
     }
   }
