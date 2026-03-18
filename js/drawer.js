@@ -212,6 +212,55 @@ export function openDrawer(feature) {
       })
     : [];
 
+  // ── Corridor network connectivity (corridor nodes only) ──────────────────
+  const corridorConnHtml = (() => {
+    if (p.data_source !== 'gbcc-corridor' || !coord) return '';
+
+    const STRONG_M = 300;   // ≤ 300 m  — all native bee species
+    const MESH_M   = 700;   // ≤ 700 m  — bumble bees / large solitary bees
+    const WEAK_M   = 2000;  // ≤ 2000 m — weak signal; only occasional long-distance
+
+    const corridorNeighbors = _habitatSites
+      .filter(s => s.properties?.data_source === 'gbcc-corridor' && s !== feature)
+      .map(s => ({ site: s, distM: distKm(coord, featureCentroid(s)) * 1000 }))
+      .sort((a, b) => a.distM - b.distM);
+
+    const optimal = corridorNeighbors.filter(n => n.distM <= STRONG_M).length;
+    const ok      = corridorNeighbors.filter(n => n.distM > STRONG_M && n.distM <= MESH_M).length;
+    const nearest = corridorNeighbors[0]?.distM ?? Infinity;
+
+    const weakSignalHtml = (nearest > MESH_M && nearest <= WEAK_M) ? `
+      <div class="drawer-weak-signal">
+        <span class="drawer-weak-signal-icon">⚠️</span>
+        <div>
+          <strong>Weak connectivity signal</strong> — nearest corridor node is ${Math.round(nearest)} m away.
+          <p class="drawer-weak-blurb">
+            Native bee foraging ranges vary widely by species:
+            <em>small sweat bees &amp; mason bees</em> typically forage ≤ 300 m;
+            <em>bumble bees</em> can reach 700 m–1.5 km on longer flights but prefer shorter trips;
+            <em>large carpenter bees</em> occasionally cross up to 2 km.
+            At this distance, network connectivity depends almost entirely on bumble bee species
+            — a stepping-stone site within 700 m would restore reliable connectivity for the full
+            native bee community.
+          </p>
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="drawer-section-label">Corridor network connectivity</div>
+      <div class="drawer-stat-row">
+        <div class="drawer-stat">
+          <span class="drawer-stat-value">${optimal}</span>
+          <span class="drawer-stat-label">Optimal neighbors (≤ 300 m)</span>
+        </div>
+        <div class="drawer-stat">
+          <span class="drawer-stat-value">${ok}</span>
+          <span class="drawer-stat-label">OK neighbors (300–700 m)</span>
+        </div>
+      </div>
+      ${weakSignalHtml}`;
+  })();
+
   // ── Build header color based on source ────────────────────────────────────
   const src = p.data_source;
   const headerColor = src === 'gbcc-corridor'  ? '#d97706'
@@ -304,6 +353,7 @@ export function openDrawer(feature) {
     <div class="drawer-content">
       ${approxHtml}
       ${metaHtml}
+      ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>
       ${nearbySightingsHtml}
       ${nearbySitesHtml}

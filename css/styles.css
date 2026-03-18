@@ -1251,6 +1251,37 @@ details > summary:focus-visible {
   white-space: nowrap;
 }
 
+/* ── Drawer corridor connectivity ──────────────────────────────────────────── */
+.drawer-weak-signal {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #fde68a;
+  line-height: 1.45;
+}
+.drawer-weak-signal-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.drawer-weak-blurb {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: rgba(253, 230, 138, 0.75);
+  line-height: 1.5;
+}
+.drawer-weak-blurb em {
+  font-style: normal;
+  font-weight: 600;
+  color: #fde68a;
+}
+
 /* ── Month filter strip ────────────────────────────────────────────────────── */
 #month-filter-strip {
   margin-top: 8px;

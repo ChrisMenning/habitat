@@ -201,11 +201,11 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Isolated habitat — no neighbour within 700 m ──────────────────
-  // Updated from 2 km to 700 m to match the connectivity mesh visualization
-  // threshold: beyond 700 m, the foraging range of even bumble bees is exceeded.
-  // A site with no neighbour at this scale is ecologically disconnected.
-  const ISOLATION_KM = 0.7;
+  // ── Alert: Isolated habitat — no neighbour within 2 km ───────────────────
+  // 2 km is the upper bound of bumble bee foraging range and the practical
+  // limit for corridor continuity. Sites with no neighbour within this radius
+  // are fully disconnected from the network.
+  const ISOLATION_KM = 2.0;
   const allHabitat = [
     ...corridorFeatures.map(f  => ({ coord: centroid(f),  name: f.properties.name || 'Corridor site',  kind: 'corridor'  })),
     ...waystationFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || f.properties.registrant || 'Waystation', kind: 'waystation' })),
@@ -222,20 +222,22 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '🏝️',
         key:    'isolated-habitat',
-        text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. Connecting these with additional plantings would strengthen corridor resilience.`,
+        text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat program site within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. A new waystation, HNP yard, or corridor planting within 2 km would bring this site back into the network.`,
+
         coords: isolated.map(s => s.coord),
         layers: ['gbcc-corridor', 'waystations', 'hnp'],
       });
     }
   }
 
-  // ── Alert: Weak Network Node — closest neighbour is 301–700 m ────────────
-  // Within foraging range of bumble bees and large solitary bees, but not
-  // small solitary bees that dominate most corridor pollination.
-  // Only fires for corridor sites (waystations are fixed private properties;
-  // recommending new sites there would be misleading).
-  const STRONG_KM = 0.3;
-  const MESH_KM   = 0.7;
+  // ── Alert: Weak Network Node — closest corridor neighbour is 700 m–2 km ──
+  // 700 m is the outer limit of the connectivity mesh (bumble bee foraging
+  // range). Sites whose nearest corridor neighbour falls in the 700 m–2 km
+  // band are reachable only by bumble bees on their longest foraging flights —
+  // small solitary bees (halictids, andrenids) cannot make the crossing.
+  // Only fires for corridor sites; waystations are fixed private properties.
+  const STRONG_KM = 0.3;  // all native bee species
+  const MESH_KM   = 0.7;  // bumble bee / large solitary bee max comfortable range
   for (const site of corridorFeatures) {
     const siteCoord = centroid(site);
     const siteName  = site.properties.name || 'Corridor site';
@@ -244,13 +246,13 @@ export function computeAlerts({
       if (other === site) continue;
       closestDist = Math.min(closestDist, distKm(siteCoord, centroid(other)));
     }
-    if (closestDist > STRONG_KM && closestDist <= MESH_KM) {
+    if (closestDist > MESH_KM && closestDist <= ISOLATION_KM) {
       const distM = Math.round(closestDist * 1000);
       alerts.push({
         level:  'info',
         icon:   '🔗',
         key:    `weak-node-${siteName.replace(/\s+/g, '-')}`,
-        text:   `Weak corridor node: "${siteName}" — nearest neighbour is ${distM} m away. Within range of bumble bees and larger solitary bees, but not smaller species. A new habitat site within 300 m would strengthen this node.`,
+        text:   `Weak signal node: "${siteName}" — nearest corridor neighbour is ${distM} m away. Beyond bumble bee comfortable foraging range (700 m); only occasional long-distance bumble bee flights bridge this gap. A new site within 700 m would restore mesh-level connectivity.`,
         coords: [siteCoord],
         layers: ['gbcc-corridor'],
       });
