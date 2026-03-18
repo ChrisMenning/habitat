@@ -1,48 +1,33 @@
 /**
- * timeline.js — Year range scrubber + month filter for sighting observations.
+ * timeline.js — Year-range scrubber + month filter for sighting observations.
  *
- * A horizontal dual-handle range slider mounted at the bottom of the map.
- * Dragging the handles filters the in-memory sighting features to only those
- * whose `date` property falls within the selected year range — no new API calls.
+ * The track always spans _trackMin → _trackMax regardless of what data is
+ * currently loaded. Handles default to the full track (show everything).
+ * Dragging a handle in-memory filters what's displayed without re-fetching.
  *
- * A separate 12-button month strip lets users isolate observations by calendar
- * month without re-fetching from the network (client-side filter).
- *
- * Both filters are combined into a single date predicate, updated via the
- * callback provided at init time.
+ * Design rules:
+ *   • Handles can never cross or share the same year (MIN_GAP = 1).
+ *   • The track floor is set at init time (default 2009) and can only expand.
+ *   • An empty range on the map is acceptable and expected — it means no loaded
+ *     data falls within the selected window.
  */
+
+const MIN_GAP = 1; // minimum years between start and end handles
 
 /** @type {function(startYear:number, endYear:number, activeMonths:Set<number>): void} */
 let _onRange = null;
 
-let _minYear   = 2000;
-let _maxYear   = new Date().getFullYear();
-let _startYear = _maxYear - 1;
-let _endYear   = _maxYear;
+let _trackMin  = 2009;
+let _trackMax  = new Date().getFullYear();
+let _startYear = 2009;
+let _endYear   = new Date().getFullYear();
 
-/**
- * Active calendar months (0=Jan … 11=Dec).
- * Empty set = all months shown (no month filter applied).
- */
+/** Active calendar months (0=Jan…11=Dec). Empty = all months pass. */
 const _activeMonths = new Set();
 
 // ── Temporal layer registry ───────────────────────────────────────────────────
-//
-// Area/non-sighting layers that have usable date fields can register here so
-// the timeline scrubber also filters their visible features when the range moves.
-//
-// Date field audit (Priority 1b):
-//   iNat / GBIF sightings         — observed_on / eventDate → already handled
-//   GBCC corridor sites           — no establishment/planting date field found
-//                                   in the ArcGIS Feature Service (checked Park,
-//                                   Area, PlantList fields — none are dated).
-//   HNP yards                     — no registration date in the /api/guest/map/
-//                                   plantings response; field absent from API.
-//   Monarch Waystations           — 'registered' YYYY-MM-DD field available.
-//   GBCC Habitat Treatments       — 'date' field (normalised from Treatment_Date_and_Time).
-//   WI DNR PFAS sites             — 'year' field (string/number). Added as temporal layer.
-//   eBird sightings               — 'obsDt' field (Priority 11, not yet loaded).
-//   Wikimedia Commons photos      — DateTimeOriginal in extmetadata (Priority 10).
+// Non-sighting layers (treatments, waystations) that have date fields register
+// here. _applyTemporalLayers() filters them whenever the range changes.
 
 /**
  * Map of { layerId → { features: GeoJSON.Feature[], onFilter: fn, dateGetter: fn } }
@@ -51,115 +36,134 @@ const _temporalLayers = new Map();
 
 /**
  * Register a non-sighting layer for timeline date filtering.
- * When the year range or month filter changes, onFilter is called with
- * the subset of features whose date passes the current timeline state.
  *
  * @param {string}   layerId
  * @param {GeoJSON.Feature[]} features
- * @param {function(GeoJSON.Feature): string|number|undefined} dateGetter   Returns a date string (YYYY-MM-DD or YYYY) or epoch ms.
- * @param {function(GeoJSON.Feature[]): void} onFilter   Called with filtered feature array.
+ * @param {function(GeoJSON.Feature): string|number|undefined} dateGetter
+ * @param {function(GeoJSON.Feature[]): void} onFilter
  */
 export function registerTemporalLayer(layerId, features, dateGetter, onFilter) {
   _temporalLayers.set(layerId, { features, dateGetter, onFilter });
 }
 
-/**
- * Remove a temporal layer registration (call when data is stale / reloaded).
- * @param {string} layerId
- */
+/** @param {string} layerId */
 export function unregisterTemporalLayer(layerId) {
   _temporalLayers.delete(layerId);
 }
 
-/** Apply the current time window to all registered temporal layers. */
+/** Filter all registered temporal layers through the current year+month window. */
 function _applyTemporalLayers() {
   for (const { features, dateGetter, onFilter } of _temporalLayers.values()) {
     const filtered = features.filter(f => {
       const raw = dateGetter(f);
-      if (!raw) return true;
-      let dateStr;
+      if (raw == null || raw === '') return true; // undated → always show
+      let year, month;
       if (typeof raw === 'number') {
-        dateStr = new Date(raw).toISOString().slice(0, 10);
+        const d = new Date(raw);
+        year  = d.getFullYear();
+        month = d.getMonth();
       } else {
-        dateStr = String(raw).trim();
-        // Year-only values — treat as January 1 of that year
-        if (/^\d{4}$/.test(dateStr)) dateStr = `${dateStr}-01-01`;
+        const s = String(raw).trim();
+        if (/^\d{4}$/.test(s)) {
+          year  = Number(s);
+          month = -1; // year-only — skip month filter
+        } else {
+          const d = new Date(s);
+          if (isNaN(d)) return true;
+          year  = d.getFullYear();
+          month = d.getMonth();
+        }
       }
-      const d = new Date(dateStr);
-      if (isNaN(d)) return true;
-      const y = d.getFullYear();
-      if (y < _startYear || y > _endYear) return false;
-      if (_activeMonths.size > 0 && !_activeMonths.has(d.getMonth())) return false;
+      if (isNaN(year))               return true;
+      if (year < _startYear)         return false;
+      if (year > _endYear)           return false;
+      if (_activeMonths.size > 0 && month >= 0 && !_activeMonths.has(month)) return false;
       return true;
     });
     onFilter(filtered);
   }
 }
 
-/** Returns the active layers caption text. */
-function _buildCaption() {
-  const parts = ['🦋 Sightings'];
-  if (_temporalLayers.has('gbcc-treatment')) parts.push('Treatments');
-  if (_temporalLayers.has('waystations'))    parts.push('Waystations');
-  return parts.join(' · ');
-}
-
-/** Updates the timeline caption element to reflect which layers are date-filtered. */
-function _updateCaption() {
-  const el = document.getElementById('timeline-caption');
-  if (el) el.textContent = _buildCaption();
-}
-
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Initialise the timeline scrubber.
+ * Initialise the timeline. Call once from map.on('load').
  *
  * @param {function(startYear:number, endYear:number, activeMonths:Set<number>): void} onRange
- *   Called whenever the selected range or active months change.
- * @param {number} [dataMinYear]  Earliest year present in loaded data.
+ * @param {number} [dataMinYear]  Historical floor for the track (default 2009).
  */
 export function initTimeline(onRange, dataMinYear) {
   _onRange   = onRange;
-  _minYear   = dataMinYear ?? 2000;
-  _maxYear   = new Date().getFullYear();
+  _trackMin  = dataMinYear ?? 2009;
+  _trackMax  = new Date().getFullYear();
   // Default: show last 1 year
-  _startYear = _maxYear - 1;
-  _endYear   = _maxYear;
+  _startYear = _trackMin;
+  _endYear   = _trackMax;
   _render();
-  _updateCaption();
   _initMonthFilter();
+  // Fire immediately so the date predicate is set before data arrives
+  _onRange?.(_startYear, _endYear, _activeMonths);
 }
 
 /**
- * Update the scrubber's year bounds based on the current dataset's date range.
- * Call this after each data load.
+ * Expand the track bounds to encompass actual data years, if needed.
+ * Never shrinks the track, never resets handles the user has already moved.
+ * Call after each data load.
  *
  * @param {GeoJSON.Feature[]} allSightings
  */
 export function updateTimelineBounds(allSightings) {
-  let min = Infinity, max = -Infinity;
+  let dataMin = Infinity, dataMax = -Infinity;
   for (const f of allSightings) {
-    const y = f.properties?.date ? new Date(f.properties.date).getFullYear() : NaN;
-    if (!isNaN(y)) { min = Math.min(min, y); max = Math.max(max, y); }
+    const raw = f.properties?.date;
+    if (!raw) continue;
+    const y = new Date(raw).getFullYear();
+    if (!isNaN(y)) { dataMin = Math.min(dataMin, y); dataMax = Math.max(dataMax, y); }
   }
-  if (min === Infinity) return;  // no dated features
-  // Always expand the track to the full data range and show all years by
-  // default so both handles sit at the start (0%) and end (100%) of the
-  // track — easy to grab and intuitively shows "all data loaded."
-  // The user can drag handles inward to create a narrower filter window.
-  _minYear   = min;
-  _maxYear   = max;
-  _startYear = _minYear;
-  _endYear   = _maxYear;
-  _render();
-  _onRange?.(_startYear, _endYear, _activeMonths);
+  if (dataMin === Infinity) return; // no dated sightings
+
+  let changed = false;
+
+  // Expand track floor if sightings go further back than current floor
+  if (dataMin < _trackMin) {
+    // Pull start handle back with the floor if it was sitting at the floor
+    if (_startYear === _trackMin) _startYear = dataMin;
+    _trackMin = dataMin;
+    changed   = true;
+  }
+
+  // Expand track ceiling if sightings extend past current ceiling
+  if (dataMax > _trackMax) {
+    if (_endYear === _trackMax) _endYear = dataMax;
+    _trackMax = dataMax;
+    changed   = true;
+  }
+
+  // Clamp handles in case new track bounds broke the current selection
+  const safeStart = Math.max(_trackMin, Math.min(_startYear, _trackMax - MIN_GAP));
+  const safeEnd   = Math.min(_trackMax, Math.max(_endYear,   _trackMin + MIN_GAP));
+  if (safeStart !== _startYear || safeEnd !== _endYear) {
+    _startYear = safeStart;
+    _endYear   = safeEnd;
+    changed    = true;
+  }
+
+  if (changed) {
+    _render();
+    _onRange?.(_startYear, _endYear, _activeMonths);
+  }
 }
 
-/** Returns true if the given date string (YYYY-MM-DD) passes the current range. */
+/**
+ * Returns true if `dateStr` (YYYY-MM-DD) falls within the current window.
+ *
+ * @param {string|undefined} dateStr
+ * @returns {boolean}
+ */
 export function datePassesTimeline(dateStr) {
-  if (!dateStr) return true;  // undated features always pass
+  if (!dateStr) return true;
   const d = new Date(dateStr);
+  if (isNaN(d)) return true;
   const y = d.getFullYear();
   if (y < _startYear || y > _endYear) return false;
   if (_activeMonths.size > 0 && !_activeMonths.has(d.getMonth())) return false;
@@ -168,54 +172,76 @@ export function datePassesTimeline(dateStr) {
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
+/** Convert a year value to a percentage position on the track. */
+function _pct(year) {
+  const span = _trackMax - _trackMin;
+  if (span === 0) return 0;
+  return ((year - _trackMin) / span) * 100;
+}
+
 function _render() {
-  const container = document.getElementById('timeline-track');
-  if (!container) return;
+  const track = document.getElementById('timeline-track');
+  if (!track) return;
 
-  const pct = v => ((v - _minYear) / Math.max(_maxYear - _minYear, 1)) * 100;
+  const pStart = _pct(_startYear);
+  const pEnd   = _pct(_endYear);
 
-  // Fill bar
-  const fill = container.querySelector('.timeline-fill');
+  // Fill bar between the two handles
+  const fill = track.querySelector('.timeline-fill');
   if (fill) {
-    fill.style.left  = `${pct(_startYear)}%`;
-    fill.style.width = `${pct(_endYear) - pct(_startYear)}%`;
+    fill.style.left  = `${pStart}%`;
+    fill.style.width = `${pEnd - pStart}%`;
   }
 
-  // Handle positions
-  const hStart = container.querySelector('[data-handle="start"]');
-  const hEnd   = container.querySelector('[data-handle="end"]');
-  if (hStart) hStart.style.left = `${pct(_startYear)}%`;
-  if (hEnd)   hEnd.style.left   = `${pct(_endYear)}%`;
+  // Start handle
+  const hStart = track.querySelector('[data-handle="start"]');
+  if (hStart) {
+    hStart.style.left = `${pStart}%`;
+    hStart.setAttribute('aria-valuenow',  _startYear);
+    hStart.setAttribute('aria-valuemin',  _trackMin);
+    hStart.setAttribute('aria-valuemax',  _endYear - MIN_GAP);
+    hStart.setAttribute('aria-valuetext', `From ${_startYear}`);
+  }
 
-  // Label
+  // End handle
+  const hEnd = track.querySelector('[data-handle="end"]');
+  if (hEnd) {
+    hEnd.style.left = `${pEnd}%`;
+    hEnd.setAttribute('aria-valuenow',  _endYear);
+    hEnd.setAttribute('aria-valuemin',  _startYear + MIN_GAP);
+    hEnd.setAttribute('aria-valuemax',  _trackMax);
+    hEnd.setAttribute('aria-valuetext', `To ${_endYear}`);
+  }
+
+  // Range label
   const label = document.getElementById('timeline-label');
   if (label) {
-    label.textContent = _startYear === _endYear
+    label.textContent = (_startYear === _endYear)
       ? String(_startYear)
       : `${_startYear} – ${_endYear}`;
   }
 
-  // Tick marks — rebuild whenever the year range changes
-  const ticks = container.querySelector('.timeline-ticks');
+  // Tick marks — only rebuild when track span changes
+  const ticks = track.querySelector('.timeline-ticks');
   if (ticks) {
-    const rangeKey = `${_minYear}-${_maxYear}`;
-    if (ticks.dataset.rangeKey !== rangeKey) {
-      ticks.innerHTML = '';
+    const key = `${_trackMin}:${_trackMax}`;
+    if (ticks.dataset.rangeKey !== key) {
       _buildTicks(ticks);
-      ticks.dataset.rangeKey = rangeKey;
+      ticks.dataset.rangeKey = key;
     }
   }
 }
 
+/** Build year-label tick marks spaced sensibly for the current span. */
 function _buildTicks(ticks) {
-  const span = _maxYear - _minYear;
-  // Show ticks every 1, 2, or 5 years depending on span
-  const step = span <= 10 ? 1 : span <= 20 ? 2 : 5;
-  const start = Math.ceil(_minYear / step) * step;
-  for (let y = start; y <= _maxYear; y += step) {
+  ticks.innerHTML = '';
+  const span = _trackMax - _trackMin;
+  const step = span <= 5 ? 1 : span <= 10 ? 2 : span <= 25 ? 5 : 10;
+  const first = Math.ceil(_trackMin / step) * step;
+  for (let y = first; y <= _trackMax; y += step) {
     const tick = document.createElement('span');
-    tick.className = 'timeline-tick';
-    tick.style.left = `${((y - _minYear) / Math.max(_maxYear - _minYear, 1)) * 100}%`;
+    tick.className    = 'timeline-tick';
+    tick.style.left   = `${_pct(y)}%`;
     tick.dataset.year = y;
     ticks.appendChild(tick);
   }
@@ -223,66 +249,56 @@ function _buildTicks(ticks) {
 
 // ── Drag interaction ──────────────────────────────────────────────────────────
 
+/**
+ * Mount pointer and keyboard listeners on the timeline track.
+ * Call once after the DOM is ready (map.on('load')).
+ */
 export function mountTimelineDrag() {
-  const container = document.getElementById('timeline-track');
-  if (!container) return;
+  const track = document.getElementById('timeline-track');
+  if (!track) return;
 
-  let dragging = null;
-
-  function toYear(clientX) {
-    const span = _maxYear - _minYear;
-    if (span <= 0) return _maxYear;
-    const rect = container.getBoundingClientRect();
+  function yearFromX(clientX) {
+    const rect = track.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return Math.round(_minYear + frac * span);
+    return Math.round(_trackMin + frac * (_trackMax - _trackMin));
   }
 
-  function onDragMove(e) {
-    if (!dragging) return;
-    const y = toYear(e.clientX);
-    if (dragging === 'start') {
-      _startYear = Math.max(_minYear, Math.min(y, _endYear));
+  function applyYear(which, rawYear) {
+    if (which === 'start') {
+      _startYear = Math.max(_trackMin, Math.min(rawYear, _endYear - MIN_GAP));
     } else {
-      _endYear = Math.min(_maxYear, Math.max(y, _startYear));
+      _endYear = Math.min(_trackMax, Math.max(rawYear, _startYear + MIN_GAP));
     }
     _render();
     _applyTemporalLayers();
-    _updateCaption();
     _onRange?.(_startYear, _endYear, _activeMonths);
   }
 
-  function onDragEnd() {
-    if (!dragging) return;
-    dragging = null;
-    document.removeEventListener('pointermove', onDragMove);
-    document.removeEventListener('pointerup',   onDragEnd);
-  }
-
-  // Attach pointerdown directly to the container; handle hit-test inside
-  container.addEventListener('pointerdown', e => {
+  // setPointerCapture keeps events coming even when pointer leaves the handle
+  track.addEventListener('pointerdown', e => {
     const handle = e.target.closest('[data-handle]');
     if (!handle) return;
-    dragging = handle.dataset.handle;
     e.preventDefault();
-    // Use document-level listeners so drag continues outside the element
-    document.addEventListener('pointermove', onDragMove);
-    document.addEventListener('pointerup',   onDragEnd);
+    const which = handle.dataset.handle;
+    handle.setPointerCapture(e.pointerId);
+    function onMove(ev) { applyYear(which, yearFromX(ev.clientX)); }
+    function onUp() {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup',   onUp);
+      handle.removeEventListener('pointercancel', onUp);
+    }
+    handle.addEventListener('pointermove',  onMove);
+    handle.addEventListener('pointerup',    onUp);
+    handle.addEventListener('pointercancel', onUp);
   });
 
-  // Keyboard support — attach directly on each handle
-  container.querySelectorAll('[data-handle]').forEach(handle => {
+  // Keyboard support
+  track.querySelectorAll('[data-handle]').forEach(handle => {
     handle.addEventListener('keydown', e => {
       const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
       if (!delta) return;
-      if (handle.dataset.handle === 'start') {
-        _startYear = Math.max(_minYear, Math.min(_startYear + delta, _endYear));
-      } else {
-        _endYear = Math.min(_maxYear, Math.max(_endYear + delta, _startYear));
-      }
-      _render();
-      _applyTemporalLayers();
-      _updateCaption();
-      _onRange?.(_startYear, _endYear, _activeMonths);
+      const cur = handle.dataset.handle === 'start' ? _startYear : _endYear;
+      applyYear(handle.dataset.handle, cur + delta);
       e.preventDefault();
     });
   });
