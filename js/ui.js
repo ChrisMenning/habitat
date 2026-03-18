@@ -256,6 +256,30 @@ export function getDefaultDates() {
  * @returns {string} safe HTML string
  */
 export function buildPopupHTML(props) {
+  // eBird sightings have their own property schema (no est_key, no user field)
+  if (props.layer_id === 'ebird') {
+    const countHtml = props.how_many
+      ? `<dt>Count</dt><dd>${esc(props.how_many)}</dd>`
+      : '';
+    const locHtml = props.loc_name
+      ? `<dt>Location</dt><dd>${esc(props.loc_name)}</dd>`
+      : '';
+    return `
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.common || props.name)}</strong>
+        ${props.common ? `<em class="popup-sci">${esc(props.name)}</em>` : ''}
+        <span class="popup-source">eBird · Cornell Lab</span>
+        <dl class="popup-meta">
+          <dt>Date</dt><dd>${esc(props.date) || '—'}</dd>
+          ${countHtml}
+          ${locHtml}
+        </dl>
+        ${props.url
+          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">View on eBird →</a>`
+          : ''}
+      </div>`;
+  }
+
   const conf    = ESTABLISHMENT[props.est_key] ?? ESTABLISHMENT.unknown;
   const isGbif  = props.source === 'gbif';
 

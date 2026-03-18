@@ -28,6 +28,12 @@ import { CENTER, FILL_COLOR_EXPR, STROKE_COLOR_EXPR } from './config.js';
 /** @type {import('maplibre-gl').Map|null} */
 let _map = null;
 
+/** Sources that were created with MapLibre GeoJSON clustering enabled. */
+const _clusteredSources = new Set();
+
+/** Area-marker sources that were created with clustering enabled. */
+const _clusteredAreaMarkerSources = new Set();
+
 // ── Map lifecycle ─────────────────────────────────────────────────────────────
 
 /**
@@ -169,26 +175,77 @@ export async function registerSvgIcons() {
  */
 /**
  * @typedef {Object} LayerStyleOptions
- * @property {boolean}     [gbif=false]    True for GBIF historical backdrop (larger, translucent).
- * @property {number|null} [radius]        Circle radius in px — overrides the type default.
- * @property {number|null} [strokeWidth]   Stroke width in px — overrides the type default.
- * @property {number|null} [opacity]       Fill opacity — overrides the type default.
- * @property {string|null} [symbol]        Unicode character rendered as a centred symbol overlay.
- * @property {number|null} [iconSize]       Icon size multiplier — overrides the default 0.55.
+ * @property {boolean}     [gbif=false]      True for GBIF historical backdrop (larger, translucent).
+ * @property {number|null} [radius]          Circle radius in px — overrides the type default.
+ * @property {number|null} [strokeWidth]     Stroke width in px — overrides the type default.
+ * @property {number|null} [opacity]         Fill opacity — overrides the type default.
+ * @property {string|null} [symbol]          SVG icon image id to overlay on the circle.
+ * @property {number|null} [iconSize]        Icon size multiplier — overrides the default 0.55.
+ * @property {boolean}     [cluster=false]   Enable MapLibre GeoJSON source clustering.
+ * @property {string|null} [clusterColor]    Fill color for cluster aggregate circles.
  */
 
 export function registerLayer(id, visible, {
-  gbif        = false,
-  radius      = null,
-  strokeWidth = null,
-  opacity     = null,
-  symbol      = null,
-  iconSize    = null,
+  gbif         = false,
+  radius       = null,
+  strokeWidth  = null,
+  opacity      = null,
+  symbol       = null,
+  iconSize     = null,
+  cluster      = false,
+  clusterColor = null,
 } = {}) {
   _map.addSource(id, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
+    ...(cluster ? { cluster: true, clusterMaxZoom: 14, clusterRadius: 40 } : {}),
   });
+
+  if (cluster) {
+    _clusteredSources.add(id);
+
+    // Cluster aggregate circle — radius grows with point count
+    _map.addLayer({
+      id:     `cluster-${id}`,
+      type:   'circle',
+      source: id,
+      filter: ['has', 'point_count'],
+      layout: { visibility: visible ? 'visible' : 'none' },
+      paint: {
+        'circle-radius': [
+          'step', ['get', 'point_count'],
+          14,       // 2–9 points
+          10, 18,   // 10–49 points
+          50, 22,   // 50+ points
+        ],
+        'circle-color':        clusterColor ?? '#64748b',
+        'circle-opacity':      0.88,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    });
+
+    // Cluster count label
+    _map.addLayer({
+      id:     `cluster-label-${id}`,
+      type:   'symbol',
+      source: id,
+      filter: ['has', 'point_count'],
+      layout: {
+        visibility:              visible ? 'visible' : 'none',
+        'text-field':            ['get', 'point_count_abbreviated'],
+        'text-font':             ['Noto Sans Bold'],
+        'text-size':             12,
+        'text-allow-overlap':    true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color':      '#ffffff',
+        'text-halo-color': 'rgba(0,0,0,0.35)',
+        'text-halo-width': 1,
+      },
+    });
+  }
 
   // Design language:
   //   iNat observations  — small solid dots  (6 px, full opacity)
@@ -198,7 +255,10 @@ export function registerLayer(id, visible, {
   const sw = strokeWidth ?? (gbif ? 1    : 1.5);
   const op = opacity     ?? (gbif ? 0.40 : 0.92);
 
-  _map.addLayer({
+  // When clustering is on, the unclustered-point layer must exclude cluster aggregates
+  const unclusteredFilter = cluster ? ['!', ['has', 'point_count']] : undefined;
+
+  const pointLayer = {
     id:     `points-${id}`,
     type:   'circle',
     source: id,
@@ -210,11 +270,13 @@ export function registerLayer(id, visible, {
       'circle-stroke-color': STROKE_COLOR_EXPR,
       'circle-stroke-width': sw,
     },
-  });
+  };
+  if (unclusteredFilter) pointLayer.filter = unclusteredFilter;
+  _map.addLayer(pointLayer);
 
-  // SVG icon overlaid on the circle — always shown regardless of density.
+  // SVG icon overlaid on unclustered points only.
   if (symbol) {
-    _map.addLayer({
+    const symbolLayer = {
       id:     `symbol-${id}`,
       type:   'symbol',
       source: id,
@@ -225,7 +287,9 @@ export function registerLayer(id, visible, {
         'icon-allow-overlap':    true,
         'icon-ignore-placement': true,
       },
-    });
+    };
+    if (unclusteredFilter) symbolLayer.filter = unclusteredFilter;
+    _map.addLayer(symbolLayer);
   }
 }
 
@@ -251,16 +315,79 @@ export function setLayerVisibility(id, visible) {
   if (_map.getLayer(`symbol-${id}`)) {
     _map.setLayoutProperty(`symbol-${id}`, 'visibility', vis);
   }
+  if (_clusteredSources.has(id)) {
+    if (_map.getLayer(`cluster-${id}`))       _map.setLayoutProperty(`cluster-${id}`,       'visibility', vis);
+    if (_map.getLayer(`cluster-label-${id}`)) _map.setLayoutProperty(`cluster-label-${id}`, 'visibility', vis);
+  }
 }
 
 /**
  * Returns the MapLibre layer ids used for pointer hit-testing.
+ * For layers with clustering enabled, the cluster aggregate layer is also included.
  *
  * @param {Array<{id: string}>} layers
  * @returns {string[]}
  */
 export function getInteractiveLayerIds(layers) {
-  return layers.map(l => `points-${l.id}`);
+  const ids = [];
+  for (const l of layers) {
+    ids.push(`points-${l.id}`);
+    if (_clusteredSources.has(l.id)) ids.push(`cluster-${l.id}`);
+  }
+  return ids;
+}
+
+/**
+ * Zooms the map into a cluster to expand it.
+ * Called when the user clicks a cluster aggregate circle.
+ *
+ * @param {string}            sourceId    - GeoJSON source id
+ * @param {number}            clusterId   - cluster_id from feature properties
+ * @param {[number, number]}  coordinates - [lng, lat] of the cluster centre
+ */
+export function zoomToCluster(sourceId, clusterId, coordinates) {
+  const source = _map.getSource(sourceId);
+  if (!source) return;
+  source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+    if (err) return;
+    _map.easeTo({ center: coordinates, zoom });
+  });
+}
+
+/**
+ * Returns the effective geographic node coordinates for a clustering-enabled
+ * source at the current map zoom level.
+ *
+ * When the source is clustered at the current zoom, cluster aggregate centroids
+ * are returned instead of individual point coordinates.  When fully expanded
+ * (zoom ≥ clusterMaxZoom), individual point coordinates are returned.
+ *
+ * Handles both `registerLayer` sources (id) and `registerAreaMarkersLayer`
+ * sources (area-markers-${id}).
+ *
+ * @param {string} id  — logical layer id (without any prefix)
+ * @returns {[number, number][]|null}  null if id is not a clustered source
+ */
+export function getEffectiveClusteredCoords(id) {
+  const sourceId = _clusteredSources.has(id)
+    ? id
+    : _clusteredAreaMarkerSources.has(id)
+      ? `area-markers-${id}`
+      : null;
+  if (!sourceId) return null;
+
+  const features = _map.querySourceFeatures(sourceId);
+  const seen   = new Set();
+  const coords = [];
+  for (const f of features) {
+    const g = f.geometry;
+    if (!g || g.type !== 'Point') continue;
+    const key = `${(+g.coordinates[0]).toFixed(6)},${(+g.coordinates[1]).toFixed(6)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    coords.push(g.coordinates);
+  }
+  return coords;
 }
 
 // ── Polygon area layers ───────────────────────────────────────────────────────
@@ -325,13 +452,62 @@ export function setAreaFeatures(id, geojson) {
  * @param {string}  outlineColor - stroke colour for the circle
  * @param {string}  [icon]       - emoji image id (registered via registerEmojiImages) to overlay
  */
-export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon = null) {
+export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon = null, cluster = false) {
   _map.addSource(`area-markers-${id}`, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
+    ...(cluster ? { cluster: true, clusterMaxZoom: 14, clusterRadius: 40 } : {}),
   });
 
-  _map.addLayer({
+  if (cluster) {
+    _clusteredAreaMarkerSources.add(id);
+
+    // Cluster aggregate circle — same color as individual markers
+    _map.addLayer({
+      id:     `cluster-area-markers-${id}`,
+      type:   'circle',
+      source: `area-markers-${id}`,
+      filter: ['has', 'point_count'],
+      layout: { visibility: visible ? 'visible' : 'none' },
+      paint: {
+        'circle-radius': [
+          'step', ['get', 'point_count'],
+          14,       // 2–9 points
+          10, 18,   // 10–49 points
+          50, 22,   // 50+ points
+        ],
+        'circle-color':        color,
+        'circle-opacity':      0.88,
+        'circle-stroke-color': outlineColor,
+        'circle-stroke-width': 2.5,
+      },
+    });
+
+    // Cluster count label
+    _map.addLayer({
+      id:     `cluster-label-area-markers-${id}`,
+      type:   'symbol',
+      source: `area-markers-${id}`,
+      filter: ['has', 'point_count'],
+      layout: {
+        visibility:              visible ? 'visible' : 'none',
+        'text-field':            ['get', 'point_count_abbreviated'],
+        'text-font':             ['Noto Sans Bold'],
+        'text-size':             12,
+        'text-allow-overlap':    true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color':      '#ffffff',
+        'text-halo-color': 'rgba(0,0,0,0.35)',
+        'text-halo-width': 1,
+      },
+    });
+  }
+
+  const unclusteredFilter = cluster ? ['!', ['has', 'point_count']] : undefined;
+
+  const circleLayer = {
     id:     `circle-markers-${id}`,
     type:   'circle',
     source: `area-markers-${id}`,
@@ -343,9 +519,11 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
       'circle-stroke-color': outlineColor,
       'circle-stroke-width': 2.5,
     },
-  });
+  };
+  if (unclusteredFilter) circleLayer.filter = unclusteredFilter;
+  _map.addLayer(circleLayer);
 
-  _map.addLayer({
+  const symbolLayer = {
     id:     `label-markers-${id}`,
     type:   'symbol',
     source: `area-markers-${id}`,
@@ -353,7 +531,7 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
       visibility:    visible ? 'visible' : 'none',
       ...(icon ? {
         'icon-image':            icon,
-        'icon-size':             0.75,
+        'icon-size':             0.68,
         'icon-allow-overlap':    true,
         'icon-ignore-placement': true,
         'icon-offset':           [0, 0],
@@ -373,7 +551,9 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
       'text-halo-color': '#fffbeb',
       'text-halo-width': 1.5,
     },
-  });
+  };
+  if (unclusteredFilter) symbolLayer.filter = unclusteredFilter;
+  _map.addLayer(symbolLayer);
 }
 
 /**
@@ -400,6 +580,10 @@ export function setAreaVisibility(id, visible) {
   if (_map.getLayer(`circle-markers-${id}`)) {
     _map.setLayoutProperty(`circle-markers-${id}`, 'visibility', vis);
     _map.setLayoutProperty(`label-markers-${id}`,  'visibility', vis);
+    if (_clusteredAreaMarkerSources.has(id)) {
+      if (_map.getLayer(`cluster-area-markers-${id}`))       _map.setLayoutProperty(`cluster-area-markers-${id}`,       'visibility', vis);
+      if (_map.getLayer(`cluster-label-area-markers-${id}`)) _map.setLayoutProperty(`cluster-label-area-markers-${id}`, 'visibility', vis);
+    }
   }
 }
 
@@ -731,6 +915,7 @@ export function getInteractiveAreaLayerIds(layers) {
     // Include circle marker layer if one was registered for this area layer
     if (_map.getLayer(`circle-markers-${l.id}`)) {
       ids.push(`circle-markers-${l.id}`);
+      if (_clusteredAreaMarkerSources.has(l.id)) ids.push(`cluster-area-markers-${l.id}`);
     }
   }
   return ids;
@@ -1055,6 +1240,14 @@ export function setPointLayerOpacity(id, opacity) {
   if (!_map.getLayer(lid)) return;
   _map.setPaintProperty(lid, 'circle-opacity',        opacity);
   _map.setPaintProperty(lid, 'circle-stroke-opacity', opacity);
+  const sid = `symbol-${id}`;
+  if (_map.getLayer(sid)) {
+    _map.setPaintProperty(sid, 'icon-opacity', opacity);
+  }
+  if (_clusteredSources.has(id)) {
+    const cid = `cluster-${id}`;
+    if (_map.getLayer(cid)) _map.setPaintProperty(cid, 'circle-opacity', opacity);
+  }
 }
 
 /**

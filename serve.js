@@ -786,7 +786,7 @@ function proxyNoaaGhcnd(reqUrl, res) {
 // Proxies GET /api/ebird?back=N → Cornell eBird API /data/obs/geo/recent.
 // Requires a free eBird API key from https://ebird.org/api/keygen
 //   Option A: EBIRD_API_KEY=your_key node serve.js
-//   Option B: create ./ebird-key.txt containing only your key
+//   Option B: add EBIRD_API_KEY=your_key to ./api-keys.txt
 // Without a key the endpoint returns { available: false } and the layer is skipped.
 
 function getEbirdApiKey() {

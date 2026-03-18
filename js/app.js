@@ -40,6 +40,7 @@ import { initMap, registerLayer, registerAreaLayer,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
+         zoomToCluster, getEffectiveClusteredCoords,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
          setLoading, setStatus, getDefaultDates,
@@ -125,7 +126,7 @@ function setLayerActive(id, visible) {
     if (visible) _activeSiteLayers.add(id);
     else         _activeSiteLayers.delete(id);
     setHeatmapVisibility('connectivity-mesh', _activeSiteLayers.size > 0);
-    updateConnectivityMesh(_corridorFeats, _waystationFeats, _hnpFeats, _activeSiteLayers);
+    refreshConnectivityMesh();
   }
 
   // Sync panel checkbox (programmatic assignment does NOT fire 'change')
@@ -152,6 +153,38 @@ let _hnpFeats        = [];
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 
 const map = initMap('map');
+
+// ── Connectivity mesh ──────────────────────────────────────────────────────────
+
+/**
+ * Converts an array of [lng, lat] coordinates into minimal GeoJSON Point features
+ * so they can be passed into updateConnectivityMesh.
+ */
+function _coordsToFeatures(coords) {
+  return coords.map(c => ({
+    type: 'Feature',
+    geometry:   { type: 'Point', coordinates: c },
+    properties: {},
+  }));
+}
+
+/**
+ * Rebuilds the connectivity mesh using the cluster-aware effective positions
+ * of waystation and HNP nodes at the current zoom level.
+ *
+ * When a layer is clustered at the current zoom, cluster centroids are used
+ * as mesh nodes (so lines connect groups, not every underlying individual).
+ * When fully expanded (zoom ≥ clusterMaxZoom), individual points are used.
+ */
+function refreshConnectivityMesh() {
+  const wsCoords  = getEffectiveClusteredCoords('waystations');
+  const hnpCoords = getEffectiveClusteredCoords('hnp');
+
+  const wsFeats  = wsCoords  ? _coordsToFeatures(wsCoords)  : _waystationFeats;
+  const hnpFeats = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
+
+  updateConnectivityMesh(_corridorFeats, wsFeats, hnpFeats, _activeSiteLayers);
+}
 
 // â”€â”€ Data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -471,8 +504,8 @@ async function loadObservations() {
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
 
-    // Heatmaps â€” update with latest habitat node data
-    updateConnectivityMesh(_corridorFeats, _waystationFeats, _hnpFeats, _activeSiteLayers);
+    // Heatmaps — update with latest habitat node data
+    refreshConnectivityMesh();
     const allSightings = [
       ...(inatResult.status === 'fulfilled' ? [
         ...(inatResult.value['pollinators']    ?? []),
@@ -566,7 +599,8 @@ map.on('load', async () => {
   registerAreaMarkersLayer(
     'gbcc-corridor', corridorCfg.defaultOn,
     corridorCfg.fillColor, corridorCfg.outlineColor,
-    'icon-hummingbird'
+    'icon-hummingbird',
+    true  // cluster corridor nodes that are close together
   );
 
   // 2. Hazard point layers â€” above polygons, below observation points
@@ -578,29 +612,29 @@ map.on('load', async () => {
   // Rendered as a large violet circle with a monarch butterfly icon overlay.
   for (const layer of WAYSTATION_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
-      radius: 14, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly-detailed',
-    });
+      radius: 14, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly-detailed', iconSize: 0.44,      cluster: true, clusterColor: '#8b5cf6',    });
   }
 
   // 2c. Homegrown National Park native planting yards â€” immediately after waystations
   for (const layer of HNP_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
-      radius: 13, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
-    });
+      radius: 13, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',      cluster: true, clusterColor: '#10b981',    });
   }
   // 2d. eBird bird sightings layer
   for (const layer of EBIRD_LAYER) {
-    registerLayer(layer.id, layer.defaultOn, { radius: 7, symbol: 'icon-crow' });
+    registerLayer(layer.id, layer.defaultOn, {
+      radius: 7, symbol: 'icon-crow', iconSize: 0.50,
+    });
   }
   // 3. GBIF observation layers â€” above hazards
   // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
   // GBIF layers — same icon per category as iNat for cross-source consistency
-  registerLayer('gbif-pollinators',       GBIF_LAYERS.find(l => l.id === 'gbif-pollinators').defaultOn,       { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-butterfly', iconSize: 0.50 });
+  registerLayer('gbif-pollinators',       GBIF_LAYERS.find(l => l.id === 'gbif-pollinators').defaultOn,       { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-butterfly', iconSize: 0.40 });
   registerLayer('gbif-native-plants',     GBIF_LAYERS.find(l => l.id === 'gbif-native-plants').defaultOn,     { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower' });
   registerLayer('gbif-non-native-plants', GBIF_LAYERS.find(l => l.id === 'gbif-non-native-plants').defaultOn, { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower-tulip' });
-  // 4. iNaturalist layers â€” topmost
+  // 4. iNaturalist layers — topmost
   // iNat layers — SVG icons per category
-  registerLayer('pollinators',    LAYERS.find(l => l.id === 'pollinators').defaultOn,    { radius: 8, symbol: 'icon-butterfly', iconSize: 0.50 });
+  registerLayer('pollinators',    LAYERS.find(l => l.id === 'pollinators').defaultOn,    { radius: 8, symbol: 'icon-butterfly', iconSize: 0.40 });
   registerLayer('native-plants',  LAYERS.find(l => l.id === 'native-plants').defaultOn,  { radius: 8, symbol: 'icon-flower' });
   registerLayer('other-plants',   LAYERS.find(l => l.id === 'other-plants').defaultOn,   { radius: 8, symbol: 'icon-flower-tulip' });
   registerLayer('other-wildlife', LAYERS.find(l => l.id === 'other-wildlife').defaultOn, { radius: 8, symbol: 'icon-deer' });
@@ -759,6 +793,9 @@ map.on('load', async () => {
 
   document.getElementById('site-drawer-close').addEventListener('click', closeDrawer);
 
+  // Recompute mesh on zoom — cluster state changes at each zoom step
+  map.on('zoomend', refreshConnectivityMesh);
+
   // Clicking empty map space clears any active alert highlight
   map.on('click', e => {
     const hits = map.queryRenderedFeatures(e.point);
@@ -793,11 +830,16 @@ map.on('load', async () => {
   });
 
   // Wire click interactions on all layers (points + polygon fills)
-  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER]);
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
   wireInteractions(
     [...areaLayerIds, ...pointLayerIds],
     (lngLat, props, feature) => {
+      // Cluster aggregate — zoom in to expand
+      if (props.cluster) {
+        zoomToCluster(feature.layer.source, props.cluster_id, feature.geometry.coordinates);
+        return;
+      }
       if (isDrawerFeature(props)) {
         openDrawer(feature ?? { properties: props, geometry: { type: 'Point', coordinates: [lngLat.lng, lngLat.lat] } });
       } else {
