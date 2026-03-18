@@ -281,23 +281,7 @@ export const NLCD_LAYERS = [
  *
  * @type {Array<{id:string,label:string,emoji:string,description:string,defaultOn:boolean,tileUrl:string,attribution:string}>}
  */
-export const RASTER_LAYERS = [
-  {
-    id:          'cdl',
-    label:       'Cropland Types (CDL 2023)',
-    emoji:       '🌾',
-    description: 'USDA NASS Cropland Data Layer — full crop-type palette for identifying habitat leverage areas',
-    defaultOn:   false,
-    tileUrl:
-      'https://nassgeodata.gmu.edu/CropScape/wms' +
-      '?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap' +
-      '&LAYERS=cdl_2023&STYLES=' +
-      '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
-      '&SRS=EPSG%3A3857&WIDTH=256&HEIGHT=256' +
-      '&BBOX={bbox-epsg-3857}',
-    attribution: '<a href="https://nassgeodata.gmu.edu/CropScape/" target="_blank">USDA NASS CDL 2023</a>',
-  },
-];
+export const RASTER_LAYERS = [];
 
 export const EBIRD_LAYER = [
   {

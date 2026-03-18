@@ -118,23 +118,23 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Habitat sites with no pollinator sightings within 500 m ──────
+  // ── Alert: Corridor sites with no pollinator sightings within 500 m ──────
   const COVERAGE_RADIUS_KM = 0.5;
-  const unsupportedSites = habitatSites.filter(site => {
+  const unsupportedSites = corridorFeatures.filter(site => {
     const siteCoord = centroid(site);
     return !pollinatorSightings.some(s =>
       distKm(siteCoord, s.geometry.coordinates) <= COVERAGE_RADIUS_KM
     );
   });
   if (unsupportedSites.length > 0) {
-    const names = unsupportedSites.map(s => s.properties.name || s.properties.registrant || 'Site').slice(0, 3);
+    const names = unsupportedSites.map(s => s.properties.name || 'Corridor site').slice(0, 3);
     alerts.push({
       level:  'info',
       icon:   'ℹ️',
       key:    'unsupported-sites',
-      text:   `${unsupportedSites.length} habitat site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
+      text:   `${unsupportedSites.length} corridor site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
       coords: unsupportedSites.map(centroid),
-      layers: ['gbcc-corridor', 'waystations', 'hnp'],
+      layers: ['gbcc-corridor'],
     });
   }
 
@@ -202,19 +202,23 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Isolated habitat — no neighbour within 2 km ───────────────────
+  // ── Alert: Isolated corridor sites — no corridor neighbour within 2 km ───
   // 2 km is the upper bound of bumble bee foraging range and the practical
-  // limit for corridor continuity. Sites with no neighbour within this radius
-  // are fully disconnected from the network.
+  // limit for corridor continuity. Only corridor sites are evaluated; waystations
+  // and HNP yards are fixed private registrations outside active management.
   const ISOLATION_KM = 2.0;
   const allHabitat = [
     ...corridorFeatures.map(f  => ({ coord: centroid(f),  name: f.properties.name || 'Corridor site',  kind: 'corridor'  })),
     ...waystationFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || f.properties.registrant || 'Waystation', kind: 'waystation' })),
     ...hnpFeatures.map(f        => ({ coord: centroid(f), name: f.properties.name || 'HNP yard',        kind: 'hnp'       })),
   ];
-  if (allHabitat.length >= 2) {
-    const isolated = allHabitat.filter(site =>
-      !allHabitat.some(other => other !== site && distKm(site.coord, other.coord) < ISOLATION_KM)
+  if (corridorFeatures.length >= 2) {
+    const corridorNodes = corridorFeatures.map(f => ({
+      coord: centroid(f),
+      name:  f.properties.name || 'Corridor site',
+    }));
+    const isolated = corridorNodes.filter(site =>
+      !corridorNodes.some(other => other !== site && distKm(site.coord, other.coord) < ISOLATION_KM)
     );
     if (isolated.length > 0) {
       const labels = isolated.slice(0, 3).map(s => s.name);
@@ -223,41 +227,39 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '🏝️',
         key:    'isolated-habitat',
-        text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat program site within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. A new waystation, HNP yard, or corridor planting within 2 km would bring this site back into the network.`,
-
+        text:   `${isolated.length} corridor site${isolated.length > 1 ? 's are' : ' is'} isolated — no other corridor site within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. A new corridor planting within 2 km would restore network continuity.`,
         coords: isolated.map(s => s.coord),
-        layers: ['gbcc-corridor', 'waystations', 'hnp'],
+        layers: ['gbcc-corridor'],
       });
     }
   }
 
-  // ── Alert: Weak Network Node — closest corridor neighbour is 700 m–2 km ──
-  // 700 m is the outer limit of the connectivity mesh (bumble bee foraging
-  // range). Sites whose nearest corridor neighbour falls in the 700 m–2 km
-  // band are reachable only by bumble bees on their longest foraging flights —
-  // small solitary bees (halictids, andrenids) cannot make the crossing.
-  // Only fires for corridor sites; waystations are fixed private properties.
-  const STRONG_KM = 0.3;  // all native bee species
-  const MESH_KM   = 0.7;  // bumble bee / large solitary bee max comfortable range
+  // ── Alert: Weak Network Nodes — closest corridor neighbour is 700 m–2 km ──
+  // Aggregated into a single alert to avoid flooding the panel.
+  const MESH_KM = 0.7;  // bumble bee / large solitary bee max comfortable range
+  const weakNodes = [];
   for (const site of corridorFeatures) {
     const siteCoord = centroid(site);
-    const siteName  = site.properties.name || 'Corridor site';
     let closestDist = Infinity;
     for (const other of corridorFeatures) {
       if (other === site) continue;
       closestDist = Math.min(closestDist, distKm(siteCoord, centroid(other)));
     }
     if (closestDist > MESH_KM && closestDist <= ISOLATION_KM) {
-      const distM = Math.round(closestDist * 1000);
-      alerts.push({
-        level:  'info',
-        icon:   '🔗',
-        key:    `weak-node-${siteName.replace(/\s+/g, '-')}`,
-        text:   `Weak signal node: "${siteName}" — nearest corridor neighbour is ${distM} m away. Beyond bumble bee comfortable foraging range (700 m); only occasional long-distance bumble bee flights bridge this gap. A new site within 700 m would restore mesh-level connectivity.`,
-        coords: [siteCoord],
-        layers: ['gbcc-corridor'],
-      });
+      weakNodes.push({ name: site.properties.name || 'Corridor site', coord: siteCoord, dist: closestDist });
     }
+  }
+  if (weakNodes.length > 0) {
+    const names = weakNodes.slice(0, 3).map(n => n.name);
+    const extra = weakNodes.length > 3 ? ` +${weakNodes.length - 3} more` : '';
+    alerts.push({
+      level:  'info',
+      icon:   '🔗',
+      key:    'weak-nodes',
+      text:   `${weakNodes.length} corridor site${weakNodes.length > 1 ? 's sit' : ' sits'} in a weak-signal zone — nearest corridor neighbour is 700 m–2 km away, beyond comfortable solitary bee foraging range: ${names.join(', ')}${extra}. A new planting within 700 m of each would restore mesh-level connectivity.`,
+      coords: weakNodes.map(n => n.coord),
+      layers: ['gbcc-corridor'],
+    });
   }
 
   // ── Alert: Corridor connectivity gap ─────────────────────────────────────

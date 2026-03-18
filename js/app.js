@@ -719,7 +719,6 @@ map.on('load', async () => {
         groupLabel: `NLCD Â· ${g}`,
         layers,
       })),
-      { groupLabel: 'Cropland Data Layer (USDA)', layers: RASTER_LAYERS },
     ],
     setLayerActive,
     document.getElementById('panel-landcover-inner'),
