@@ -1,13 +1,13 @@
-/**
- * app.js — Application entry point and orchestrator.
+﻿/**
+ * app.js â€” Application entry point and orchestrator.
  *
  * Wires together the map, iNaturalist API, and UI modules.
- * Contains no business logic — delegates entirely to the imported modules:
+ * Contains no business logic â€” delegates entirely to the imported modules:
  *
- *   map.js   — MapLibre instance, layers, popup, interactions
- *   api.js   — iNaturalist API fetching and GeoJSON conversion
- *   ui.js    — DOM panel, legend, status, popup HTML builder
- *   config.js — Layer/establishment definitions and constants
+ *   map.js   â€” MapLibre instance, layers, popup, interactions
+ *   api.js   â€” iNaturalist API fetching and GeoJSON conversion
+ *   ui.js    â€” DOM panel, legend, status, popup HTML builder
+ *   config.js â€” Layer/establishment definitions and constants
  */
 
 import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS } from './config.js';
@@ -53,10 +53,10 @@ import { initTimeline, updateTimelineBounds,
          mountTimelineDrag }                          from './timeline.js';
 import { setExportData, exportReport }                from './export.js';
 
-// ── Utility ───────────────────────────────────────────────────────────────────
+// â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Returns a debounced version of `fn` — calls are delayed by `ms` and
+ * Returns a debounced version of `fn` â€” calls are delayed by `ms` and
  * any call within the delay window resets the timer.
  */
 function debounce(fn, ms) {
@@ -79,20 +79,62 @@ function updateIntelBar({ corridorCount, waystationCount, inatCount, gbifCount, 
   document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', alertCount > 0);
 }
 
-// ── Map setup ─────────────────────────────────────────────────────────────────
+// â”€â”€ Layer visibility helpers (module-level so loadObservations can use them) â”€â”€
+
+/**
+ * IDs of all raster-backed layers â€” used to route visibility calls correctly.
+ * Computed once from the static config; safe to evaluate before map 'load'.
+ */
+const _rasterLayerIds = new Set([
+  ...RASTER_LAYERS.map(l => l.id),
+  ...NLCD_LAYERS.map(l => l.id),
+]);
+
+/**
+ * Routes a visibility change to the correct map helper based on layer type.
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+function areaOrPointVisibility(id, visible) {
+  if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
+  else if (_rasterLayerIds.has(id))       setRasterLayerVisibility(id, visible);
+  else                                    setLayerVisibility(id, visible);
+}
+
+/**
+ * Central layer-activation function.  Sets the map layer visibility AND
+ * keeps all duplicate UI controls (panel checkbox + area-legend button) in
+ * sync so neither source of truth diverges from the other.
+ *
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+function setLayerActive(id, visible) {
+  areaOrPointVisibility(id, visible);
+
+  // Sync panel checkbox (programmatic assignment does NOT fire 'change')
+  const cb = document.getElementById(`toggle-${id}`);
+  if (cb) cb.checked = visible;
+
+  // Sync area-legend button (data-layer-id attribute added by buildAreaLegend)
+  const legendBtn = document.querySelector(`[data-layer-id="${id}"]`);
+  if (legendBtn) legendBtn.classList.toggle('area-legend-row--off', !visible);
+}
+
+// â”€â”€ Map setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const map = initMap('map');
 
-// ── Data loading ──────────────────────────────────────────────────────────────
+// â”€â”€ Data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Reads the current date inputs, loads observations and area data — serving
+ * Reads the current date inputs, loads observations and area data â€” serving
  * from the browser cache when available, and fetching from APIs only when a
  * cache entry is absent or expired.
  *
  * Cache TTLs:
- *   Observation data (iNat / GBIF)        — 1 hour,  keyed by date range
- *   Static area data (PAD-US, DNR, GBCC)  — 24 hours, fixed keys
+ *   Observation data (iNat / GBIF)        â€” 1 hour,  keyed by date range
+ *   Static area data (PAD-US, DNR, GBCC)  â€” 24 hours, fixed keys
  *
  * Changing the date range produces a different cache key for observations,
  * which triggers a fresh network fetch automatically.
@@ -103,11 +145,11 @@ async function loadObservations() {
 
   setLoading(true);
   closePopup();
-  setStatus('Loading…');
+  setStatus('Loadingâ€¦');
 
   // TTL constants
-  const OBS_TTL  =      60 * 60 * 1000;  // 1 h  — re-fetch when dates change
-  const AREA_TTL = 24 * 60 * 60 * 1000;  // 24 h — area datasets change rarely
+  const OBS_TTL  =      60 * 60 * 1000;  // 1 h  â€” re-fetch when dates change
+  const AREA_TTL = 24 * 60 * 60 * 1000;  // 24 h â€” area datasets change rarely
 
   // Embed dates in observation cache keys so a date change is a natural miss.
   const obsKey = `${d1 ?? ''}:${d2 ?? ''}`;
@@ -138,7 +180,7 @@ async function loadObservations() {
       quickStatsResult, cdlFringeResult,
     ] = await Promise.allSettled([
 
-      // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
+      // â”€â”€ Observations (date-keyed, 1 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Caches the fully-processed layer partition so partitionByLayer and
       // observationsToGeoJSON are also skipped on a cache hit.
       withCache(`obs/inat/${obsKey}`, OBS_TTL, async () => {
@@ -149,7 +191,7 @@ async function loadObservations() {
         return byLayer;
       }),
 
-      // Caches the final GeoJSON features array — resolveOccurrenceEstKeys
+      // Caches the final GeoJSON features array â€” resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
       withCache(`obs/gbif-poll/${obsKey}`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifPollinators(d1, d2);
@@ -166,7 +208,7 @@ async function loadObservations() {
         };
       }),
 
-      // ── Static area data (fixed keys, 24 h TTL) ──────────────────────────
+      // â”€â”€ Static area data (fixed keys, 24 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       withCache('area/padus',          AREA_TTL, fetchPadUs),
       withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna),
       withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands),
@@ -182,7 +224,7 @@ async function loadObservations() {
     const counts = {};
     let inatObs = 0, inatTotal = 0, gbifCount = 0;
 
-    // ── iNaturalist ───────────────────────────────────────────────────────────
+    // â”€â”€ iNaturalist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (inatResult.status === 'fulfilled') {
       const byLayer = inatResult.value;
       inatTotal = byLayer._total ?? 0;
@@ -197,7 +239,7 @@ async function loadObservations() {
       for (const l of LAYERS) counts[l.id] = 0;
     }
 
-    // ── GBIF Pollinators ──────────────────────────────────────────────────────
+    // â”€â”€ GBIF Pollinators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (gbifPollResult.status === 'fulfilled') {
       const feats = gbifPollResult.value;
       setLayerFeatures('gbif-pollinators', feats);
@@ -208,7 +250,7 @@ async function loadObservations() {
       counts['gbif-pollinators'] = 0;
     }
 
-    // ── GBIF Plants (native / non-native) ─────────────────────────────────────
+    // â”€â”€ GBIF Plants (native / non-native) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (gbifPlantResult.status === 'fulfilled') {
       const { native, nonNative } = gbifPlantResult.value;
       setLayerFeatures('gbif-native-plants',     native);
@@ -222,7 +264,7 @@ async function loadObservations() {
       counts['gbif-non-native-plants'] = 0;
     }
 
-    // ── PAD-US protected areas ────────────────────────────────────────
+    // â”€â”€ PAD-US protected areas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (padusResult.status === 'fulfilled') {
       setAreaFeatures('padus', padusResult.value);
       counts['padus'] = padusResult.value.features.length;
@@ -231,7 +273,7 @@ async function loadObservations() {
       counts['padus'] = 0;
     }
 
-    // ── WI DNR State Natural Areas ────────────────────────────────────
+    // â”€â”€ WI DNR State Natural Areas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (snaResult.status === 'fulfilled') {
       setAreaFeatures('dnr-sna', snaResult.value);
       counts['dnr-sna'] = snaResult.value.features.length;
@@ -240,7 +282,7 @@ async function loadObservations() {
       counts['dnr-sna'] = 0;
     }
 
-    // ── WI DNR Managed Lands ──────────────────────────────────────────
+    // â”€â”€ WI DNR Managed Lands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (dnrResult.status === 'fulfilled') {
       setAreaFeatures('dnr-managed', dnrResult.value);
       counts['dnr-managed'] = dnrResult.value.features.length;
@@ -249,7 +291,7 @@ async function loadObservations() {
       counts['dnr-managed'] = 0;
     }
 
-    // ── GBCC Pollinator Corridor ──────────────────────────────────────
+    // â”€â”€ GBCC Pollinator Corridor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (corridorResult.status === 'fulfilled') {
       setAreaFeatures('gbcc-corridor', corridorResult.value);
       setAreaMarkersFeatures('gbcc-corridor', corridorCentroids(corridorResult.value));
@@ -259,7 +301,7 @@ async function loadObservations() {
       counts['gbcc-corridor'] = 0;
     }
 
-    // ── GBCC Habitat Treatments ───────────────────────────────────────
+    // â”€â”€ GBCC Habitat Treatments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (treatmentResult.status === 'fulfilled') {
       setAreaFeatures('gbcc-treatment', treatmentResult.value);
       counts['gbcc-treatment'] = treatmentResult.value.features.length;
@@ -268,7 +310,7 @@ async function loadObservations() {
       counts['gbcc-treatment'] = 0;
     }
 
-    // ── WI DNR PFAS Chemical Hazard Sites ────────────────────────────
+    // â”€â”€ WI DNR PFAS Chemical Hazard Sites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (pfasResult.status === 'fulfilled') {
       setLayerFeatures('dnr-pfas', pfasResult.value.features);
       counts['dnr-pfas'] = pfasResult.value.features.length;
@@ -276,7 +318,7 @@ async function loadObservations() {
       console.warn('PFAS sites failed:', pfasResult.reason);
       counts['dnr-pfas'] = 0;
     }
-    // ── Homegrown National Park native planting yards ────────────────────
+    // â”€â”€ Homegrown National Park native planting yards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (hnpResult.status === 'fulfilled') {
       setLayerFeatures('hnp', hnpResult.value.features);
       counts['hnp'] = hnpResult.value.features.length;
@@ -291,13 +333,13 @@ async function loadObservations() {
     updateCounts(counts);
 
     const capped     = inatObs < inatTotal;
-    const cacheLabel = networkFetches === 0 ? ' · cached' : '';
+    const cacheLabel = networkFetches === 0 ? ' Â· cached' : '';
     setStatus(
-      `iNat: ${inatObs.toLocaleString()} / ${inatTotal.toLocaleString()}${capped ? ' ▲' : ''}` +
-      ` · GBIF: ${gbifCount.toLocaleString()}${cacheLabel}`
+      `iNat: ${inatObs.toLocaleString()} / ${inatTotal.toLocaleString()}${capped ? ' â–²' : ''}` +
+      ` Â· GBIF: ${gbifCount.toLocaleString()}${cacheLabel}`
     );
 
-    // ── Intelligence modules ─────────────────────────────────────────────────
+    // â”€â”€ Intelligence modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     // Collect unified feature sets for cross-module consumers
     const inatFeatures = inatResult.status === 'fulfilled' ? inatResult.value : {};
@@ -352,15 +394,14 @@ async function loadObservations() {
     });
     renderAlerts(alerts, alert => {
       if (!alert.coords?.length) return;
+      // Ensure all layers relevant to this alert are visible before zooming.
+      for (const layerId of alert.layers ?? []) {
+        setLayerActive(layerId, true);
+      }
       showAlertHighlight(alert.coords, alert.level);
-      // Connectivity gap: zoom out more so neither site hides behind the panels.
-      // Other alerts with many coords (opportunity clusters) also benefit from
-      // extra left padding to clear the layer + alerts panels.
       const isGap = alert.key === 'connectivity-gap';
       fitToCoords(alert.coords, {
-        padding: isGap
-          ? { top: 80, bottom: 100, left: 540, right: 80 }
-          : { top: 80, bottom: 100, left: 540, right: 80 },
+        padding: { top: 80, bottom: 100, left: 540, right: 80 },
         maxZoom: isGap ? 12 : 15,
       });
     });
@@ -368,11 +409,11 @@ async function loadObservations() {
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
 
-    // Heatmaps — update with latest habitat node data
+    // Heatmaps â€” update with latest habitat node data
     updateCorridorProximityHeatmap(corridorFeats);
     updatePollinatorTrafficHeatmap(corridorFeats, waystationFeats, hnpFeats);
 
-    // CDL fringe — static per-load; update source data once available
+    // CDL fringe â€” static per-load; update source data once available
     if (cdlFringeResult.status === 'fulfilled' && cdlFringeResult.value) {
       updateCdlFringeHeatmap(cdlFringeResult.value);
     }
@@ -410,22 +451,22 @@ async function loadObservations() {
 
   } catch (err) {
     console.error('Failed to load:', err);
-    setStatus('Error — check console');
+    setStatus('Error â€” check console');
   } finally {
     setLoading(false);
   }
 }
 
-// ── Map ready ─────────────────────────────────────────────────────────────────
+// â”€â”€ Map ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 map.on('load', () => {
 
   // Register white vector icon sprites.
   // Must be called before registerAreaMarkersLayer and waystation registerLayer.
-  // 🌸 flower = pollinator corridor site pins  🦋 butterfly = waystation markers
+  // ðŸŒ¸ flower = pollinator corridor site pins  ðŸ¦‹ butterfly = waystation markers
   registerVectorIcons();
 
-  // 0. Raster background layers — rendered beneath all vector layers
+  // 0. Raster background layers â€” rendered beneath all vector layers
   for (const layer of RASTER_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }
@@ -433,18 +474,18 @@ map.on('load', () => {
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }
-  // 0c. Heatmap layers — registered early so they sit above rasters but below vectors
+  // 0c. Heatmap layers â€” registered early so they sit above rasters but below vectors
   registerCorridorProximityHeatmap(false);
   registerPollinatorTrafficHeatmap(false);
-  // 0d. CDL fringe heatmap — agricultural field edges near the corridor
+  // 0d. CDL fringe heatmap â€” agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
 
-  // 1. Polygon area layers FIRST — they render at the bottom of the stack
+  // 1. Polygon area layers FIRST â€” they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
     registerAreaLayer(layer.id, layer.defaultOn, layer.fillColor, layer.outlineColor);
   }
 
-  // Corridor pin markers — circle + label above the fill polygons so small
+  // Corridor pin markers â€” circle + label above the fill polygons so small
   // planting areas remain visible at any zoom level
   const corridorCfg = AREA_LAYERS.find(l => l.id === 'gbcc-corridor');
   registerAreaMarkersLayer(
@@ -453,12 +494,12 @@ map.on('load', () => {
     'icon-hummingbird'
   );
 
-  // 2. Hazard point layers — above polygons, below observation points
+  // 2. Hazard point layers â€” above polygons, below observation points
   for (const layer of HAZARD_LAYERS) {
     registerLayer(layer.id, layer.defaultOn, { radius: 7 });
   }
 
-  // 2b. Waystation static layer — above hazards
+  // 2b. Waystation static layer â€” above hazards
   // Rendered as a large violet circle with a monarch butterfly icon overlay.
   for (const layer of WAYSTATION_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
@@ -466,20 +507,20 @@ map.on('load', () => {
     });
   }
 
-  // 2c. Homegrown National Park native planting yards — immediately after waystations
+  // 2c. Homegrown National Park native planting yards â€” immediately after waystations
   for (const layer of HNP_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
       radius: 9, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
     });
   }
 
-  // 3. GBIF observation layers — above hazards
+  // 3. GBIF observation layers â€” above hazards
   // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
   for (const layer of GBIF_LAYERS) {
     registerLayer(layer.id, layer.defaultOn, { gbif: true });
   }
 
-  // 4. iNaturalist layers — topmost
+  // 4. iNaturalist layers â€” topmost
   for (const layer of LAYERS) {
     registerLayer(layer.id, layer.defaultOn);
   }
@@ -489,39 +530,31 @@ map.on('load', () => {
   // Conservation = background land protection + treatments + hazards
   const habitatAreaLayers     = AREA_LAYERS.filter(l => l.id === 'gbcc-corridor');
   const conservationLayers    = AREA_LAYERS.filter(l => l.id !== 'gbcc-corridor');
-  const rasterLayerIds = new Set([
-    ...RASTER_LAYERS.map(l => l.id),
-    ...NLCD_LAYERS.map(l => l.id),
-  ]);
-  const areaOrPointVisibility = (id, visible) => {
-    if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
-    else if (rasterLayerIds.has(id)) setRasterLayerVisibility(id, visible);
-    else setLayerVisibility(id, visible);
-  };
 
-  // ── Habitat Programs (primary section) ─────────────────────────────────────────
+
+  // â”€â”€ Habitat Programs (primary section) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buildLayerPanel(
     [
-      { groupLabel: 'Pollinator Corridor · GBCC', layers: habitatAreaLayers  },
+      { groupLabel: 'Pollinator Corridor Â· GBCC', layers: habitatAreaLayers  },
       { groupLabel: 'Monarch Watch Waystations',  layers: WAYSTATION_LAYER   },
       { groupLabel: 'Homegrown National Park',    layers: HNP_LAYER          },
     ],
-    areaOrPointVisibility,
+    setLayerActive,
     document.getElementById('panel-habitat-inner')
   );
 
-  // ── Conservation Areas & Hazards (secondary, collapsed) ──────────────────────
+  // â”€â”€ Conservation Areas & Hazards (secondary, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buildLayerPanel(
     [
       { groupLabel: 'Habitat Treatments',  layers: conservationLayers.filter(l => l.id === 'gbcc-treatment') },
       { groupLabel: 'Protected Lands',     layers: conservationLayers.filter(l => !l.id.startsWith('gbcc-')) },
       { groupLabel: 'Hazards',             layers: HAZARD_LAYERS      },
     ],
-    areaOrPointVisibility,
+    setLayerActive,
     document.getElementById('panel-areas-inner')
   );
 
-  // ── Land Cover Analysis (NLCD classes + CDL, collapsed) ──────────────────────
+  // â”€â”€ Land Cover Analysis (NLCD classes + CDL, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Group the 16 NLCD classes by their semantic group property.
   const nlcdByGroup = NLCD_LAYERS.reduce((acc, l) => {
     (acc[l.group] = acc[l.group] || []).push(l);
@@ -530,25 +563,25 @@ map.on('load', () => {
   buildLayerPanel(
     [
       ...Object.entries(nlcdByGroup).map(([g, layers]) => ({
-        groupLabel: `NLCD · ${g}`,
+        groupLabel: `NLCD Â· ${g}`,
         layers,
       })),
       { groupLabel: 'Cropland Data Layer (USDA)', layers: RASTER_LAYERS },
     ],
-    areaOrPointVisibility,
+    setLayerActive,
     document.getElementById('panel-landcover-inner')
   );
 
-  // ── Sightings (tertiary, for impact correlation, collapsed) ──────────────────
+  // â”€â”€ Sightings (tertiary, for impact correlation, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buildLayerPanel(
     [
       { groupLabel: 'iNaturalist', layers: LAYERS      },
       { groupLabel: 'GBIF',        layers: GBIF_LAYERS },
     ],
-    (id, visible) => setLayerVisibility(id, visible)
+    setLayerActive
   );
   buildEstLegend();
-  buildAreaLegend(areaOrPointVisibility);
+  buildAreaLegend(setLayerActive);
 
   // Populate date inputs with defaults
   const { from, to } = getDefaultDates();
@@ -566,7 +599,7 @@ map.on('load', () => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
 
-  // "All layers off" button — unchecks every visible toggle in the panel
+  // "All layers off" button â€” unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
     document.querySelectorAll('#panel input[type="checkbox"]:checked').forEach(cb => {
       cb.checked = false;
@@ -606,7 +639,7 @@ map.on('load', () => {
   buildFilterChips(document.getElementById('panel-filter-chips'));
   initFilters((layerId, features) => setLayerFeatures(layerId, features));
 
-  // Timeline scrubber — range goes back to earliest recorded sighting (~2009
+  // Timeline scrubber â€” range goes back to earliest recorded sighting (~2009
   // for iNaturalist; GBIF records can go further).  Default window is last 1 yr.
   initTimeline((startYear, endYear) => {
     setDatePredicate(dateStr => {
@@ -634,17 +667,17 @@ map.on('load', () => {
       const expanded = alertsToggleBtn.getAttribute('aria-expanded') === 'true';
       panel.classList.toggle('alerts-panel--collapsed', expanded);
       alertsToggleBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-      alertsToggleBtn.textContent = expanded ? '▶' : '▼';
+      alertsToggleBtn.textContent = expanded ? 'â–¶' : 'â–¼';
     });
   }
 
-  // Intel-bar alerts stat → expand and scroll the alerts panel into view
+  // Intel-bar alerts stat â†’ expand and scroll the alerts panel into view
   const openAlertsPanel = () => {
     const panel = document.getElementById('alerts-panel');
     if (panel) {
       panel.classList.remove('alerts-panel--collapsed');
       const toggle = document.getElementById('alerts-panel-toggle');
-      if (toggle) { toggle.textContent = '▼'; toggle.setAttribute('aria-expanded', 'true'); }
+      if (toggle) { toggle.textContent = 'â–¼'; toggle.setAttribute('aria-expanded', 'true'); }
       panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   };
@@ -671,3 +704,5 @@ map.on('load', () => {
   // Initial data load
   loadObservations();
 });
+
+

@@ -103,21 +103,20 @@ export function buildAreaLegend(onToggle = null) {
   const section = document.getElementById('panel-area-legend-inner');
   if (!section) return;
 
-  /** Tracks current on/off state per layer id. */
-  const state = {};
-
   /**
    * Creates one legend row as a <button> (when onToggle supplied) or a <div>.
+   * State is stored in the DOM via the `area-legend-row--off` class so that
+   * external callers (e.g. panel checkboxes, alert clicks) can sync the visual
+   * state without needing access to a private state map.
    * @param {string}  id         — logical layer id
    * @param {string}  swatchHtml — inner HTML for the colour indicator
    * @param {string}  labelText  — plain text label
    * @param {boolean} defaultOn  — initial visibility
    */
   function makeRow(id, swatchHtml, labelText, defaultOn) {
-    state[id] = defaultOn;
-
     const el = document.createElement(onToggle ? 'button' : 'div');
     el.className = `area-legend-row${defaultOn ? '' : ' area-legend-row--off'}`;
+    el.dataset.layerId = id;
     if (onToggle) {
       el.type  = 'button';
       el.title = `Toggle ${labelText}`;
@@ -134,9 +133,10 @@ export function buildAreaLegend(onToggle = null) {
 
     if (onToggle) {
       el.addEventListener('click', () => {
-        state[id] = !state[id];
-        el.classList.toggle('area-legend-row--off', !state[id]);
-        onToggle(id, state[id]);
+        // Derive current state from CSS so external updates (checkbox, alert
+        // click) are always in sync — no private state map needed.
+        const newVisible = el.classList.contains('area-legend-row--off');
+        onToggle(id, newVisible);
       });
     }
 

@@ -87,6 +87,7 @@ export function computeAlerts({
         key:    `pfas-${pfas.properties.name}`,
         text:   `PFAS site "${pfas.properties.name}" is within 1 km of ${names.join(', ')}${nearby.length > 2 ? ` +${nearby.length - 2} more` : ''}.`,
         coords: allCoords,
+        layers: ['dnr-pfas'],
       });
     }
   }
@@ -107,6 +108,7 @@ export function computeAlerts({
       key:    'unsupported-sites',
       text:   `${unsupportedSites.length} habitat site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
       coords: unsupportedSites.map(centroid),
+      layers: ['gbcc-corridor', 'waystations', 'hnp'],
     });
   }
 
@@ -140,6 +142,7 @@ export function computeAlerts({
       text:     `${opportunityClusters.length} area${opportunityClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.`,
       clusters: opportunityClusters,
       coords:   opportunityClusters.map(c => c.coord),
+      layers:   ['pollinators', 'gbif-pollinators'],
     });
   }
 
@@ -168,6 +171,7 @@ export function computeAlerts({
         key:    'site-clusters',
         text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
         coords: clusteredSiteCoords,
+        layers: ['gbcc-corridor', 'waystations'],
       });
     }
   }
@@ -194,30 +198,62 @@ export function computeAlerts({
         key:    'isolated-habitat',
         text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. Connecting these with additional plantings would strengthen corridor resilience.`,
         coords: isolated.map(s => s.coord),
+        layers: ['gbcc-corridor', 'waystations', 'hnp'],
       });
     }
   }
 
   // ── Alert: Corridor connectivity gap ─────────────────────────────────────
-  // Among corridor sites specifically, find the widest gap between any two
-  // sites that are still reasonably close (< 8 km).  A gap > 2.5 km is
-  // enough to strand many native bees whose foraging range is 0.5–3 km.
+  // Build a Minimum Spanning Tree (MST) over all corridor sites using Prim's
+  // algorithm, then report the longest edge.  The longest MST edge is the
+  // true bottleneck in the corridor network — the pair that are genuinely
+  // adjacent in the least-cost spanning graph but separated by the most
+  // distance.  The old "global max-distance pair" approach was misleading: it
+  // could flag two distant sites that each already have closer neighbours.
+  // A gap ≥ 2.5 km is enough to strand many native bees (foraging range
+  // 0.5–3 km).
   if (corridorFeatures.length >= 2) {
-    const cSites = corridorFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || 'Corridor site' }));
-    let maxGap = 0, gapPair = null;
-    for (let i = 0; i < cSites.length; i++) {
-      for (let j = i + 1; j < cSites.length; j++) {
-        const d = distKm(cSites[i].coord, cSites[j].coord);
-        if (d > maxGap && d < 8) { maxGap = d; gapPair = [cSites[i], cSites[j]]; }
+    const cSites = corridorFeatures.map(f => ({
+      coord: centroid(f),
+      name:  f.properties.name || 'Corridor site',
+    }));
+    const n = cSites.length;
+
+    // Prim's MST — O(n²), fine for the small corridor datasets in use here.
+    const inTree  = new Array(n).fill(false);
+    const edgeDist = new Array(n).fill(Infinity);
+    const edgeFrom = new Array(n).fill(0);
+    edgeDist[0] = 0;
+
+    const mstEdges = [];
+    for (let step = 0; step < n; step++) {
+      // Pick the cheapest not-yet-added node
+      let u = -1;
+      for (let i = 0; i < n; i++) {
+        if (!inTree[i] && (u === -1 || edgeDist[i] < edgeDist[u])) u = i;
+      }
+      inTree[u] = true;
+      if (step > 0) mstEdges.push({ dist: edgeDist[u], from: edgeFrom[u], to: u });
+
+      // Relax neighbours
+      for (let v = 0; v < n; v++) {
+        if (inTree[v]) continue;
+        const d = distKm(cSites[u].coord, cSites[v].coord);
+        if (d < edgeDist[v]) { edgeDist[v] = d; edgeFrom[v] = u; }
       }
     }
-    if (gapPair && maxGap >= 2.5) {
+
+    // Longest MST edge = true connectivity gap
+    const worst = mstEdges.reduce((max, e) => e.dist > max.dist ? e : max, mstEdges[0]);
+    if (worst && worst.dist >= 2.5) {
+      const a = cSites[worst.from], b = cSites[worst.to];
       alerts.push({
         level:  'info',
         icon:   '🔗',
         key:    'connectivity-gap',
-        text:   `Corridor connectivity gap: the widest inter-site distance is ${maxGap.toFixed(1)} km (between "${gapPair[0].name}" and "${gapPair[1].name}"). Most native bees forage < 2 km — a stepping-stone planting here would close the gap.`,
-        coords: [gapPair[0].coord, gapPair[1].coord],
+        text:   `Corridor connectivity gap: the largest gap in the spanning network is ${worst.dist.toFixed(1)} km (between "${a.name}" and "${b.name}"). Most native bees forage < 2 km — a stepping-stone planting here would close the gap.`,
+        coords: [a.coord, b.coord],
+        layers: ['gbcc-corridor'],
       });
     }
   }
@@ -255,6 +291,7 @@ export function computeAlerts({
         key:    'mismatch-high',
         text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
         coords: [],
+        layers: [],
       });
     } else if (beePct > 4) {
       const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
@@ -264,6 +301,7 @@ export function computeAlerts({
         key:    'mismatch-moderate',
         text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}).${colonyNote}${censusNote} Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
         coords: [],
+        layers: [],
       });
     }
   }
@@ -290,6 +328,7 @@ export function computeAlerts({
         key:    'regional-gap',
         text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered HNP yard or waystation there would begin corridor coverage.`,
         coords: [],
+        layers: ['gbcc-corridor', 'waystations', 'hnp'],
       });
     }
   }
