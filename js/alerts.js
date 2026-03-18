@@ -387,51 +387,6 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Bloom Gap — zero sightings in ≥2 consecutive months May–Sep ────
-  // Reveals phenological gaps in pollinator activity near habitat sites.
-  // Only fires when we have enough sightings data to make a meaningful statement.
-  if (pollinatorSightings.length >= 10) {
-    const MAY_IDX = 4, SEP_IDX = 8;  // 0-indexed months (May=4, Sep=8)
-    for (const site of [...corridorFeatures, ...waystationFeatures]) {
-      const siteCoord = centroid(site);
-      const siteName  = site.properties.name || site.properties.registrant || 'Site';
-      const hist      = computeMonthHistogram(siteCoord, pollinatorSightings, 0.5);
-
-      // Find consecutive zero runs within May–September
-      let gapStart = null;
-      const gapMonths = [];
-      for (let m = MAY_IDX; m <= SEP_IDX; m++) {
-        if (hist[m] === 0) {
-          if (gapStart === null) gapStart = m;
-        } else {
-          if (gapStart !== null) {
-            if (m - gapStart >= 2) {
-              // Run of ≥2 consecutive zero months
-              for (let k = gapStart; k < m; k++) gapMonths.push(MONTH_NAMES[k]);
-            }
-            gapStart = null;
-          }
-        }
-      }
-      // Handle run extending to end of window
-      if (gapStart !== null && (SEP_IDX + 1 - gapStart) >= 2) {
-        for (let k = gapStart; k <= SEP_IDX; k++) gapMonths.push(MONTH_NAMES[k]);
-      }
-
-      if (gapMonths.length >= 2) {
-        const gapStr = gapMonths.join(', ');
-        alerts.push({
-          level:  'warn',
-          icon:   '🌸',
-          key:    `bloom-gap-${siteName.replace(/\s+/g, '-')}`,
-          text:   `Bloom gap at "${siteName}": no recorded pollinator activity in ${gapStr}. Consider adding plants that bloom during these months to close the seasonal gap.`,
-          coords: [siteCoord],
-          layers: ['gbcc-corridor', 'waystations'],
-        });
-      }
-    }
-  }
-
   return alerts;
 }
 

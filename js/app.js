@@ -116,6 +116,11 @@ function areaOrPointVisibility(id, visible) {
 function setLayerActive(id, visible) {
   areaOrPointVisibility(id, visible);
 
+  // Connectivity mesh follows the corridor layer
+  if (id === 'gbcc-corridor') {
+    setHeatmapVisibility('connectivity-mesh', visible);
+  }
+
   // Sync panel checkbox (programmatic assignment does NOT fire 'change')
   const cb = document.getElementById(`toggle-${id}`);
   if (cb) cb.checked = visible;
@@ -496,8 +501,9 @@ map.on('load', () => {
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }
-  // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers
-  registerConnectivityMesh(false);
+  // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers.
+  // Visibility matches the corridor layer's defaultOn; no separate toggle.
+  registerConnectivityMesh(true);
   registerPollinatorTrafficHeatmap(false);
   // 0d. CDL fringe heatmap â€” agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
@@ -621,10 +627,7 @@ map.on('load', () => {
   document.getElementById('date-from').value = from;
   document.getElementById('date-to').value   = to;
 
-  // Connectivity mesh toggle wiring
-  document.getElementById('toggle-connectivity-mesh')?.addEventListener('change', e => {
-    setHeatmapVisibility('connectivity-mesh', e.target.checked);
-  });
+  // Connectivity mesh follows corridor — no standalone toggle needed.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
   });

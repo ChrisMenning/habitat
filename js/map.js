@@ -73,81 +73,93 @@ export function registerVectorIcons() {
 
     // Flower — used on Pollinator Corridor place markers
     'icon-hummingbird': ctx => {
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
       const cx = s * 0.5, cy = s * 0.5;
-      // 4 rounded petals
-      ctx.beginPath(); ctx.ellipse(cx,        cy - s*0.23, s*0.14, s*0.23, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx,        cy + s*0.23, s*0.14, s*0.23, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx - s*0.23, cy,        s*0.23, s*0.14, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx + s*0.23, cy,        s*0.23, s*0.14, 0, 0, 2*Math.PI); ctx.fill();
-      // Centre circle
-      ctx.beginPath(); ctx.arc(cx, cy, s * 0.14, 0, 2 * Math.PI); ctx.fill();
+      // Shadow pass (dark halo for legibility)
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur  = 8;
+      ctx.fillStyle   = 'rgba(255,255,255,1)';
+      // 4 rounded petals — wider so shape reads clearly
+      ctx.beginPath(); ctx.ellipse(cx,          cy - s*0.24, s*0.16, s*0.25, 0, 0, 2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx,          cy + s*0.24, s*0.16, s*0.25, 0, 0, 2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx - s*0.24, cy,          s*0.25, s*0.16, 0, 0, 2*Math.PI); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx + s*0.24, cy,          s*0.25, s*0.16, 0, 0, 2*Math.PI); ctx.fill();
+      // Centre circle — amber to distinguish from petals
+      ctx.shadowBlur  = 4;
+      ctx.fillStyle   = '#fbbf24';
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.16, 0, 2 * Math.PI); ctx.fill();
+      ctx.shadowColor = 'transparent';
     },
 
     // Leaf — used on Homegrown National Park native planting yard markers
     'icon-park': ctx => {
-      ctx.fillStyle   = 'rgba(255,255,255,0.95)';
       const cx = s * 0.5, cy = s * 0.5;
-      // Leaf body: rotated ellipse (pointing upper-right)
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur  = 8;
+      ctx.fillStyle   = 'rgba(255,255,255,1)';
+      // Leaf body: bold rotated ellipse
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(-Math.PI / 4);
       ctx.beginPath();
-      ctx.ellipse(0, 0, s * 0.16, s * 0.34, 0, 0, 2 * Math.PI);
+      ctx.ellipse(0, 0, s * 0.18, s * 0.36, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.restore();
-      // Stem: short diagonal line from center toward lower-left
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.lineWidth   = s * 0.08;
-      ctx.lineCap     = 'round';
+      // Stem
+      ctx.shadowBlur    = 4;
+      ctx.strokeStyle   = 'rgba(255,255,255,1)';
+      ctx.lineWidth     = s * 0.10;
+      ctx.lineCap       = 'round';
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.lineTo(cx - s * 0.18, cy + s * 0.24);
+      ctx.lineTo(cx - s * 0.20, cy + s * 0.26);
       ctx.stroke();
-      // Center vein: thin line along leaf axis
-      ctx.lineWidth = s * 0.04;
-      ctx.strokeStyle = 'rgba(16,185,129,0.5)';
+      // Vein
+      ctx.lineWidth     = s * 0.05;
+      ctx.strokeStyle   = 'rgba(52,211,153,0.9)';
+      ctx.shadowColor   = 'transparent';
       ctx.beginPath();
-      ctx.moveTo(cx - s * 0.22, cy + s * 0.22);
-      ctx.lineTo(cx + s * 0.22, cy - s * 0.22);
+      ctx.moveTo(cx - s * 0.24, cy + s * 0.24);
+      ctx.lineTo(cx + s * 0.24, cy - s * 0.24);
       ctx.stroke();
     },
 
     // Butterfly — used on Monarch Watch Waystation markers
     'icon-butterfly': ctx => {
-      ctx.fillStyle   = 'rgba(255,255,255,0.95)';
       const cx = s * 0.5, cy = s * 0.47;
-      // Upper left wing
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur  = 8;
+      ctx.fillStyle   = 'rgba(255,255,255,1)';
+      // Upper wings — bolder bezier
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.quadraticCurveTo(cx - s*0.38, cy - s*0.34, cx - s*0.42, cy + s*0.06);
-      ctx.quadraticCurveTo(cx - s*0.14, cy + s*0.02, cx, cy + s*0.1);
+      ctx.quadraticCurveTo(cx - s*0.40, cy - s*0.36, cx - s*0.44, cy + s*0.07);
+      ctx.quadraticCurveTo(cx - s*0.15, cy + s*0.03, cx, cy + s*0.12);
       ctx.closePath(); ctx.fill();
-      // Upper right wing
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.quadraticCurveTo(cx + s*0.38, cy - s*0.34, cx + s*0.42, cy + s*0.06);
-      ctx.quadraticCurveTo(cx + s*0.14, cy + s*0.02, cx, cy + s*0.1);
+      ctx.quadraticCurveTo(cx + s*0.40, cy - s*0.36, cx + s*0.44, cy + s*0.07);
+      ctx.quadraticCurveTo(cx + s*0.15, cy + s*0.03, cx, cy + s*0.12);
       ctx.closePath(); ctx.fill();
-      // Lower left wing
+      // Lower wings
+      ctx.shadowBlur = 4;
       ctx.beginPath();
-      ctx.moveTo(cx, cy + s*0.1);
-      ctx.quadraticCurveTo(cx - s*0.26, cy + s*0.32, cx - s*0.18, cy + s*0.43);
-      ctx.quadraticCurveTo(cx - s*0.06, cy + s*0.20, cx, cy + s*0.04);
+      ctx.moveTo(cx, cy + s*0.12);
+      ctx.quadraticCurveTo(cx - s*0.28, cy + s*0.34, cx - s*0.20, cy + s*0.46);
+      ctx.quadraticCurveTo(cx - s*0.07, cy + s*0.22, cx, cy + s*0.05);
       ctx.closePath(); ctx.fill();
-      // Lower right wing
       ctx.beginPath();
-      ctx.moveTo(cx, cy + s*0.1);
-      ctx.quadraticCurveTo(cx + s*0.26, cy + s*0.32, cx + s*0.18, cy + s*0.43);
-      ctx.quadraticCurveTo(cx + s*0.06, cy + s*0.20, cx, cy + s*0.04);
+      ctx.moveTo(cx, cy + s*0.12);
+      ctx.quadraticCurveTo(cx + s*0.28, cy + s*0.34, cx + s*0.20, cy + s*0.46);
+      ctx.quadraticCurveTo(cx + s*0.07, cy + s*0.22, cx, cy + s*0.05);
       ctx.closePath(); ctx.fill();
       // Body
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      ctx.lineWidth   = s * 0.09;
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = 'rgba(255,255,255,1)';
+      ctx.lineWidth   = s * 0.10;
       ctx.lineCap     = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx, s * 0.17);
-      ctx.lineTo(cx, s * 0.82);
+      ctx.moveTo(cx, s * 0.16);
+      ctx.lineTo(cx, s * 0.84);
       ctx.stroke();
     },
   };
@@ -487,8 +499,9 @@ export function registerConnectivityMesh(visible) {
     },
     paint: {
       'line-color':   '#39ff14',
-      'line-width':   ['interpolate', ['linear'], ['get', 'distance_m'], 0, 4, 700, 1],
-      'line-opacity': ['interpolate', ['linear'], ['get', 'distance_m'], 0, 1.0, 700, 0.1],
+      'line-width':   ['interpolate', ['linear'], ['get', 'distance_m'],   0, 7,  700, 2],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'distance_m'],   0, 0.9, 700, 0.35],
+      'line-blur':    0,
     },
   });
 }

@@ -147,20 +147,17 @@ export function updateTimelineBounds(allSightings) {
   const changed = min !== _minYear || max !== _maxYear;
   _minYear = min;
   _maxYear = max;
-  // Expand the range bounds but keep the user's current handles locked
-  // to "last 1 year" unless they've already been dragged.
+  // Clamp handles inside the new data bounds; if they collapse to the same
+  // value (common when the data's max year is less than the app's init year),
+  // open a 1-year window anchored at the data maximum so the scrubber is
+  // immediately useful rather than frozen at a zero-width position.
   if (changed) {
-    // Preserve a "last year" default if handles are still at init positions
-    if (_startYear === _endYear - 1 && _endYear === _maxYear) {
-      // handles already reflect "last 1 year" — just update min bound
-    } else if (_startYear <= _minYear && _endYear >= _maxYear) {
-      // handles were at full extent — reset to last 1 year
-      _startYear = _maxYear - 1;
+    _endYear   = Math.min(_endYear,   _maxYear);
+    _startYear = Math.max(_startYear, _minYear);
+    if (_startYear >= _endYear) {
       _endYear   = _maxYear;
+      _startYear = Math.max(_minYear, _maxYear - 1);
     }
-    // Clamp handles to new valid range
-    _startYear = Math.max(_minYear, _startYear);
-    _endYear   = Math.min(_maxYear, _endYear);
     _render();
     _onRange?.(_startYear, _endYear, _activeMonths);
   }
