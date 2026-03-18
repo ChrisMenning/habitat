@@ -264,16 +264,7 @@ async function loadObservations() {
       counts['gbif-non-native-plants'] = 0;
     }
 
-    // Bumble Bee Watch
-    if (bbwResult.status === 'fulfilled') {
-      const feats = bbwResult.value;
-      setLayerFeatures('bbw-pollinators', feats);
-      counts['bbw-pollinators'] = feats.length;
-      gbifCount += feats.length;
-    } else {
-      console.warn('Bumble Bee Watch failed:', bbwResult.reason);
-      counts['bbw-pollinators'] = 0;
-    }
+
 
     // â”€â”€ PAD-US protected areas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (padusResult.status === 'fulfilled') {
