@@ -355,7 +355,7 @@ export const ESTABLISHMENT = {
  * @type {import('maplibre-gl').ExpressionSpecification}
  */
 export const FILL_COLOR_EXPR = [
-  'match', ['get', 'layer_id'],
+  'match', ['coalesce', ['get', 'layer_id'], ''],
   // iNaturalist sighting layers
   'pollinators',      '#38bdf8',  // sky-blue  (butterflies/bees — distinct from orange corridor)
   'native-plants',    '#4ade80',  // green-400 (native = welcome)
