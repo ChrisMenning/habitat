@@ -61,120 +61,96 @@ export function initMap(containerId) {
  * Must be called inside (or after) the map 'load' event, before any
  * registerLayer / registerAreaMarkersLayer call that references these ids.
  *
- * Canvas is 64 × 64 px at pixelRatio 2 → 32 px logical.
- * At icon-size 0.7 the icon renders at ~22 px — sized to fill the 20–22 px
- * diameter circles used for corridor pins and waystation markers.
+ * Each SVG file from /svg/ is loaded, re-colored white, and registered with a
+ * dark drop-shadow so icons stay legible over any colored circle background.
+ *
+ * Icon IDs registered:
+ *   icon-hummingbird         – Pollinator Corridor site pins (biggest)
+ *   icon-butterfly-detailed  – Monarch Waystation markers
+ *   icon-park                – Homegrown National Park yard markers
+ *   icon-biohazard           – PFAS chemical hazard sites
+ *   icon-butterfly           – Pollinator sightings (iNat + GBIF)
+ *   icon-flower              – Native plant sightings (iNat + GBIF)
+ *   icon-flower-tulip        – Non-native plant sightings (iNat + GBIF)
+ *   icon-crow                – eBird bird sightings
+ *   icon-deer                – Other wildlife sightings
+ *
+ * @returns {Promise<void>}
  */
-export function registerVectorIcons() {
+export async function registerSvgIcons() {
   const SIZE = 64;
-  const s    = SIZE;
+  const ICON_MAP = [
+    ['icon-hummingbird',        'hummingbird'],
+    ['icon-butterfly-detailed', 'butterfly-with-detailed-wings'],
+    ['icon-park',               'park'],
+    ['icon-biohazard',          'biohazard'],
+    ['icon-butterfly',          'butterfly'],
+    ['icon-flower',             'flower'],
+    ['icon-flower-tulip',       'flower-tulip'],
+    ['icon-crow',               'crow-solid-full'],
+    ['icon-deer',               'deer'],
+  ];
 
-  const icons = {
+  await Promise.all(ICON_MAP.map(async ([id, filename]) => {
+    if (_map.hasImage(id)) return;
+    try {
+      const text   = await (await fetch(`/svg/${filename}.svg`)).text();
+      const parser = new DOMParser();
+      const doc    = parser.parseFromString(text, 'image/svg+xml');
+      const svgEl  = doc.documentElement;
 
-    // Flower — used on Pollinator Corridor place markers
-    'icon-hummingbird': ctx => {
-      const cx = s * 0.5, cy = s * 0.5;
-      // Shadow pass (dark halo for legibility)
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur  = 8;
-      ctx.fillStyle   = 'rgba(255,255,255,1)';
-      // 4 rounded petals — wider so shape reads clearly
-      ctx.beginPath(); ctx.ellipse(cx,          cy - s*0.24, s*0.16, s*0.25, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx,          cy + s*0.24, s*0.16, s*0.25, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx - s*0.24, cy,          s*0.25, s*0.16, 0, 0, 2*Math.PI); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(cx + s*0.24, cy,          s*0.25, s*0.16, 0, 0, 2*Math.PI); ctx.fill();
-      // Centre circle — amber to distinguish from petals
-      ctx.shadowBlur  = 4;
-      ctx.fillStyle   = '#fbbf24';
-      ctx.beginPath(); ctx.arc(cx, cy, s * 0.16, 0, 2 * Math.PI); ctx.fill();
-      ctx.shadowColor = 'transparent';
-    },
+      // Ensure explicit pixel size — required for drawImage to have a known target
+      svgEl.setAttribute('width',  String(SIZE));
+      svgEl.setAttribute('height', String(SIZE));
 
-    // Leaf — used on Homegrown National Park native planting yard markers
-    'icon-park': ctx => {
-      const cx = s * 0.5, cy = s * 0.5;
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur  = 8;
-      ctx.fillStyle   = 'rgba(255,255,255,1)';
-      // Leaf body: bold rotated ellipse
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(-Math.PI / 4);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, s * 0.18, s * 0.36, 0, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.restore();
-      // Stem
-      ctx.shadowBlur    = 4;
-      ctx.strokeStyle   = 'rgba(255,255,255,1)';
-      ctx.lineWidth     = s * 0.10;
-      ctx.lineCap       = 'round';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx - s * 0.20, cy + s * 0.26);
-      ctx.stroke();
-      // Vein
-      ctx.lineWidth     = s * 0.05;
-      ctx.strokeStyle   = 'rgba(52,211,153,0.9)';
-      ctx.shadowColor   = 'transparent';
-      ctx.beginPath();
-      ctx.moveTo(cx - s * 0.24, cy + s * 0.24);
-      ctx.lineTo(cx + s * 0.24, cy - s * 0.24);
-      ctx.stroke();
-    },
+      // Force everything white — handle all three ways SVGs can specify color:
+      // 1. <style> blocks with CSS classes (e.g. .st0{fill:#000000})
+      doc.querySelectorAll('style').forEach(el => el.remove());
+      // 2. inline style="fill:#000000" attributes
+      doc.querySelectorAll('[style]').forEach(el => {
+        el.style.fill = 'white';
+        if (el.style.stroke && el.style.stroke !== 'none') el.style.stroke = 'white';
+      });
+      // 3. explicit fill/stroke attributes
+      svgEl.setAttribute('fill', 'white');
+      doc.querySelectorAll('[fill]').forEach(el => {
+        if (el.getAttribute('fill') !== 'none') el.setAttribute('fill', 'white');
+      });
+      doc.querySelectorAll('[stroke]').forEach(el => {
+        if (el.getAttribute('stroke') !== 'none') el.setAttribute('stroke', 'white');
+      });
 
-    // Butterfly — used on Monarch Watch Waystation markers
-    'icon-butterfly': ctx => {
-      const cx = s * 0.5, cy = s * 0.47;
-      ctx.shadowColor = 'rgba(0,0,0,0.85)';
-      ctx.shadowBlur  = 8;
-      ctx.fillStyle   = 'rgba(255,255,255,1)';
-      // Upper wings — bolder bezier
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.quadraticCurveTo(cx - s*0.40, cy - s*0.36, cx - s*0.44, cy + s*0.07);
-      ctx.quadraticCurveTo(cx - s*0.15, cy + s*0.03, cx, cy + s*0.12);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.quadraticCurveTo(cx + s*0.40, cy - s*0.36, cx + s*0.44, cy + s*0.07);
-      ctx.quadraticCurveTo(cx + s*0.15, cy + s*0.03, cx, cy + s*0.12);
-      ctx.closePath(); ctx.fill();
-      // Lower wings
-      ctx.shadowBlur = 4;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + s*0.12);
-      ctx.quadraticCurveTo(cx - s*0.28, cy + s*0.34, cx - s*0.20, cy + s*0.46);
-      ctx.quadraticCurveTo(cx - s*0.07, cy + s*0.22, cx, cy + s*0.05);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + s*0.12);
-      ctx.quadraticCurveTo(cx + s*0.28, cy + s*0.34, cx + s*0.20, cy + s*0.46);
-      ctx.quadraticCurveTo(cx + s*0.07, cy + s*0.22, cx, cy + s*0.05);
-      ctx.closePath(); ctx.fill();
-      // Body
-      ctx.shadowColor = 'transparent';
-      ctx.strokeStyle = 'rgba(255,255,255,1)';
-      ctx.lineWidth   = s * 0.10;
-      ctx.lineCap     = 'round';
-      ctx.beginPath();
-      ctx.moveTo(cx, s * 0.16);
-      ctx.lineTo(cx, s * 0.84);
-      ctx.stroke();
-    },
-  };
+      // Use a Blob URL so the browser renders the SVG path geometry into a
+      // canvas via drawImage.  map.loadImage() is NOT used — it explicitly
+      // rejects SVG MIME types.  We then extract ImageData (not the canvas
+      // element) because addImage requires a concrete pixel buffer.
+      const blob = new Blob(
+        [new XMLSerializer().serializeToString(doc)],
+        { type: 'image/svg+xml' }
+      );
+      const url = URL.createObjectURL(blob);
 
-  for (const [id, drawFn] of Object.entries(icons)) {
-    const canvas  = document.createElement('canvas');
-    canvas.width  = SIZE;
-    canvas.height = SIZE;
-    const ctx = canvas.getContext('2d');
-    drawFn(ctx);
-    const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
-    if (!_map.hasImage(id)) {
-      _map.addImage(id, imgData, { pixelRatio: 2 });
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = SIZE;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, SIZE, SIZE);
+          URL.revokeObjectURL(url);
+          // getImageData returns a concrete ImageData with explicit width/height/data
+          // — this is what addImage requires; passing canvas itself is unreliable.
+          const imageData = ctx.getImageData(0, 0, SIZE, SIZE);
+          if (!_map.hasImage(id)) _map.addImage(id, imageData, { pixelRatio: 2 });
+          resolve();
+        };
+        img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+        img.src = url;
+      });
+    } catch (err) {
+      console.warn(`registerSvgIcons: failed to load ${filename}.svg —`, err);
     }
-  }
+  }));
 }
 
 // ── Layer management ──────────────────────────────────────────────────────────
@@ -198,6 +174,7 @@ export function registerVectorIcons() {
  * @property {number|null} [strokeWidth]   Stroke width in px — overrides the type default.
  * @property {number|null} [opacity]       Fill opacity — overrides the type default.
  * @property {string|null} [symbol]        Unicode character rendered as a centred symbol overlay.
+ * @property {number|null} [iconSize]       Icon size multiplier — overrides the default 0.55.
  */
 
 export function registerLayer(id, visible, {
@@ -206,6 +183,7 @@ export function registerLayer(id, visible, {
   strokeWidth = null,
   opacity     = null,
   symbol      = null,
+  iconSize    = null,
 } = {}) {
   _map.addSource(id, {
     type: 'geojson',
@@ -234,8 +212,7 @@ export function registerLayer(id, visible, {
     },
   });
 
-  // Optional emoji icon overlaid on the circle.
-  // Registered via registerEmojiImages() before layer creation.
+  // SVG icon overlaid on the circle — always shown regardless of density.
   if (symbol) {
     _map.addLayer({
       id:     `symbol-${id}`,
@@ -244,7 +221,7 @@ export function registerLayer(id, visible, {
       layout: {
         visibility:              visible ? 'visible' : 'none',
         'icon-image':            symbol,
-        'icon-size':             0.7,
+        'icon-size':             iconSize ?? 0.55,
         'icon-allow-overlap':    true,
         'icon-ignore-placement': true,
       },
@@ -360,11 +337,11 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
     source: `area-markers-${id}`,
     layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
-      'circle-radius':       10,
+      'circle-radius':       12,
       'circle-color':        color,
       'circle-opacity':      0.95,
       'circle-stroke-color': outlineColor,
-      'circle-stroke-width': 2,
+      'circle-stroke-width': 2.5,
     },
   });
 
@@ -376,16 +353,20 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
       visibility:    visible ? 'visible' : 'none',
       ...(icon ? {
         'icon-image':            icon,
-        'icon-size':             0.7,
+        'icon-size':             0.75,
         'icon-allow-overlap':    true,
         'icon-ignore-placement': true,
         'icon-offset':           [0, 0],
       } : {}),
-      'text-field':  ['get', 'name'],
-      'text-font':   ['Noto Sans Regular'],
-      'text-size':   11,
-      'text-offset': [0, icon ? 1.5 : 1.3],
-      'text-anchor': 'top',
+      'text-field':            ['get', 'name'],
+      'text-font':             ['Noto Sans Regular'],
+      'text-size':             11,
+      'text-offset':           [0, icon ? 1.6 : 1.3],
+      'text-anchor':           'top',
+      // Allow text to overlap so it never pulls down the icon with it
+      'text-allow-overlap':    true,
+      'text-ignore-placement': true,
+      'text-optional':         true,
     },
     paint: {
       'text-color':      '#78350f',
@@ -466,58 +447,109 @@ export function setRasterLayerVisibility(id, visible) {
 // ── Heatmap layers ────────────────────────────────────────────────────────────
 
 /**
- * Connectivity Mesh — foraging-range science encoded directly into visual design.
+ * Connectivity Mesh — lines connect habitat nodes within 2 km.
  *
- * Classification thresholds (drive alert logic, not visual encoding):
- *   Strong connection:  ≤ 300 m — within foraging range of nearly all native
- *                       bee species including small solitary bees.
- *   Weak connection:  301–700 m — within foraging range of bumble bees and
- *                       larger solitary bees, but not smaller species.
- *   Isolated:          no neighbour within 700 m — ecologically disconnected.
+ * Lines are colored by the node types they connect:
+ *   same-type    — the type’s own color
+ *   cross-type   — a blended midpoint between the two type colors
+ *   corridor: #f59e0b (amber)  waystation: #8b5cf6 (violet)  hnp: #10b981 (emerald)
  *
- * Each LineString feature carries a `distance_m` property. Line width and
- * opacity are interpolated by MapLibre using that value:
- *   width:   4 px at 0 m → 1 px at 700 m
- *   opacity: 1.0 at 0 m → 0.1 at 700 m
- *   color:   solid #39ff14 (lime green) — strength communicated by width/opacity.
+ * Distance quality is shown through two visual channels:
+ *   optimal  ≤300 m  — solid, thick (4px), full opacity  → clearly healthy
+ *   fair   300–700 m — solid, medium (2.5px), reduced opacity
+ *   weak  700–2000 m — dashed (rendered by a second layer), thin, low opacity → clearly problematic
+ *
+ * Two MapLibre layers share one GeoJSON source because line-dasharray is not
+ * data-driven; the solid layer filters out weak lines, the dash layer shows only weak.
  *
  * @param {boolean} visible
  */
 export function registerConnectivityMesh(visible) {
+  // Two separate GeoJSON sources — one for solid lines (optimal+fair), one for
+  // dashed weak lines.  Using two sources avoids filter: expressions in the
+  // layers entirely, which sidesteps MapLibre tile-worker type-checking errors
+  // that fire when filter expressions are evaluated against features mid-load.
   _map.addSource('connectivity-mesh', {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   });
+  _map.addSource('connectivity-mesh-weak', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  // Color lookup by pair_type (same-type or cross-type blend)
+  const pairColorExpr = [
+    'match', ['coalesce', ['get', 'pair_type'], 'unknown'],
+    'corridor-corridor',     '#f59e0b',  // amber
+    'waystation-waystation', '#8b5cf6',  // violet
+    'hnp-hnp',               '#10b981',  // emerald
+    'corridor-waystation',   '#c07ad6',  // blend amber+violet → mauve
+    'waystation-corridor',   '#c07ad6',
+    'corridor-hnp',          '#84be6e',  // blend amber+emerald → sage
+    'hnp-corridor',          '#84be6e',
+    'waystation-hnp',        '#4db6b8',  // blend violet+emerald → teal
+    'hnp-waystation',        '#4db6b8',
+    /* fallback */ '#aaaaaa',
+  ];
+
+  // Layer 1: solid lines — optimal (4 px, 90%) and fair (2.5 px, 65%)
   _map.addLayer({
     id:     'connectivity-mesh-layer',
     type:   'line',
     source: 'connectivity-mesh',
     layout: {
-      visibility:    visible ? 'visible' : 'none',
-      'line-cap':    'round',
-      'line-join':   'round',
+      visibility: visible ? 'visible' : 'none',
+      'line-cap': 'round',
+      'line-join': 'round',
     },
     paint: {
-      'line-color':   '#39ff14',
-      'line-width':   ['interpolate', ['linear'], ['get', 'distance_m'],   0, 7,  700, 2],
-      'line-opacity': ['interpolate', ['linear'], ['get', 'distance_m'],   0, 0.9, 700, 0.35],
+      'line-color':   pairColorExpr,
+      'line-width':   ['match', ['coalesce', ['get', 'distance_tier'], 'fair'], 'optimal', 4, 2.5],
+      'line-opacity': ['match', ['coalesce', ['get', 'distance_tier'], 'fair'], 'optimal', 0.90, 0.65],
       'line-blur':    0,
+    },
+  });
+
+  // Layer 2: dashed lines — weak (700 m–2 km), problematic connections
+  _map.addLayer({
+    id:     'connectivity-mesh-weak-layer',
+    type:   'line',
+    source: 'connectivity-mesh-weak',
+    layout: {
+      visibility: visible ? 'visible' : 'none',
+      'line-cap': 'butt',
+      'line-join': 'round',
+    },
+    paint: {
+      'line-dasharray': [4, 5],
+      'line-color':     pairColorExpr,
+      'line-width':     1.5,
+      'line-opacity':   0.40,
+      'line-blur':      0,
     },
   });
 }
 
 /**
- * Update the connectivity mesh with current corridor feature data.
- * Draws LineString features only between pairs within 700 m (ecologically
- * connected range for most native bee species).
+ * Update the connectivity mesh from all active site-layer types.
+ * Draws lines between any pair of nodes whose distance is ≤ 2 km.
+ * Lines are classified into tiers stored on the feature:
+ *   optimal  ≤ 300 m  — all native bee species
+ *   fair   300–700 m  — bumble bees and large solitary bees
+ *   weak  700–2000 m  — weak but ecologically relevant; shown dashed
  *
  * @param {GeoJSON.Feature[]} corridorFeatures
+ * @param {GeoJSON.Feature[]} waystationFeatures
+ * @param {GeoJSON.Feature[]} hnpFeatures
+ * @param {Set<string>}       activeLayers  — which of the 3 types to include
  */
-export function updateConnectivityMesh(corridorFeatures) {
-  const source = _map.getSource('connectivity-mesh');
-  if (!source) return;
+export function updateConnectivityMesh(corridorFeatures, waystationFeatures, hnpFeatures, activeLayers) {
+  const solidSrc = _map.getSource('connectivity-mesh');
+  const weakSrc  = _map.getSource('connectivity-mesh-weak');
+  if (!solidSrc || !weakSrc) return;
 
-  const MAX_DIST_KM = 0.7;
+  const MAX_DIST_KM = 2.0;
 
   function distKm(a, b) {
     const R = 6371;
@@ -534,23 +566,40 @@ export function updateConnectivityMesh(corridorFeatures) {
     return [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length];
   }
 
-  const coords   = corridorFeatures.map(toCoord);
-  const features = [];
+  // Assemble nodes only from active site layers, tagged with their type
+  const nodes = [];
+  if (activeLayers.has('gbcc-corridor')) {
+    for (const f of corridorFeatures)   nodes.push({ coord: toCoord(f), type: 'corridor' });
+  }
+  if (activeLayers.has('waystations')) {
+    for (const f of waystationFeatures) nodes.push({ coord: toCoord(f), type: 'waystation' });
+  }
+  if (activeLayers.has('hnp')) {
+    for (const f of hnpFeatures)        nodes.push({ coord: toCoord(f), type: 'hnp' });
+  }
 
-  for (let i = 0; i < coords.length; i++) {
-    for (let j = i + 1; j < coords.length; j++) {
-      const d = distKm(coords[i], coords[j]);
+  const solid = [];
+  const weak  = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const d = distKm(nodes[i].coord, nodes[j].coord);
       if (d <= MAX_DIST_KM) {
-        features.push({
+        const tier      = d <= 0.3 ? 'optimal' : d <= 0.7 ? 'fair' : 'weak';
+        const pairType  = nodes[i].type === nodes[j].type
+          ? `${nodes[i].type}-${nodes[i].type}`
+          : `${nodes[i].type}-${nodes[j].type}`;
+        const feat = {
           type:       'Feature',
-          geometry:   { type: 'LineString', coordinates: [coords[i], coords[j]] },
-          properties: { distance_m: +(d * 1000).toFixed(1) },
-        });
+          geometry:   { type: 'LineString', coordinates: [nodes[i].coord, nodes[j].coord] },
+          properties: { distance_m: +(d * 1000).toFixed(1), distance_tier: tier, pair_type: pairType },
+        };
+        (tier === 'weak' ? weak : solid).push(feat);
       }
     }
   }
 
-  source.setData({ type: 'FeatureCollection', features });
+  solidSrc.setData({ type: 'FeatureCollection', features: solid });
+  weakSrc.setData({ type: 'FeatureCollection', features: weak });
 }
 
 /**
@@ -589,37 +638,37 @@ export function registerPollinatorTrafficHeatmap(visible) {
 }
 
 /**
- * Update the pollinator traffic heatmap with all three habitat node types.
+ * Update the Pollinator Activity Heat Map from all sighting features
+ * (iNat + GBIF + eBird combined).
  *
- * @param {GeoJSON.Feature[]} corridorFeatures
- * @param {GeoJSON.Feature[]} waystationFeatures
- * @param {GeoJSON.Feature[]} hnpFeatures
+ * @param {GeoJSON.Feature[]} sightingFeatures  — all pollinator observation features
  */
-export function updatePollinatorTrafficHeatmap(corridorFeatures, waystationFeatures, hnpFeatures) {
+export function updatePollinatorTrafficHeatmap(sightingFeatures) {
   const source = _map.getSource('pollinator-traffic-heat');
   if (!source) return;
 
-  function toPoint(f) {
-    const g = f.geometry;
-    if (g.type === 'Point') return g.coordinates;
-    const ring = g.coordinates[0];
-    return [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length];
-  }
-
-  const features = [
-    ...corridorFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 1.5 } })),
-    ...waystationFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 1.2 } })),
-    ...hnpFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 0.9 } })),
-  ];
+  const features = sightingFeatures
+    .filter(f => f?.geometry)
+    .map(f => {
+      const g = f.geometry;
+      const coords = g.type === 'Point' ? g.coordinates : (() => {
+        const ring = g.coordinates[0];
+        return [ring.reduce((s, c) => s + c[0], 0) / ring.length,
+                ring.reduce((s, c) => s + c[1], 0) / ring.length];
+      })();
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: {} };
+    });
 
   source.setData({ type: 'FeatureCollection', features });
 }
 
 export function setHeatmapVisibility(id, visible) {
+  const vis = visible ? 'visible' : 'none';
   const layerId = `${id}-layer`;
-  if (_map.getLayer(layerId)) {
-    _map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
-  }
+  if (_map.getLayer(layerId)) _map.setLayoutProperty(layerId, 'visibility', vis);
+  // connectivity-mesh has a second layer for weak (dashed) connections
+  const weakId = `${id}-weak-layer`;
+  if (_map.getLayer(weakId)) _map.setLayoutProperty(weakId, 'visibility', vis);
 }
 
 // ── CDL agricultural fringe heatmap ──────────────────────────────────────────
@@ -641,7 +690,7 @@ export function registerCdlFringeHeatmap(visible) {
     source: 'cdl-fringe-heat',
     layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
-      'heatmap-weight':    ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 1, 1],
+      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
       'heatmap-intensity':  1.0,
       'heatmap-color': [
         'interpolate', ['linear'], ['heatmap-density'],

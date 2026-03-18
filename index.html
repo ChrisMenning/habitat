@@ -95,13 +95,13 @@
         <p class="layer-group-label">Analysis Overlays</p>
         <label class="layer-row" for="toggle-heatmap-traffic">
           <div class="toggle">
-            <input type="checkbox" id="toggle-heatmap-traffic" aria-label="Pollinator access traffic map">
+            <input type="checkbox" id="toggle-heatmap-traffic" aria-label="Pollinator Activity Heat Map">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
           <span class="layer-emoji" aria-hidden="true">🌡</span>
-          <span class="layer-label">Pollinator Access Traffic</span>
+          <span class="layer-label">Pollinator Activity Heat Map</span>
         </label>
-        <p class="layer-desc">Combined heat of corridor sites, waystations, and HNP yards — shows where pollinator access is densest.</p>
+        <p class="layer-desc">Combined density of all pollinator sightings (iNaturalist, GBIF, eBird) — shows where pollinators are most active.</p>
       </div>
     </section>
 
@@ -117,7 +117,7 @@
 
     <!-- ── LAND COVER ANALYSIS (NLCD + CDL raster layers) ────────────────── -->
     <section class="panel-section" id="panel-landcover">
-      <details open>
+      <details>
         <summary class="panel-title panel-collapsible">Land Cover &amp; Cropland</summary>
 
         <!-- CDL fringe overlay — top of section, on by default -->

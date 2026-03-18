@@ -41,28 +41,28 @@ export const LAYERS = [
   {
     id:          'pollinators',
     label:       'Pollinators',
-    emoji:       '🌸',
+    emoji:       '🦋',
     description: 'Bees, butterflies, moths, hoverflies & hummingbirds',
     defaultOn:   true,
   },
   {
     id:          'native-plants',
     label:       'Native Plants',
-    emoji:       '🌿',
+    emoji:       '🌸',
     description: 'Native & endemic plant species',
     defaultOn:   false,
   },
   {
     id:          'other-plants',
     label:       'Other Plants',
-    emoji:       '🌱',
+    emoji:       '🌷',
     description: 'Introduced, invasive & unconfirmed plants',
     defaultOn:   false,
   },
   {
     id:          'other-wildlife',
     label:       'Wildlife',
-    emoji:       '🐾',
+    emoji:       '🦌',
     description: 'Birds, mammals, non-pollinator insects, fungi & more',
     defaultOn:   false,
   },
@@ -81,21 +81,21 @@ export const GBIF_LAYERS = [
   {
     id:          'gbif-pollinators',
     label:       'Pollinators',
-    emoji:       '🔬',
+    emoji:       '🦋',
     description: 'Butterflies, moths & bees from museums and research surveys',
     defaultOn:   true,
   },
   {
     id:          'gbif-native-plants',
     label:       'Native Plants',
-    emoji:       '🌾',
+    emoji:       '🌸',
     description: 'Native & endemic plant records from herbaria and surveys',
     defaultOn:   false,
   },
   {
     id:          'gbif-non-native-plants',
     label:       'Non-Native Plants',
-    emoji:       '🪴',
+    emoji:       '🌷',
     description: 'Introduced, naturalised & invasive plant records',
     defaultOn:   false,
   },
@@ -144,7 +144,7 @@ export const AREA_LAYERS = [
   {
     id:           'gbcc-corridor',
     label:        'Pollinator Corridor',
-    emoji:        '🦋',
+    emoji:        '🌺',
     description:  'NE Wisconsin Pollinator Corridor · mapped planting areas (Green Bay Conservation Corps)',
     defaultOn:    true,
     fillColor:    '#f59e0b',
@@ -303,7 +303,7 @@ export const EBIRD_LAYER = [
   {
     id:          'ebird',
     label:       'eBird Sightings',
-    emoji:       '🐦',
+    emoji:       '🦅',
     description: 'Recent bird observations near Green Bay from Cornell Lab of Ornithology (30-day window)',
     defaultOn:   false,
   },
@@ -313,7 +313,7 @@ export const HAZARD_LAYERS = [
   {
     id:          'dnr-pfas',
     label:       'PFAS Chemical Sites',
-    emoji:       '⚠️',
+    emoji:       '☣️',
     description: 'WI DNR · PFAS forever-chemical detections in surface water & fish',
     defaultOn:   true,
   },
@@ -356,14 +356,15 @@ export const ESTABLISHMENT = {
  */
 export const FILL_COLOR_EXPR = [
   'match', ['get', 'layer_id'],
-  // iNaturalist layers (warm, saturated)
-  'pollinators',      '#f97316',  // orange
-  'native-plants',    '#22c55e',  // green
-  'other-plants',     '#84cc16',  // yellow-green
-  // GBIF layers (cool, desaturated — visually distinct from iNat)
-  'gbif-pollinators',      '#818cf8',  // indigo
-  'gbif-native-plants',    '#0d9488',  // teal  (native = good)
-  'gbif-non-native-plants','#f43f5e',  // rose  (non-native = caution)
+  // iNaturalist sighting layers
+  'pollinators',      '#38bdf8',  // sky-blue  (butterflies/bees — distinct from orange corridor)
+  'native-plants',    '#4ade80',  // green-400 (native = welcome)
+  'other-plants',     '#e879f9',  // fuchsia   (non-native = caution)
+  'other-wildlife',   '#94a3b8',  // slate-400 (neutral)
+  // GBIF layers — same hues as iNat counterparts for cross-source consistency
+  'gbif-pollinators',      '#38bdf8',  // sky-blue  (same as iNat pollinators)
+  'gbif-native-plants',    '#4ade80',  // green-400 (same as iNat native-plants)
+  'gbif-non-native-plants','#e879f9',  // fuchsia   (same as iNat other-plants)
   // Waystation points (violet — distinct from any sighting layer)
   'waystations',           '#8b5cf6',  // violet
   // Homegrown National Park native planting yards
@@ -380,7 +381,7 @@ export const FILL_COLOR_EXPR = [
  * @type {import('maplibre-gl').ExpressionSpecification}
  */
 export const STROKE_COLOR_EXPR = [
-  'match', ['get', 'est_key'],
+  'match', ['coalesce', ['get', 'est_key'], ''],
   'native',      '#15803d',
   'endemic',     '#065f46',
   'introduced',  '#c2410c',

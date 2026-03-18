@@ -24,6 +24,7 @@ const MIME = {
   '.json': 'application/json',
   '.png':  'image/png',
   '.ico':  'image/x-icon',
+  '.svg':  'image/svg+xml',
 };
 
 // ── Proxy endpoint ────────────────────────────────────────────────────────────
@@ -704,6 +705,8 @@ function proxyEbird(reqUrl, res) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+
+const server = http.createServer((req, res) => {
   const pathname = url.parse(req.url).pathname;
 
   // Proxy: HNP guest API (no CORS headers on their server)

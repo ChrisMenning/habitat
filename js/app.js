@@ -25,7 +25,7 @@ import { fetchHnpYards }                              from './hnp.js';
 import { fetchCdlStats, fetchQuickStats, fetchCdlFringe } from './landcover.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
-         registerVectorIcons,
+         registerSvgIcons,
          registerRasterLayer,
          registerConnectivityMesh,
          updateConnectivityMesh,
@@ -119,9 +119,12 @@ function areaOrPointVisibility(id, visible) {
 function setLayerActive(id, visible) {
   areaOrPointVisibility(id, visible);
 
-  // Connectivity mesh follows the corridor layer
-  if (id === 'gbcc-corridor') {
-    setHeatmapVisibility('connectivity-mesh', visible);
+  // Connectivity mesh re-renders when any of the three site-layer types changes
+  if (id === 'gbcc-corridor' || id === 'waystations' || id === 'hnp') {
+    if (visible) _activeSiteLayers.add(id);
+    else         _activeSiteLayers.delete(id);
+    setHeatmapVisibility('connectivity-mesh', _activeSiteLayers.size > 0);
+    updateConnectivityMesh(_corridorFeats, _waystationFeats, _hnpFeats, _activeSiteLayers);
   }
 
   // Sync panel checkbox (programmatic assignment does NOT fire 'change')
@@ -138,6 +141,14 @@ function setLayerActive(id, visible) {
 // Timeline year-range state (shared with permalink)
 let _timelineStartYear = new Date().getFullYear() - 1;
 let _timelineEndYear   = new Date().getFullYear();
+
+// Habitat node caches — kept module-level so setLayerActive can re-run the mesh
+// without a full data reload.
+let _corridorFeats   = [];
+let _waystationFeats = [];
+let _hnpFeats        = [];
+// Active site-layer set — reflects current toggle state for the three site-layer types.
+const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 
 const map = initMap('map');
 
@@ -391,8 +402,10 @@ async function loadObservations() {
       ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative   : []),
     ];
 
-    const corridorFeats    = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
-    const waystationFeats  = waystationGeoJSON().features;
+    _corridorFeats         = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
+    _waystationFeats       = waystationGeoJSON().features;
+    const corridorFeats    = _corridorFeats;
+    const waystationFeats  = _waystationFeats;
     registerTemporalLayer(
       'waystations',
       waystationFeats,
@@ -400,7 +413,8 @@ async function loadObservations() {
       filtered => setLayerFeatures('waystation', filtered),
     );
     const pfasFeats        = pfasResult.status      === 'fulfilled' ? pfasResult.value.features     : [];
-    const hnpFeats         = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
+    _hnpFeats              = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
+    const hnpFeats         = _hnpFeats;
     const allHabitatFeats  = [...corridorFeats, ...waystationFeats, ...hnpFeats];
 
     // Drawer data
@@ -456,8 +470,19 @@ async function loadObservations() {
     updateTimelineBounds(allPollinatorFeatures);
 
     // Heatmaps â€” update with latest habitat node data
-    updateConnectivityMesh(corridorFeats);
-    updatePollinatorTrafficHeatmap(corridorFeats, waystationFeats, hnpFeats);
+    updateConnectivityMesh(_corridorFeats, _waystationFeats, _hnpFeats, _activeSiteLayers);
+    const allSightings = [
+      ...(inatResult.status === 'fulfilled' ? [
+        ...(inatResult.value['pollinators']    ?? []),
+        ...(inatResult.value['native-plants']  ?? []),
+        ...(inatResult.value['other-plants']   ?? []),
+        ...(inatResult.value['other-wildlife'] ?? []),
+      ] : []),
+      ...(gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value                                     : []),
+      ...(gbifPlantResult.status === 'fulfilled' ? [...gbifPlantResult.value.native, ...gbifPlantResult.value.nonNative] : []),
+      ...(ebirdResult.status     === 'fulfilled' ? ebirdResult.value.features ?? []                       : []),
+    ];
+    updatePollinatorTrafficHeatmap(allSightings);
 
     // CDL fringe â€” static per-load; update source data once available
     if (cdlFringeResult.status === 'fulfilled' && cdlFringeResult.value) {
@@ -506,12 +531,12 @@ async function loadObservations() {
 
 // â”€â”€ Map ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-map.on('load', () => {
+map.on('load', async () => {
 
   // Register white vector icon sprites.
   // Must be called before registerAreaMarkersLayer and waystation registerLayer.
   // ðŸŒ¸ flower = pollinator corridor site pins  ðŸ¦‹ butterfly = waystation markers
-  registerVectorIcons();
+  await registerSvgIcons();
 
   // 0. Raster background layers â€” rendered beneath all vector layers
   for (const layer of RASTER_LAYERS) {
@@ -544,36 +569,39 @@ map.on('load', () => {
 
   // 2. Hazard point layers â€” above polygons, below observation points
   for (const layer of HAZARD_LAYERS) {
-    registerLayer(layer.id, layer.defaultOn, { radius: 7 });
+    registerLayer(layer.id, layer.defaultOn, { radius: 8, symbol: 'icon-biohazard' });
   }
 
   // 2b. Waystation static layer â€” above hazards
   // Rendered as a large violet circle with a monarch butterfly icon overlay.
   for (const layer of WAYSTATION_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
-      radius: 11, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly',
+      radius: 14, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly-detailed',
     });
   }
 
   // 2c. Homegrown National Park native planting yards â€” immediately after waystations
   for (const layer of HNP_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
-      radius: 9, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
+      radius: 13, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
     });
   }
   // 2d. eBird bird sightings layer
   for (const layer of EBIRD_LAYER) {
-    registerLayer(layer.id, layer.defaultOn, { radius: 6 });
+    registerLayer(layer.id, layer.defaultOn, { radius: 7, symbol: 'icon-crow' });
   }
   // 3. GBIF observation layers â€” above hazards
   // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
-  for (const layer of GBIF_LAYERS) {
-    registerLayer(layer.id, layer.defaultOn, { gbif: true });
-  }
+  // GBIF layers — same icon per category as iNat for cross-source consistency
+  registerLayer('gbif-pollinators',       GBIF_LAYERS.find(l => l.id === 'gbif-pollinators').defaultOn,       { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-butterfly', iconSize: 0.50 });
+  registerLayer('gbif-native-plants',     GBIF_LAYERS.find(l => l.id === 'gbif-native-plants').defaultOn,     { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower' });
+  registerLayer('gbif-non-native-plants', GBIF_LAYERS.find(l => l.id === 'gbif-non-native-plants').defaultOn, { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower-tulip' });
   // 4. iNaturalist layers â€” topmost
-  for (const layer of LAYERS) {
-    registerLayer(layer.id, layer.defaultOn);
-  }
+  // iNat layers — SVG icons per category
+  registerLayer('pollinators',    LAYERS.find(l => l.id === 'pollinators').defaultOn,    { radius: 8, symbol: 'icon-butterfly', iconSize: 0.50 });
+  registerLayer('native-plants',  LAYERS.find(l => l.id === 'native-plants').defaultOn,  { radius: 8, symbol: 'icon-flower' });
+  registerLayer('other-plants',   LAYERS.find(l => l.id === 'other-plants').defaultOn,   { radius: 8, symbol: 'icon-flower-tulip' });
+  registerLayer('other-wildlife', LAYERS.find(l => l.id === 'other-wildlife').defaultOn, { radius: 8, symbol: 'icon-deer' });
 
   // Build the side-panel UI
   // Opacity callback: routes to the correct setter based on layer type

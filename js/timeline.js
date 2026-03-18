@@ -144,23 +144,16 @@ export function updateTimelineBounds(allSightings) {
     if (!isNaN(y)) { min = Math.min(min, y); max = Math.max(max, y); }
   }
   if (min === Infinity) return;  // no dated features
-  const changed = min !== _minYear || max !== _maxYear;
-  _minYear = min;
-  _maxYear = max;
-  // Clamp handles inside the new data bounds; if they collapse to the same
-  // value (common when the data's max year is less than the app's init year),
-  // open a 1-year window anchored at the data maximum so the scrubber is
-  // immediately useful rather than frozen at a zero-width position.
-  if (changed) {
-    _endYear   = Math.min(_endYear,   _maxYear);
-    _startYear = Math.max(_startYear, _minYear);
-    if (_startYear >= _endYear) {
-      _endYear   = _maxYear;
-      _startYear = Math.max(_minYear, _maxYear - 1);
-    }
-    _render();
-    _onRange?.(_startYear, _endYear, _activeMonths);
-  }
+  // Always expand the track to the full data range and show all years by
+  // default so both handles sit at the start (0%) and end (100%) of the
+  // track — easy to grab and intuitively shows "all data loaded."
+  // The user can drag handles inward to create a narrower filter window.
+  _minYear   = min;
+  _maxYear   = max;
+  _startYear = _minYear;
+  _endYear   = _maxYear;
+  _render();
+  _onRange?.(_startYear, _endYear, _activeMonths);
 }
 
 /** Returns true if the given date string (YYYY-MM-DD) passes the current range. */
@@ -237,52 +230,61 @@ export function mountTimelineDrag() {
   let dragging = null;
 
   function toYear(clientX) {
+    const span = _maxYear - _minYear;
+    if (span <= 0) return _maxYear;
     const rect = container.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return Math.round(_minYear + frac * (_maxYear - _minYear));
+    return Math.round(_minYear + frac * span);
   }
 
+  function onDragMove(e) {
+    if (!dragging) return;
+    const y = toYear(e.clientX);
+    if (dragging === 'start') {
+      _startYear = Math.max(_minYear, Math.min(y, _endYear));
+    } else {
+      _endYear = Math.min(_maxYear, Math.max(y, _startYear));
+    }
+    _render();
+    _applyTemporalLayers();
+    _updateCaption();
+    _onRange?.(_startYear, _endYear, _activeMonths);
+  }
+
+  function onDragEnd() {
+    if (!dragging) return;
+    dragging = null;
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup',   onDragEnd);
+  }
+
+  // Attach pointerdown directly to the container; handle hit-test inside
   container.addEventListener('pointerdown', e => {
     const handle = e.target.closest('[data-handle]');
     if (!handle) return;
     dragging = handle.dataset.handle;
-    container.setPointerCapture(e.pointerId);
     e.preventDefault();
+    // Use document-level listeners so drag continues outside the element
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup',   onDragEnd);
   });
 
-  container.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    const y = toYear(e.clientX);
-    if (dragging === 'start') {
-      _startYear = Math.min(y, _endYear);
-    } else {
-      _endYear = Math.max(y, _startYear);
-    }
-    _render();
-    _applyTemporalLayers();
-    _updateCaption();
-    _onRange?.(_startYear, _endYear, _activeMonths);
-  });
-
-  container.addEventListener('pointerup', () => { dragging = null; });
-  container.addEventListener('pointercancel', () => { dragging = null; });
-
-  // Keyboard support on handles
-  container.addEventListener('keydown', e => {
-    const handle = e.target.closest('[data-handle]');
-    if (!handle) return;
-    const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
-    if (!delta) return;
-    if (handle.dataset.handle === 'start') {
-      _startYear = Math.max(_minYear, Math.min(_startYear + delta, _endYear));
-    } else {
-      _endYear = Math.min(_maxYear, Math.max(_endYear + delta, _startYear));
-    }
-    _render();
-    _applyTemporalLayers();
-    _updateCaption();
-    _onRange?.(_startYear, _endYear, _activeMonths);
-    e.preventDefault();
+  // Keyboard support — attach directly on each handle
+  container.querySelectorAll('[data-handle]').forEach(handle => {
+    handle.addEventListener('keydown', e => {
+      const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+      if (!delta) return;
+      if (handle.dataset.handle === 'start') {
+        _startYear = Math.max(_minYear, Math.min(_startYear + delta, _endYear));
+      } else {
+        _endYear = Math.min(_maxYear, Math.max(_endYear + delta, _startYear));
+      }
+      _render();
+      _applyTemporalLayers();
+      _updateCaption();
+      _onRange?.(_startYear, _endYear, _activeMonths);
+      e.preventDefault();
+    });
   });
 }
 
