@@ -13,8 +13,8 @@
 import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
-import { fetchGbifPollinators, fetchGbifPlants, gbifToGeoJSON,
-         resolveOccurrenceEstKeys,
+import { fetchGbifPollinators, fetchGbifPlants,
+         gbifToGeoJSON, resolveOccurrenceEstKeys,
          partitionPlantOccurrences }                   from './gbif.js';
 import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          fetchPollinatorCorridor, fetchCorridorTreatments,
@@ -208,7 +208,7 @@ async function loadObservations() {
         };
       }),
 
-      // â”€â”€ Static area data (fixed keys, 24 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Static area data (fixed keys, 24 h TTL) ──────────────────────────────────────────────
       withCache('area/padus',          AREA_TTL, fetchPadUs),
       withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna),
       withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands),
@@ -262,6 +262,17 @@ async function loadObservations() {
       console.warn('GBIF plants failed:', gbifPlantResult.reason);
       counts['gbif-native-plants']     = 0;
       counts['gbif-non-native-plants'] = 0;
+    }
+
+    // Bumble Bee Watch
+    if (bbwResult.status === 'fulfilled') {
+      const feats = bbwResult.value;
+      setLayerFeatures('bbw-pollinators', feats);
+      counts['bbw-pollinators'] = feats.length;
+      gbifCount += feats.length;
+    } else {
+      console.warn('Bumble Bee Watch failed:', bbwResult.reason);
+      counts['bbw-pollinators'] = 0;
     }
 
     // â”€â”€ PAD-US protected areas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -346,9 +357,9 @@ async function loadObservations() {
     const allPollinatorFeatures = [
       ...(inatFeatures['pollinators']       ?? []),
       ...(inatFeatures['native-plants']     ?? []),
-      ...(gbifPollResult.status === 'fulfilled'  ? gbifPollResult.value  : []),
-      ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native    : []),
-      ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative : []),
+      ...(gbifPollResult.status === 'fulfilled'  ? gbifPollResult.value              : []),
+      ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native      : []),
+      ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative   : []),
     ];
 
     const corridorFeats    = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
@@ -364,9 +375,9 @@ async function loadObservations() {
     // Filter chip base features
     const byLayer = inatResult.status === 'fulfilled' ? inatResult.value : {};
     for (const layer of LAYERS) setBaseFeatures(layer.id, byLayer[layer.id] ?? []);
-    setBaseFeatures('gbif-pollinators',    gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value              : []);
-    setBaseFeatures('gbif-native-plants',  gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native      : []);
-    setBaseFeatures('gbif-non-native-plants', gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative : []);
+    setBaseFeatures('gbif-pollinators',       gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value              : []);
+    setBaseFeatures('gbif-native-plants',     gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native      : []);
+    setBaseFeatures('gbif-non-native-plants', gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative   : []);
 
     // Habitat centroids for near-habitat filter
     const habitatCoords = allHabitatFeats.map(f => {
@@ -519,7 +530,6 @@ map.on('load', () => {
   for (const layer of GBIF_LAYERS) {
     registerLayer(layer.id, layer.defaultOn, { gbif: true });
   }
-
   // 4. iNaturalist layers â€” topmost
   for (const layer of LAYERS) {
     registerLayer(layer.id, layer.defaultOn);
@@ -575,8 +585,8 @@ map.on('load', () => {
   // â”€â”€ Sightings (tertiary, for impact correlation, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buildLayerPanel(
     [
-      { groupLabel: 'iNaturalist', layers: LAYERS      },
-      { groupLabel: 'GBIF',        layers: GBIF_LAYERS },
+      { groupLabel: 'iNaturalist',     layers: LAYERS      },
+      { groupLabel: 'GBIF',            layers: GBIF_LAYERS },
     ],
     setLayerActive
   );

@@ -360,7 +360,7 @@ export function gbifToGeoJSON(occurrences, layerId, estKeyMap = null) {
   //   2. Layer-level override for plant layers (all records in that bucket share a status)
   //   3. The occurrence's own establishmentMeans field (almost always empty in GBIF)
   const layerEstOverride =
-    layerId === 'gbif-native-plants'    ? 'native'     :
+    layerId === 'gbif-native-plants'     ? 'native'     :
     layerId === 'gbif-non-native-plants' ? 'introduced' :
     null;
 
