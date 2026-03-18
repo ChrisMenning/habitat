@@ -48,6 +48,25 @@ let _climateState = null;
 /** Returns the most recently computed climate state object, or null if not yet loaded. */
 export function getClimateState() { return _climateState; }
 
+/**
+ * Returns a { value, label } pair for display in the intel bar climate stat.
+ * value: formatted GDD string ("247 GDD") or "—"
+ * label: emoji + phenological phase name ("🌡 Mason bee emergence")
+ */
+export function getGddIntelStat() {
+  if (!_climateState?.current) return { value: '—', label: '🌡 Season phase' };
+  const gdd = Math.round(_climateState.current.accumulatedGDD);
+  const phases = [
+    { min: 1200, label: '🌡 Monarch migration'    },
+    { min: 750,  label: '🌡 Peak native season'    },
+    { min: 400,  label: '🌡 Bumble queens active'  },
+    { min: 200,  label: '🌡 Mason bee emergence'   },
+    { min: 0,    label: '🌡 Pre-season'            },
+  ];
+  const label = phases.find(p => gdd >= p.min)?.label ?? '🌡 Pre-season';
+  return { value: `${gdd.toLocaleString()} GDD`, label };
+}
+
 // ── NOAA fetch helpers ────────────────────────────────────────────────────────
 
 /**
@@ -322,15 +341,13 @@ function todayDoy() {
 let _ribbonBtn = null;
 
 /**
- * Initialise the 🌡 Climate panel section and start all three NOAA data fetches.
- * Called once from app.js after map.on('load'). All fetches run in parallel.
+ * Fetches all NOAA climate data, populates _climateState, and wires the
+ * climate ribbon modal. The panel-climate-inner DOM element is no longer used
+ * (climate info is now surfaced via the intel bar stat), but this function
+ * must still be called to load the data for getGddIntelStat() and alerts.
+ * Called once from app.js after map.on('load').
  */
 export async function initClimatePanel() {
-  const inner = document.getElementById('panel-climate-inner');
-  if (!inner) return;
-
-  inner.innerHTML = '<p class="climate-loading">Loading climate data…</p>';
-
   const [normals, frost, ghcnd] = await Promise.all([
     fetchNoaaNormals(),
     fetchFrostNormals(),
@@ -346,12 +363,7 @@ export async function initClimatePanel() {
 
   _climateState = { normals, frost, ghcnd, current, normalGdd, pctDeviation: pctDev, doy };
 
-  renderClimatePanelInner(inner, _climateState);
-
-  _ribbonBtn = document.getElementById('btn-climate-ribbon');
-  _ribbonBtn?.addEventListener('click', () => openClimateRibbon(_climateState));
-
-  // Wire the modal close button
+  // Wire the modal close button (the modal is still in the HTML for the ribbon chart)
   const modal    = document.getElementById('modal-climate');
   const closeBtn = modal?.querySelector('.modal-close');
   closeBtn?.addEventListener('click', closeClimateModal);
@@ -430,7 +442,7 @@ function renderClimatePanelInner(container, state) {
 
 // ── Climate Ribbon modal ──────────────────────────────────────────────────────
 
-function openClimateRibbon(state) {
+export function openClimateRibbon(state) {
   const modal = document.getElementById('modal-climate');
   const body  = document.getElementById('modal-climate-body');
   if (!modal || !body) return;

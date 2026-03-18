@@ -883,6 +883,12 @@ details > summary:focus-visible {
 .intel-stat--cache .intel-val  { color: #93c5fd; }
 .intel-stat--cache .intel-lbl  { color: #bfdbfe; }
 
+.intel-stat--climate .intel-val  { color: #5eead4; }
+.intel-stat--climate .intel-lbl  { color: #99f6e4; }
+.intel-stat--climate             { cursor: pointer; }
+.intel-stat--climate:hover       { background: rgba(94,234,212,0.08); }
+.intel-stat--climate:focus-visible { outline: 2px solid #5eead4; outline-offset: -2px; }
+
 /* ── Alerts panel ──────────────────────────────────────────────────────────── */
 .alerts-badge {
   font-size: 10px;

@@ -48,7 +48,7 @@ import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts }                from './alerts.js';
 import { initFilters, setBaseFeatures, setHabitatCoords,
-         setDatePredicate, buildFilterChips }             from './filters.js';
+         setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
 import { openDrawer, closeDrawer, isDrawerFeature,
          setSightings as setDrawerSightings,
          setHabitatSites as setDrawerHabitatSites }   from './drawer.js';
@@ -58,7 +58,7 @@ import { setExportData, exportReport, exportMapPng }  from './export.js';
 import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
 import { fetchEbirdObservations }                      from './ebird.js';
-import { initClimatePanel, getClimateState }            from './climate.js';
+import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -74,17 +74,26 @@ function debounce(fn, ms) {
   };
 }
 
+/** Formats a square-footage value as acres (if large enough) or sq ft. */
+function formatArea(sqft) {
+  if (!sqft) return '—';
+  if (sqft >= 43560) return `${(sqft / 43560).toFixed(1)} ac`;
+  return `${Math.round(sqft).toLocaleString()} sq ft`;
+}
+
 /** Populates the intel-bar summary strip with current data counts. */
-function updateIntelBar({ corridorCount, waystationCount, inatCount, gbifCount, ebirdCount, alertCount, fromCache }) {
-  document.getElementById('intel-val-corridor').textContent   = corridorCount;
-  document.getElementById('intel-val-waystation').textContent = waystationCount;
-  document.getElementById('intel-val-inat').textContent       = inatCount.toLocaleString();
-  document.getElementById('intel-val-gbif').textContent       = gbifCount.toLocaleString();
-  document.getElementById('intel-val-alerts').textContent     = alertCount;
+function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
+  document.getElementById('intel-val-corridor').textContent  = formatArea(corridorSqFt);
+  document.getElementById('intel-val-habitat').textContent   = habitatNodeCount > 0 ? habitatNodeCount : '—';
+  document.getElementById('intel-val-inat').textContent      = pollinatorCount.toLocaleString();
+  if (gddStat) {
+    document.getElementById('intel-val-climate').textContent = gddStat.value;
+    document.getElementById('intel-lbl-climate').textContent = gddStat.label;
+  }
   const ebirdEl = document.getElementById('intel-val-ebird');
   if (ebirdEl) ebirdEl.textContent = ebirdCount > 0 ? ebirdCount.toLocaleString() : '—';
-  document.getElementById('intel-val-cache').textContent      = fromCache ? 'Cached' : 'Live';
-  // Pulsing glow when there are active alerts
+  document.getElementById('intel-val-species').textContent   = nativeSpeciesCount > 0 ? nativeSpeciesCount.toLocaleString() : '—';
+  document.getElementById('intel-val-alerts').textContent    = alertCount;
   document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', alertCount > 0);
 }
 
@@ -149,6 +158,10 @@ let _timelineEndYear   = new Date().getFullYear();
 let _corridorFeats   = [];
 let _waystationFeats = [];
 let _hnpFeats        = [];
+// Full unfiltered eBird features — retained so the hummingbird toggle can re-filter
+// without a network refetch.
+let _ebirdAllFeats      = [];
+let _ebirdHummingOnly   = false;
 // Active site-layer set — reflects current toggle state for the three site-layer types.
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 
@@ -403,10 +416,15 @@ async function loadObservations() {
     let ebirdCount = 0;
     if (ebirdResult.status === 'fulfilled') {
       const ebirdFeats = ebirdResult.value.features ?? [];
-      setLayerFeatures('ebird', ebirdFeats);
-      setBaseFeatures('ebird', ebirdFeats);
-      counts['ebird'] = ebirdFeats.length;
-      ebirdCount = ebirdFeats.length;
+      _ebirdAllFeats = ebirdFeats;
+      // Apply hummingbird filter if the toggle is already on (e.g. page reload with saved state)
+      const ebirdVisible = _ebirdHummingOnly
+        ? ebirdFeats.filter(f => f.properties?.common?.toLowerCase().includes('hummingbird'))
+        : ebirdFeats;
+      setLayerFeatures('ebird', ebirdVisible);
+      setBaseFeatures('ebird', ebirdVisible);
+      counts['ebird'] = ebirdVisible.length;
+      ebirdCount = ebirdVisible.length;
     } else {
       console.warn('eBird failed:', ebirdResult.reason);
       counts['ebird'] = 0;
@@ -507,15 +525,15 @@ async function loadObservations() {
     // Heatmaps — update with latest habitat node data
     refreshConnectivityMesh();
     const allSightings = [
-      ...(inatResult.status === 'fulfilled' ? [
-        ...(inatResult.value['pollinators']    ?? []),
-        ...(inatResult.value['native-plants']  ?? []),
-        ...(inatResult.value['other-plants']   ?? []),
-        ...(inatResult.value['other-wildlife'] ?? []),
-      ] : []),
-      ...(gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value                                     : []),
-      ...(gbifPlantResult.status === 'fulfilled' ? [...gbifPlantResult.value.native, ...gbifPlantResult.value.nonNative] : []),
-      ...(ebirdResult.status     === 'fulfilled' ? ebirdResult.value.features ?? []                       : []),
+      // iNat pollinators only (butterflies, bees, etc.) — exclude plants and non-pollinator wildlife
+      ...(inatResult.status === 'fulfilled' ? (inatResult.value['pollinators'] ?? []) : []),
+      // GBIF pollinators only
+      ...(gbifPollResult.status === 'fulfilled' ? gbifPollResult.value : []),
+      // eBird: hummingbirds only (the only reliable pollinator birds in Green Bay area)
+      ...(ebirdResult.status === 'fulfilled'
+        ? (ebirdResult.value.features ?? []).filter(f =>
+            f.properties?.common?.toLowerCase().includes('hummingbird'))
+        : []),
     ];
     updatePollinatorTrafficHeatmap(allSightings);
 
@@ -529,21 +547,33 @@ async function loadObservations() {
       (byLayer['pollinators']?.length ?? 0) +
       (gbifPollResult.status === 'fulfilled' ? gbifPollResult.value.length : 0);
 
+    // Corridor habitat area (sum of area_sqft across all corridor polygons)
+    const corridorSqFt = _corridorFeats.reduce((sum, f) => sum + (+(f.properties?.area_sqft ?? 0)), 0);
+
+    // Total active habitat network nodes (corridor centroids + waystations + HNP yards)
+    const habitatNodeCount = _corridorFeats.length + _waystationFeats.length + _hnpFeats.length;
+
+    // Unique native plant species observed (iNat + GBIF native-plants, deduplicated by scientific name)
+    const nativeSpeciesCount = new Set([
+      ...(inatResult.status === 'fulfilled' ? (inatResult.value['native-plants'] ?? []).map(f => f.properties?.name).filter(Boolean) : []),
+      ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native.map(f => f.properties?.name).filter(Boolean) : []),
+    ]).size;
+
     // Intel bar
     updateIntelBar({
-      corridorCount:    counts['gbcc-corridor'] ?? 0,
-      waystationCount:  56,
-      inatCount:        pollinatorCount,
-      gbifCount,
+      corridorSqFt,
+      habitatNodeCount,
+      pollinatorCount,
+      gddStat:           getGddIntelStat(),
       ebirdCount,
-      alertCount:       alerts.length,
-      fromCache:        networkFetches === 0,
+      nativeSpeciesCount,
+      alertCount:        alerts.length,
     });
 
     // Export snapshot
     setExportData({
       corridorCount:      counts['gbcc-corridor'] ?? 0,
-      waystationCount:    56,
+      waystationCount:    _waystationFeats.length,
       inatCount:          inatObs,
       gbifCount,
       dateFrom:           d1 ?? '',
@@ -584,7 +614,7 @@ map.on('load', async () => {
   // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers.
   // Visibility matches the corridor layer's defaultOn; no separate toggle.
   registerConnectivityMesh(true);
-  registerPollinatorTrafficHeatmap(false);
+  registerPollinatorTrafficHeatmap(true);
   // 0d. CDL fringe heatmap â€” agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
 
@@ -722,6 +752,18 @@ map.on('load', async () => {
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
+  document.getElementById('toggle-ebird-hummingbird')?.addEventListener('change', e => {
+    _ebirdHummingOnly = e.target.checked;
+    if (!_ebirdAllFeats.length) return; // not loaded yet
+    const base = _ebirdHummingOnly
+      ? _ebirdAllFeats.filter(f => f.properties?.common?.toLowerCase().includes('hummingbird'))
+      : _ebirdAllFeats;
+    setBaseFeatures('ebird', base);
+    applyFilters();            // re-apply any active date/species filters on the new base
+    // Update intel bar count to reflect the active subset
+    const valEl = document.getElementById('intel-val-ebird');
+    if (valEl) valEl.textContent = base.length.toLocaleString();
+  });
 
   // "All layers off" button â€” unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
@@ -760,8 +802,15 @@ map.on('load', async () => {
   // Load static waystation GeoJSON immediately (no async fetch needed)
   setLayerFeatures('waystations', waystationGeoJSON().features);
 
-  // Climate panel — fire-and-forget; caches for 30 days so subsequent loads are instant.
-  initClimatePanel();
+  // Climate data — loads async; once done, patch the GDD stat into the intel bar
+  // (loadObservations may finish before climate data arrives on first paint).
+  initClimatePanel().then(() => {
+    const gddStat = getGddIntelStat();
+    if (gddStat.value !== '\u2014') {
+      document.getElementById('intel-val-climate').textContent = gddStat.value;
+      document.getElementById('intel-lbl-climate').textContent = gddStat.label;
+    }
+  });
 
   // Filter chips
   buildFilterChips(document.getElementById('panel-filter-chips'));
@@ -827,6 +876,13 @@ map.on('load', async () => {
   document.getElementById('intel-alerts').addEventListener('click', openAlertsPanel);
   document.getElementById('intel-alerts').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlertsPanel(); }
+  });
+
+  // Climate intel stat → open climate ribbon modal
+  const openClimateFromBar = () => openClimateRibbon(getClimateState());
+  document.getElementById('intel-climate')?.addEventListener('click', openClimateFromBar);
+  document.getElementById('intel-climate')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openClimateFromBar(); }
   });
 
   // Wire click interactions on all layers (points + polygon fills)

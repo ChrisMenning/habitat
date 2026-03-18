@@ -213,7 +213,7 @@ export function registerLayer(id, visible, {
       layout: { visibility: visible ? 'visible' : 'none' },
       paint: {
         'circle-radius': [
-          'step', ['get', 'point_count'],
+          'step', ['coalesce', ['get', 'point_count'], 0],
           14,       // 2–9 points
           10, 18,   // 10–49 points
           50, 22,   // 50+ points
@@ -471,7 +471,7 @@ export function registerAreaMarkersLayer(id, visible, color, outlineColor, icon 
       layout: { visibility: visible ? 'visible' : 'none' },
       paint: {
         'circle-radius': [
-          'step', ['get', 'point_count'],
+          'step', ['coalesce', ['get', 'point_count'], 0],
           14,       // 2–9 points
           10, 18,   // 10–49 points
           50, 22,   // 50+ points

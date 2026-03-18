@@ -305,7 +305,7 @@ export const EBIRD_LAYER = [
     label:       'eBird Sightings',
     emoji:       '🦅',
     description: 'Recent bird observations near Green Bay from Cornell Lab of Ornithology (30-day window)',
-    defaultOn:   false,
+    defaultOn:   true,
   },
 ];
 

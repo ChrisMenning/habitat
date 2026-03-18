@@ -36,33 +36,35 @@
 <div id="intel-bar" aria-label="Situational summary">
   <div class="intel-stat" id="intel-corridor">
     <span class="intel-val" id="intel-val-corridor">—</span>
-    <span class="intel-lbl">🌸 Corridor sites</span>
+    <span class="intel-lbl">🌸 Corridor area</span>
   </div>
-  <div class="intel-stat" id="intel-waystation">
-    <span class="intel-val" id="intel-val-waystation">—</span>
-    <span class="intel-lbl">🦋 Waystations</span>
+  <div class="intel-stat" id="intel-habitat">
+    <span class="intel-val" id="intel-val-habitat">—</span>
+    <span class="intel-lbl">🌿 Habitat nodes</span>
   </div>
   <div class="intel-stat" id="intel-inat">
     <span class="intel-val" id="intel-val-inat">—</span>
-    <span class="intel-lbl">� Pollinators sighted</span>
+    <span class="intel-lbl">🐝 Pollinators sighted</span>
   </div>
-  <div class="intel-stat" id="intel-gbif">
-    <span class="intel-val" id="intel-val-gbif">—</span>
-    <span class="intel-lbl">🔬 GBIF records</span>
+  <div class="intel-stat intel-stat--climate" id="intel-climate"
+       role="button" tabindex="0" aria-label="View climate ribbon"
+       title="Click to view climate ribbon">
+    <span class="intel-val" id="intel-val-climate">—</span>
+    <span class="intel-lbl" id="intel-lbl-climate">🌡 Season phase</span>
   </div>
   <div class="intel-stat" id="intel-ebird">
     <span class="intel-val" id="intel-val-ebird">—</span>
     <span class="intel-lbl">🐦 eBird sightings</span>
+  </div>
+  <div class="intel-stat" id="intel-species">
+    <span class="intel-val" id="intel-val-species">—</span>
+    <span class="intel-lbl">🌼 Native species</span>
   </div>
   <div class="intel-stat intel-stat--alert" id="intel-alerts"
        role="button" tabindex="0" aria-label="View intelligence alerts"
        title="Click to open alerts panel">
     <span class="intel-val" id="intel-val-alerts">—</span>
     <span class="intel-lbl">⚡ Alerts</span>
-  </div>
-  <div class="intel-stat intel-stat--cache" id="intel-cache">
-    <span class="intel-val" id="intel-val-cache">—</span>
-    <span class="intel-lbl">🗄 Data source</span>
   </div>
 </div>
 
@@ -95,7 +97,7 @@
         <p class="layer-group-label">Analysis Overlays</p>
         <label class="layer-row" for="toggle-heatmap-traffic">
           <div class="toggle">
-            <input type="checkbox" id="toggle-heatmap-traffic" aria-label="Pollinator Activity Heat Map">
+            <input type="checkbox" id="toggle-heatmap-traffic" checked aria-label="Pollinator Activity Heat Map">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
           <span class="layer-emoji" aria-hidden="true">🌡</span>
@@ -141,16 +143,6 @@
       </details>
     </section>
 
-    <!-- ── CLIMATE CONTEXT ───────────────────────────────────────────────────── -->
-    <section class="panel-section" id="panel-climate">
-      <details>
-        <summary class="panel-title panel-collapsible">🌡 Climate</summary>
-        <p class="panel-section-note">Growing season context — GDD accumulation, frost dates, and thermal phenology for pollinator planning.</p>
-        <div id="panel-climate-inner">
-          <!-- populated by climate.js -->
-        </div>
-      </details>
-    </section>
 
     <!-- ── TERTIARY: Sightings for impact correlation ──────────────────────── -->
     <section class="panel-section" id="panel-sightings">
@@ -179,6 +171,21 @@
 
         <div id="panel-layers">
           <!-- populated by ui.js -->
+        </div>
+
+        <!-- eBird species filter -->
+        <div class="panel-heatmap-group" id="panel-ebird-filter">
+          <p class="layer-group-label">eBird Filter</p>
+          <label class="layer-row" for="toggle-ebird-hummingbird">
+            <div class="toggle">
+              <input type="checkbox" id="toggle-ebird-hummingbird"
+                     aria-label="Show hummingbirds only">
+              <div class="toggle-track" aria-hidden="true"></div>
+            </div>
+            <span class="layer-emoji" aria-hidden="true">🦜</span>
+            <span class="layer-label">Hummingbirds only</span>
+          </label>
+          <p class="layer-desc">When on, only Ruby-throated Hummingbird and other hummingbird species are shown. When off, all recent eBird sightings are displayed.</p>
         </div>
       </details>
     </section>
