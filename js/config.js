@@ -299,6 +299,16 @@ export const RASTER_LAYERS = [
   },
 ];
 
+export const EBIRD_LAYER = [
+  {
+    id:          'ebird',
+    label:       'eBird Sightings',
+    emoji:       '🐦',
+    description: 'Recent bird observations near Green Bay from Cornell Lab of Ornithology (30-day window)',
+    defaultOn:   false,
+  },
+];
+
 export const HAZARD_LAYERS = [
   {
     id:          'dnr-pfas',
@@ -358,6 +368,8 @@ export const FILL_COLOR_EXPR = [
   'waystations',           '#8b5cf6',  // violet
   // Homegrown National Park native planting yards
   'hnp',                   '#10b981',  // emerald — native planting yards
+  // eBird bird sightings (Cornell Lab)
+  'ebird',                 '#a78bfa',  // violet-purple
   // Hazard point layers
   'dnr-pfas',              '#ef4444',  // red   (hazard indicator)
   /* default (other-wildlife) */ '#64748b',

@@ -653,9 +653,57 @@ function proxyQuickStats(res) {
   }, (err, data) => { if (!err) cropsData = data; if (--pending === 0) finish(); });
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ── eBird recent-observations proxy ─────────────────────────────────────────
+// Proxies GET /api/ebird?back=N → Cornell eBird API /data/obs/geo/recent.
+// Requires a free eBird API key from https://ebird.org/api/keygen
+//   Option A: EBIRD_API_KEY=your_key node serve.js
+//   Option B: create ./ebird-key.txt containing only your key
+// Without a key the endpoint returns { available: false } and the layer is skipped.
 
-const server = http.createServer((req, res) => {
+function getEbirdApiKey() {
+  if (process.env.EBIRD_API_KEY) return process.env.EBIRD_API_KEY.trim();
+  try { return fs.readFileSync(path.join(ROOT, 'ebird-key.txt'), 'utf8').trim(); }
+  catch { return ''; }
+}
+
+// Green Bay, WI center for the eBird geo/recent endpoint
+const EBIRD_LAT = 44.5133;
+const EBIRD_LNG = -88.0133;
+const EBIRD_DIST_KM = 15;  // match RADIUS_KM from config.js
+
+function proxyEbird(reqUrl, res) {
+  const apiKey = getEbirdApiKey();
+  if (!apiKey) {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ available: false }));
+    return;
+  }
+  const qs  = url.parse(reqUrl).query ?? '';
+  const params = new URLSearchParams(qs);
+  const back = Math.min(30, parseInt(params.get('back') ?? '30', 10)) || 30;
+  const ebirdPath = `/v2/data/obs/geo/recent?lat=${EBIRD_LAT}&lng=${EBIRD_LNG}&dist=${EBIRD_DIST_KM}&back=${back}&fmt=json`;
+  https.get(
+    { hostname: 'api.ebird.org', path: ebirdPath, timeout: 15000,
+      headers: { 'X-eBirdApiToken': apiKey, 'User-Agent': 'habitat-map/1.0' } },
+    upstream => {
+      const chunks = [];
+      upstream.on('data', c => chunks.push(c));
+      upstream.on('end', () => {
+        res.writeHead(200, {
+          'Content-Type':                'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control':               'public, max-age=1800',  // 30 min
+        });
+        res.end(Buffer.concat(chunks));
+      });
+    }
+  ).on('error', err => {
+    res.writeHead(502);
+    res.end(JSON.stringify({ error: err.message }));
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
   const pathname = url.parse(req.url).pathname;
 
   // Proxy: HNP guest API (no CORS headers on their server)
@@ -679,6 +727,12 @@ const server = http.createServer((req, res) => {
   // Proxy: USDA NASS QuickStats (colonies + county crops)
   if (pathname === '/api/quickstats') {
     proxyQuickStats(res);
+    return;
+  }
+
+  // Proxy: eBird recent observations near Green Bay
+  if (pathname === '/api/ebird') {
+    proxyEbird(req.url, res);
     return;
   }
 

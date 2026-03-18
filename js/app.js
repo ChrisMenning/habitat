@@ -10,7 +10,7 @@
  *   config.js â€” Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS } from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants,
@@ -56,6 +56,7 @@ import { initTimeline, updateTimelineBounds,
 import { setExportData, exportReport, exportMapPng }  from './export.js';
 import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
+import { fetchEbirdObservations }                      from './ebird.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -72,12 +73,14 @@ function debounce(fn, ms) {
 }
 
 /** Populates the intel-bar summary strip with current data counts. */
-function updateIntelBar({ corridorCount, waystationCount, inatCount, gbifCount, alertCount, fromCache }) {
+function updateIntelBar({ corridorCount, waystationCount, inatCount, gbifCount, ebirdCount, alertCount, fromCache }) {
   document.getElementById('intel-val-corridor').textContent   = corridorCount;
   document.getElementById('intel-val-waystation').textContent = waystationCount;
   document.getElementById('intel-val-inat').textContent       = inatCount.toLocaleString();
   document.getElementById('intel-val-gbif').textContent       = gbifCount.toLocaleString();
   document.getElementById('intel-val-alerts').textContent     = alertCount;
+  const ebirdEl = document.getElementById('intel-val-ebird');
+  if (ebirdEl) ebirdEl.textContent = ebirdCount > 0 ? ebirdCount.toLocaleString() : '—';
   document.getElementById('intel-val-cache').textContent      = fromCache ? 'Cached' : 'Live';
   // Pulsing glow when there are active alerts
   document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', alertCount > 0);
@@ -190,7 +193,7 @@ async function loadObservations() {
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
       corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
-      quickStatsResult, cdlFringeResult,
+      quickStatsResult, cdlFringeResult, ebirdResult,
     ] = await Promise.allSettled([
 
       // â”€â”€ Observations (date-keyed, 1 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -232,6 +235,9 @@ async function loadObservations() {
       withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats),
       withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
       withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
+
+      // ── eBird recent bird observations (date-keyed, 1 h TTL) ───
+      withCache(`obs/ebird/${obsKey}`, OBS_TTL, () => fetchEbirdObservations()),
     ]);
 
     const counts = {};
@@ -348,6 +354,19 @@ async function loadObservations() {
       counts['hnp'] = 0;
     }
 
+    // ── eBird bird sightings ────────────────────────────────────────────────────
+    let ebirdCount = 0;
+    if (ebirdResult.status === 'fulfilled') {
+      const ebirdFeats = ebirdResult.value.features ?? [];
+      setLayerFeatures('ebird', ebirdFeats);
+      setBaseFeatures('ebird', ebirdFeats);
+      counts['ebird'] = ebirdFeats.length;
+      ebirdCount = ebirdFeats.length;
+    } else {
+      console.warn('eBird failed:', ebirdResult.reason);
+      counts['ebird'] = 0;
+    }
+
     const cdlStats   = cdlStatsResult.status   === 'fulfilled' ? cdlStatsResult.value   : null;
     const quickStats  = quickStatsResult.status  === 'fulfilled' ? quickStatsResult.value  : null;
     if (!cdlStats) console.warn('CDL stats failed:', cdlStatsResult.reason);
@@ -456,6 +475,7 @@ async function loadObservations() {
       waystationCount:  56,
       inatCount:        pollinatorCount,
       gbifCount,
+      ebirdCount,
       alertCount:       alerts.length,
       fromCache:        networkFetches === 0,
     });
@@ -541,7 +561,10 @@ map.on('load', () => {
       radius: 9, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',
     });
   }
-
+  // 2d. eBird bird sightings layer
+  for (const layer of EBIRD_LAYER) {
+    registerLayer(layer.id, layer.defaultOn, { radius: 6 });
+  }
   // 3. GBIF observation layers â€” above hazards
   // No symbol icon: dots are already distinguished by color; tiny icons were illegible.
   for (const layer of GBIF_LAYERS) {
@@ -614,6 +637,7 @@ map.on('load', () => {
     [
       { groupLabel: 'iNaturalist',     layers: LAYERS      },
       { groupLabel: 'GBIF',            layers: GBIF_LAYERS },
+      { groupLabel: 'eBird (Cornell Lab)', layers: EBIRD_LAYER },
     ],
     setLayerActive,
     null,
