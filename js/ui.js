@@ -36,8 +36,10 @@ export function esc(value) {
  *   Callback invoked when a toggle changes.
  * @param {HTMLElement|null} [container]
  *   Optional container element. Defaults to #panel-layers.
+ * @param {function(id: string, opacity: number): void} [onOpacity]
+ *   Optional callback invoked when an opacity slider changes (0–1).
  */
-export function buildLayerPanel(groups, onToggle, container = null) {
+export function buildLayerPanel(groups, onToggle, container = null, onOpacity = null) {
   const section = container ?? document.getElementById('panel-layers');
 
   for (const { groupLabel, layers } of groups) {
@@ -47,6 +49,9 @@ export function buildLayerPanel(groups, onToggle, container = null) {
     section.appendChild(header);
 
     for (const layer of layers) {
+      const storedOpacity = parseFloat(localStorage.getItem(`opacity:${layer.id}`));
+      const initOpacity   = isNaN(storedOpacity) ? 1.0 : storedOpacity;
+
       const wrap = document.createElement('div');
       wrap.innerHTML = `
         <label class="layer-row" for="toggle-${esc(layer.id)}">
@@ -61,13 +66,32 @@ export function buildLayerPanel(groups, onToggle, container = null) {
           <span class="layer-label">${esc(layer.label)}</span>
           <span class="layer-count" id="count-${esc(layer.id)}" aria-live="polite">—</span>
         </label>
-        <p class="layer-desc">${esc(layer.description)}</p>`;
+        <p class="layer-desc">${esc(layer.description)}</p>
+        ${onOpacity ? `<div class="layer-opacity-row">
+          <label class="layer-opacity-label" for="opacity-${esc(layer.id)}">Opacity</label>
+          <input type="range" class="layer-opacity-slider"
+                 id="opacity-${esc(layer.id)}"
+                 min="0" max="1" step="0.05"
+                 value="${initOpacity}"
+                 aria-label="${esc(layer.label)} opacity">
+        </div>` : ''}`;
 
       section.appendChild(wrap);
 
-      wrap.querySelector('input').addEventListener('change', e => {
+      wrap.querySelector('input[type="checkbox"]').addEventListener('change', e => {
         onToggle(layer.id, /** @type {HTMLInputElement} */ (e.target).checked);
       });
+
+      if (onOpacity) {
+        const slider = wrap.querySelector('input[type="range"]');
+        // Apply stored opacity on mount
+        if (initOpacity !== 1.0) onOpacity(layer.id, initOpacity);
+        slider.addEventListener('input', () => {
+          const val = parseFloat(slider.value);
+          localStorage.setItem(`opacity:${layer.id}`, val);
+          onOpacity(layer.id, val);
+        });
+      }
     }
   }
 }

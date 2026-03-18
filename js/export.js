@@ -16,6 +16,7 @@
  */
 
 import { esc } from './ui.js';
+import { getMap } from './map.js';
 
 /** @type {ReportData} */
 let _data = {};
@@ -40,6 +41,20 @@ let _data = {};
  */
 export function setExportData(d) {
   _data = { ..._data, ...d };
+}
+
+/**
+ * Save the current map view as a PNG file.
+ * Uses the MapLibre canvas — preserveDrawingBuffer must be true (set in map.js).
+ */
+export function exportMapPng() {
+  const map = getMap();
+  if (!map) return;
+  const dataUrl = map.getCanvas().toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href     = dataUrl;
+  a.download = `bayhive-map-${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
 }
 
 /**
@@ -87,6 +102,16 @@ export function exportReport() {
   const filterStr = activeFilters.length ? activeFilters.join(', ') : 'None';
   const dateRange = (dateFrom || dateTo) ? `${dateFrom || '(all)'} to ${dateTo || '(all)'}` : 'All dates';
 
+  const mapSnapshot = (() => {
+    try {
+      const canvas = getMap()?.getCanvas();
+      return canvas ? canvas.toDataURL('image/png') : null;
+    } catch { return null; }
+  })();
+  const mapImgHtml = mapSnapshot
+    ? `<h2>Map Snapshot</h2><img src="${mapSnapshot}" style="max-width:100%;border-radius:6px;border:1px solid #e2e8f0;" alt="Map snapshot">`
+    : '';
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,6 +138,8 @@ export function exportReport() {
 <body>
 <h1>🐝 Bay Hive</h1>
 <div class="meta">Pollinator Habitat Intelligence Report &nbsp;·&nbsp; Generated ${escHtml(dateStr)} at ${escHtml(timeStr)} &nbsp;·&nbsp; Observation range: ${escHtml(dateRange)} &nbsp;·&nbsp; Active filters: ${escHtml(filterStr)}</div>
+
+${mapImgHtml}
 
 <h2>Situational Summary</h2>
 <div class="summary-grid">

@@ -25,7 +25,9 @@
   <div id="header-actions">
     <button id="btn-help"  class="header-btn" title="Help &amp; feature guide">❓ Help</button>
     <button id="btn-about" class="header-btn" title="About Bay Hive">ℹ️ About</button>
-    <button id="btn-export" class="header-btn" title="Export report">📄 Export</button>
+    <button id="btn-export" class="header-btn" title="Export HTML report">📄 Export</button>
+    <button id="btn-export-png" class="header-btn" title="Save map as PNG image">🖼️ PNG</button>
+    <button id="btn-permalink" class="header-btn" title="Copy sharable link to clipboard">🔗 Link</button>
     <div id="status" aria-live="polite">Loading…</div>
   </div>
 </header>
@@ -87,15 +89,15 @@
       <!-- Heatmap overlays — secondary toggles -->
       <div class="panel-heatmap-group">
         <p class="layer-group-label">Analysis Overlays</p>
-        <label class="layer-row" for="toggle-heatmap-proximity">
+        <label class="layer-row" for="toggle-connectivity-mesh">
           <div class="toggle">
-            <input type="checkbox" id="toggle-heatmap-proximity" aria-label="Corridor proximity heatmap layer">
+            <input type="checkbox" id="toggle-connectivity-mesh" aria-label="Corridor connectivity mesh layer">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
-          <span class="layer-emoji" aria-hidden="true">🔆</span>
-          <span class="layer-label">Corridor Proximity Bands</span>
+          <span class="layer-emoji" aria-hidden="true">🕸</span>
+          <span class="layer-label">Corridor Connectivity Mesh</span>
         </label>
-        <p class="layer-desc">Glowing bands between corridor nodes within 300 m of each other — connected habitat pairs.</p>
+        <p class="layer-desc">Lines between corridor nodes within 700 m of each other. Thicker, brighter lines = closer sites (stronger bee connectivity). Based on native bee foraging range science: ≤300 m = strong (all species), 301–700 m = weak (bumble bees only).</p>
         <label class="layer-row" for="toggle-heatmap-traffic">
           <div class="toggle">
             <input type="checkbox" id="toggle-heatmap-traffic" aria-label="Pollinator access traffic map">
@@ -235,6 +237,8 @@
     <div class="timeline-handle" data-handle="end" tabindex="0" role="slider"
          aria-label="End year" aria-valuemin="2000" aria-valuemax="2026"></div>
   </div>
+  <!-- Month filter strip — 12 toggle buttons for calendar month filtering -->
+  <div id="month-filter-strip" aria-label="Month filter"></div>
 </div>
 
 <!-- MapLibre must load before the module so maplibregl is on window -->

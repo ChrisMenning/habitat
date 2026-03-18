@@ -39,10 +39,11 @@ let _map = null;
  */
 export function initMap(containerId) {
   _map = new maplibregl.Map({
-    container: containerId,
-    style:     'https://tiles.openfreemap.org/styles/liberty',
-    center:    CENTER,
-    zoom:      11,
+    container:              containerId,
+    style:                  'https://tiles.openfreemap.org/styles/liberty',
+    center:                 CENTER,
+    zoom:                   11,
+    preserveDrawingBuffer:  true,   // required for canvas.toDataURL() in map export
   });
 
   _map.addControl(new maplibregl.NavigationControl(),                'top-left');
@@ -453,80 +454,85 @@ export function setRasterLayerVisibility(id, visible) {
 // ── Heatmap layers ────────────────────────────────────────────────────────────
 
 /**
- * Registers a GeoJSON source + heatmap layer for corridor proximity bands.
- * The heatmap is seeded with midpoints between every pair of corridor sites
- * that are ≤ 300 m apart — producing a glowing band along connected nodes.
+ * Connectivity Mesh — foraging-range science encoded directly into visual design.
+ *
+ * Classification thresholds (drive alert logic, not visual encoding):
+ *   Strong connection:  ≤ 300 m — within foraging range of nearly all native
+ *                       bee species including small solitary bees.
+ *   Weak connection:  301–700 m — within foraging range of bumble bees and
+ *                       larger solitary bees, but not smaller species.
+ *   Isolated:          no neighbour within 700 m — ecologically disconnected.
+ *
+ * Each LineString feature carries a `distance_m` property. Line width and
+ * opacity are interpolated by MapLibre using that value:
+ *   width:   4 px at 0 m → 1 px at 700 m
+ *   opacity: 1.0 at 0 m → 0.1 at 700 m
+ *   color:   solid #39ff14 (lime green) — strength communicated by width/opacity.
  *
  * @param {boolean} visible
  */
-export function registerCorridorProximityHeatmap(visible) {
-  _map.addSource('corridor-proximity-heat', {
+export function registerConnectivityMesh(visible) {
+  _map.addSource('connectivity-mesh', {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   });
   _map.addLayer({
-    id:     'corridor-proximity-heat-layer',
-    type:   'heatmap',
-    source: 'corridor-proximity-heat',
-    layout: { visibility: visible ? 'visible' : 'none' },
+    id:     'connectivity-mesh-layer',
+    type:   'line',
+    source: 'connectivity-mesh',
+    layout: {
+      visibility:    visible ? 'visible' : 'none',
+      'line-cap':    'round',
+      'line-join':   'round',
+    },
     paint: {
-      'heatmap-weight':   1,
-      // Exponential base-2 radius mirrors tile zoom geometry: each zoom level
-      // doubles screen pixels per metre, so doubling the radius keeps the
-      // geographic footprint constant (~300 m for connected corridor bands).
-      // Stops calibrated for Green Bay latitude (cos 44.5° ≈ 0.714):
-      //   z10 → ~4 px ≈ 280 m   z14 → ~64 px ≈ 270 m
-      'heatmap-radius':   ['interpolate', ['exponential', 2], ['zoom'], 10, 4, 14, 64],
-      // Fixed intensity — zoom-varying intensity was the main source of bloom.
-      'heatmap-intensity': 1.2,
-      'heatmap-color': [
-        'interpolate', ['linear'], ['heatmap-density'],
-        0,    'rgba(0,220,130,0)',
-        0.3,  'rgba(0,220,130,0.35)',
-        0.6,  'rgba(52,211,153,0.65)',
-        0.85, 'rgba(110,231,183,0.85)',
-        1,    'rgba(255,255,255,1)',
-      ],
-      'heatmap-opacity': 0.72,
+      'line-color':   '#39ff14',
+      'line-width':   ['interpolate', ['linear'], ['get', 'distance_m'], 0, 4, 700, 1],
+      'line-opacity': ['interpolate', ['linear'], ['get', 'distance_m'], 0, 1.0, 700, 0.1],
     },
   });
 }
 
 /**
- * Update the corridor proximity heatmap with current corridor feature data.
- * Generates midpoints between pairs ≤ 300 m apart plus the endpoints.
+ * Update the connectivity mesh with current corridor feature data.
+ * Draws LineString features only between pairs within 700 m (ecologically
+ * connected range for most native bee species).
  *
  * @param {GeoJSON.Feature[]} corridorFeatures
  */
-export function updateCorridorProximityHeatmap(corridorFeatures) {
-  const source = _map.getSource('corridor-proximity-heat');
+export function updateConnectivityMesh(corridorFeatures) {
+  const source = _map.getSource('connectivity-mesh');
   if (!source) return;
 
-  const R = 6371;
+  const MAX_DIST_KM = 0.7;
+
   function distKm(a, b) {
+    const R = 6371;
     const d1 = (b[1] - a[1]) * Math.PI / 180;
     const d2 = (b[0] - a[0]) * Math.PI / 180;
     const x  = Math.sin(d1 / 2) ** 2 + Math.cos(a[1] * Math.PI / 180) * Math.cos(b[1] * Math.PI / 180) * Math.sin(d2 / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
   }
-  function pt(coord) { return { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} }; }
 
-  const features = [];
-  const THRESHOLD_KM = 0.3;
-  const coords = corridorFeatures.map(f => {
+  function toCoord(f) {
     const g = f.geometry;
     if (g.type === 'Point') return g.coordinates;
     const ring = g.coordinates[0];
     return [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length];
-  });
+  }
+
+  const coords   = corridorFeatures.map(toCoord);
+  const features = [];
 
   for (let i = 0; i < coords.length; i++) {
     for (let j = i + 1; j < coords.length; j++) {
-      if (distKm(coords[i], coords[j]) <= THRESHOLD_KM) {
-        // Midpoint + the two endpoints so the fill is continuous
-        features.push(pt(coords[i]));
-        features.push(pt(coords[j]));
-        features.push(pt([(coords[i][0] + coords[j][0]) / 2, (coords[i][1] + coords[j][1]) / 2]));
+      const d = distKm(coords[i], coords[j]);
+      if (d <= MAX_DIST_KM) {
+        features.push({
+          type:       'Feature',
+          geometry:   { type: 'LineString', coordinates: [coords[i], coords[j]] },
+          properties: { distance_m: +(d * 1000).toFixed(1) },
+        });
       }
     }
   }
@@ -972,3 +978,67 @@ export function wireInteractions(layerIds, onFeatureClick) {
     _map.on('mouseleave', layerId, () => { _map.getCanvas().style.cursor = '';        });
   }
 }
+
+// ── Opacity controls ──────────────────────────────────────────────────────────
+
+/**
+ * Sets the opacity of a registered point (circle) layer.
+ * Controls circle-opacity and circle-stroke-opacity together.
+ *
+ * @param {string} id      - logical layer id (no 'points-' prefix)
+ * @param {number} opacity - 0..1
+ */
+export function setPointLayerOpacity(id, opacity) {
+  const lid = `points-${id}`;
+  if (!_map.getLayer(lid)) return;
+  _map.setPaintProperty(lid, 'circle-opacity',        opacity);
+  _map.setPaintProperty(lid, 'circle-stroke-opacity', opacity);
+}
+
+/**
+ * Sets the opacity of a registered polygon area layer (fill + outline).
+ * Controls both sublayers simultaneously, maintaining existing relative ratio.
+ *
+ * @param {string} id      - logical layer id (no prefix)
+ * @param {number} opacity - 0..1 (applied relative to the layer's base opacity)
+ */
+export function setAreaLayerOpacity(id, opacity) {
+  const fillId    = `fill-${id}`;
+  const outlineId = `outline-${id}`;
+  if (_map.getLayer(fillId))    _map.setPaintProperty(fillId,    'fill-opacity',    opacity * 0.22);
+  if (_map.getLayer(outlineId)) _map.setPaintProperty(outlineId, 'line-opacity',    opacity);
+  if (_map.getLayer(`circle-markers-${id}`)) {
+    _map.setPaintProperty(`circle-markers-${id}`, 'circle-opacity', opacity);
+  }
+}
+
+/**
+ * Sets the opacity of a registered raster layer.
+ *
+ * @param {string} id      - logical layer id (no 'raster-' prefix)
+ * @param {number} opacity - 0..1
+ */
+export function setRasterOpacity(id, opacity) {
+  const lid = `raster-${id}`;
+  if (_map.getLayer(lid)) _map.setPaintProperty(lid, 'raster-opacity', opacity);
+}
+
+/**
+ * Sets the opacity of a registered heatmap layer.
+ * For heatmap layers only (corridor proximity, pollinator traffic, CDL fringe).
+ *
+ * @param {string} sourceId - the map source id (e.g. 'connectivity-mesh')
+ * @param {number} opacity  - 0..1
+ */
+export function setHeatmapOpacity(sourceId, opacity) {
+  const lid = `${sourceId}-layer`;
+  if (_map.getLayer(lid)) _map.setPaintProperty(lid, 'heatmap-opacity', opacity);
+}
+
+/**
+ * Exposes the underlying MapLibre map instance for advanced usage
+ * (e.g. canvas export in export.js, camera in permalink.js).
+ *
+ * @returns {import('maplibre-gl').Map}
+ */
+export function getMap() { return _map; }

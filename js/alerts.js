@@ -42,6 +42,31 @@ function centroid(feature) {
   return [lng, lat];
 }
 
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+/**
+ * Computes a 12-element sighting count array (indexed 0=Jan … 11=Dec)
+ * for observations within radiusKm of a given coordinate.
+ *
+ * @param {[number,number]}    coord
+ * @param {GeoJSON.Feature[]}  sightings
+ * @param {number}             [radiusKm=0.5]
+ * @returns {number[]}  12-element array of monthly counts
+ */
+export function computeMonthHistogram(coord, sightings, radiusKm = 0.5) {
+  const counts = new Array(12).fill(0);
+  for (const s of sightings) {
+    const sc = s.geometry?.coordinates;
+    if (!sc || distKm(coord, sc) > radiusKm) continue;
+    const date = s.properties?.date;
+    if (!date) continue;
+    const m = new Date(date).getMonth();
+    counts[m]++;
+  }
+  return counts;
+}
+
 // ── Alert computation ─────────────────────────────────────────────────────────
 
 /**
@@ -176,10 +201,11 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Isolated habitat — no neighbour within 2 km ───────────────────
-  // A site with no neighbour is a habitat island: pollinators can't move
-  // between it and the broader network, limiting corridor effectiveness.
-  const ISOLATION_KM = 2.0;
+  // ── Alert: Isolated habitat — no neighbour within 700 m ──────────────────
+  // Updated from 2 km to 700 m to match the connectivity mesh visualization
+  // threshold: beyond 700 m, the foraging range of even bumble bees is exceeded.
+  // A site with no neighbour at this scale is ecologically disconnected.
+  const ISOLATION_KM = 0.7;
   const allHabitat = [
     ...corridorFeatures.map(f  => ({ coord: centroid(f),  name: f.properties.name || 'Corridor site',  kind: 'corridor'  })),
     ...waystationFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || f.properties.registrant || 'Waystation', kind: 'waystation' })),
@@ -199,6 +225,34 @@ export function computeAlerts({
         text:   `${isolated.length} habitat site${isolated.length > 1 ? 's are' : ' is'} isolated — no other habitat within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. Connecting these with additional plantings would strengthen corridor resilience.`,
         coords: isolated.map(s => s.coord),
         layers: ['gbcc-corridor', 'waystations', 'hnp'],
+      });
+    }
+  }
+
+  // ── Alert: Weak Network Node — closest neighbour is 301–700 m ────────────
+  // Within foraging range of bumble bees and large solitary bees, but not
+  // small solitary bees that dominate most corridor pollination.
+  // Only fires for corridor sites (waystations are fixed private properties;
+  // recommending new sites there would be misleading).
+  const STRONG_KM = 0.3;
+  const MESH_KM   = 0.7;
+  for (const site of corridorFeatures) {
+    const siteCoord = centroid(site);
+    const siteName  = site.properties.name || 'Corridor site';
+    let closestDist = Infinity;
+    for (const other of corridorFeatures) {
+      if (other === site) continue;
+      closestDist = Math.min(closestDist, distKm(siteCoord, centroid(other)));
+    }
+    if (closestDist > STRONG_KM && closestDist <= MESH_KM) {
+      const distM = Math.round(closestDist * 1000);
+      alerts.push({
+        level:  'info',
+        icon:   '🔗',
+        key:    `weak-node-${siteName.replace(/\s+/g, '-')}`,
+        text:   `Weak corridor node: "${siteName}" — nearest neighbour is ${distM} m away. Within range of bumble bees and larger solitary bees, but not smaller species. A new habitat site within 300 m would strengthen this node.`,
+        coords: [siteCoord],
+        layers: ['gbcc-corridor'],
       });
     }
   }
@@ -330,6 +384,51 @@ export function computeAlerts({
         coords: [],
         layers: ['gbcc-corridor', 'waystations', 'hnp'],
       });
+    }
+  }
+
+  // ── Alert: Bloom Gap — zero sightings in ≥2 consecutive months May–Sep ────
+  // Reveals phenological gaps in pollinator activity near habitat sites.
+  // Only fires when we have enough sightings data to make a meaningful statement.
+  if (pollinatorSightings.length >= 10) {
+    const MAY_IDX = 4, SEP_IDX = 8;  // 0-indexed months (May=4, Sep=8)
+    for (const site of [...corridorFeatures, ...waystationFeatures]) {
+      const siteCoord = centroid(site);
+      const siteName  = site.properties.name || site.properties.registrant || 'Site';
+      const hist      = computeMonthHistogram(siteCoord, pollinatorSightings, 0.5);
+
+      // Find consecutive zero runs within May–September
+      let gapStart = null;
+      const gapMonths = [];
+      for (let m = MAY_IDX; m <= SEP_IDX; m++) {
+        if (hist[m] === 0) {
+          if (gapStart === null) gapStart = m;
+        } else {
+          if (gapStart !== null) {
+            if (m - gapStart >= 2) {
+              // Run of ≥2 consecutive zero months
+              for (let k = gapStart; k < m; k++) gapMonths.push(MONTH_NAMES[k]);
+            }
+            gapStart = null;
+          }
+        }
+      }
+      // Handle run extending to end of window
+      if (gapStart !== null && (SEP_IDX + 1 - gapStart) >= 2) {
+        for (let k = gapStart; k <= SEP_IDX; k++) gapMonths.push(MONTH_NAMES[k]);
+      }
+
+      if (gapMonths.length >= 2) {
+        const gapStr = gapMonths.join(', ');
+        alerts.push({
+          level:  'warn',
+          icon:   '🌸',
+          key:    `bloom-gap-${siteName.replace(/\s+/g, '-')}`,
+          text:   `Bloom gap at "${siteName}": no recorded pollinator activity in ${gapStr}. Consider adding plants that bloom during these months to close the seasonal gap.`,
+          coords: [siteCoord],
+          layers: ['gbcc-corridor', 'waystations'],
+        });
+      }
     }
   }
 

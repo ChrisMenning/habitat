@@ -14,6 +14,7 @@
  */
 
 import { esc } from './ui.js';
+import { computeMonthHistogram } from './alerts.js';
 
 const NEARBY_KM = 0.75;
 
@@ -54,6 +55,110 @@ export function setSightings(features) { _sightings = features; }
 
 export function setHabitatSites(features) { _habitatSites = features; }
 
+// ── Seasonal histogram ────────────────────────────────────────────────────────
+
+const MONTH_ABBR_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/**
+ * Renders a 12-bar SVG seasonal activity histogram.
+ * Bars represent sighting counts per calendar month within NEARBY_KM of a site.
+ * WCAG: role="img" with descriptive aria-label.
+ *
+ * @param {number[]} monthCounts - 12-element array (index 0 = January)
+ * @returns {string} HTML string (SVG element)
+ */
+function buildHistogramSVG(monthCounts) {
+  const W = 264, H = 60, padL = 4, padR = 4, padT = 4, padB = 18;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const maxCount = Math.max(...monthCounts, 1);
+  const barW = plotW / 12;
+
+  // Find peak and describe pattern for aria-label
+  const peakMonth  = monthCounts.indexOf(Math.max(...monthCounts));
+  const hasGap     = monthCounts.some(c => c === 0);
+  const gapMonths  = monthCounts
+    .map((c, i) => c === 0 ? MONTH_ABBR_SHORT[i] : null)
+    .filter(Boolean);
+  const peakLabel  = maxCount > 0 ? `peak in ${MONTH_ABBR_SHORT[peakMonth]}` : 'no sightings';
+  const gapLabel   = gapMonths.length ? `, gap in ${gapMonths.join(', ')}` : '';
+  const ariaLabel  = `Sighting activity by month: ${peakLabel}${gapLabel}.`;
+
+  const bars = monthCounts.map((count, i) => {
+    const barH  = maxCount > 0 ? (count / maxCount) * plotH : 0;
+    const x     = padL + i * barW + 1;
+    const y     = padT + plotH - barH;
+    const color = count === 0 ? '#374151' : '#34d399';
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW - 2).toFixed(1)}" height="${barH.toFixed(1)}" fill="${color}" rx="1" aria-hidden="true"/>`;
+  }).join('');
+
+  const labels = MONTH_ABBR_SHORT.map((label, i) => {
+    const x = padL + i * barW + barW / 2;
+    return `<text x="${x.toFixed(1)}" y="${H - 2}" text-anchor="middle" fill="#6b7280" font-size="8" aria-hidden="true">${label[0]}</text>`;
+  }).join('');
+
+  return `<svg role="img" aria-label="${esc(ariaLabel)}" viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+  ${bars}
+  ${labels}
+</svg>`;
+}
+
+/**
+ * Build a collapsible "Observed Species" section grouped by layer/data-source.
+ * Groups with >5 species get their own inner <details> to avoid wall-of-text.
+ *
+ * @param {Map<string, Map<string, number>>} speciesByGroup - layerId → (taxon → count)
+ * @returns {string} HTML string
+ */
+function _buildSpeciesSection(speciesByGroup) {
+  if (speciesByGroup.size === 0) return '';
+
+  const GROUP_LABELS = {
+    'pollinators':           'Pollinators (iNat)',
+    'native-plants':         'Native Plants (iNat)',
+    'gbif-pollinators':      'Pollinators (GBIF)',
+    'gbif-native-plants':    'Native Plants (GBIF)',
+    'gbif-non-native-plants':'Non-native Plants (GBIF)',
+  };
+
+  const groupsHtml = [...speciesByGroup.entries()].map(([gid, taxonMap]) => {
+    const label   = GROUP_LABELS[gid] ?? gid;
+    const entries = [...taxonMap.entries()].sort((a, b) => b[1] - a[1]); // descending count
+    const items   = entries.map(([name, count]) =>
+      `<li class="drawer-species-item"><span class="drawer-species-name">${esc(name)}</span><span class="drawer-species-count">${count}</span></li>`
+    ).join('');
+
+    if (entries.length <= 5) {
+      return `<div class="drawer-species-group">
+        <div class="drawer-species-group-label">${esc(label)}</div>
+        <ul class="drawer-species-list">${items}</ul>
+      </div>`;
+    }
+    // More than 5 — show first 5, rest collapsed
+    const shown   = entries.slice(0, 5);
+    const rest    = entries.slice(5);
+    const shownHtml = shown.map(([name, count]) =>
+      `<li class="drawer-species-item"><span class="drawer-species-name">${esc(name)}</span><span class="drawer-species-count">${count}</span></li>`
+    ).join('');
+    const restHtml = rest.map(([name, count]) =>
+      `<li class="drawer-species-item"><span class="drawer-species-name">${esc(name)}</span><span class="drawer-species-count">${count}</span></li>`
+    ).join('');
+    return `<div class="drawer-species-group">
+      <div class="drawer-species-group-label">${esc(label)}</div>
+      <ul class="drawer-species-list">${shownHtml}</ul>
+      <details class="drawer-species-more">
+        <summary>${rest.length} more…</summary>
+        <ul class="drawer-species-list">${restHtml}</ul>
+      </details>
+    </div>`;
+  }).join('');
+
+  return `<details class="drawer-species-details" open>
+    <summary class="drawer-section-label drawer-section-summary">Observed Species</summary>
+    <div class="drawer-species-groups">${groupsHtml}</div>
+  </details>`;
+}
+
 /**
  * Open the drawer with the given feature's dossier.
  * @param {GeoJSON.Feature} feature
@@ -66,21 +171,38 @@ export function openDrawer(feature) {
   const p    = feature.properties;
   const coord = featureCentroid(feature);
 
-  // ── Nearby sightings ──────────────────────────────────────────────────────
+  // ── Nearby sightings + seasonal histogram ────────────────────────────────
   let nearbySightingsCount = 0;
-  let nearbySpecies = new Set();
+  const nearbySightingsAll = [];
   if (coord) {
     for (const s of _sightings) {
       const sc = s.geometry?.coordinates;
       if (sc && distKm(coord, sc) <= NEARBY_KM) {
         nearbySightingsCount++;
-        if (s.properties.common || s.properties.name) {
-          nearbySpecies.add(s.properties.common || s.properties.name);
-        }
+        nearbySightingsAll.push(s);
       }
     }
   }
-  const speciesList = [...nearbySpecies].slice(0, 5);
+
+  // Group species by layer_id for the collapsible species section
+  const GROUP_LABELS = {
+    'pollinators':           'Pollinators (iNat)',
+    'native-plants':         'Native Plants (iNat)',
+    'gbif-pollinators':      'Pollinators (GBIF)',
+    'gbif-native-plants':    'Native Plants (GBIF)',
+    'gbif-non-native-plants':'Non-native Plants (GBIF)',
+  };
+  const speciesByGroup = new Map(); // layerId → Map<taxonName, count>
+  for (const s of nearbySightingsAll) {
+    const gid  = s.properties?.layer_id ?? 'other';
+    const name = s.properties?.common || s.properties?.name || 'Unknown';
+    if (!speciesByGroup.has(gid)) speciesByGroup.set(gid, new Map());
+    const m = speciesByGroup.get(gid);
+    m.set(name, (m.get(name) ?? 0) + 1);
+  }
+  const uniqueSpeciesCount = [...speciesByGroup.values()]
+    .reduce((sum, m) => sum + m.size, 0);
+  const monthCounts = coord ? computeMonthHistogram(coord, nearbySightingsAll, NEARBY_KM) : new Array(12).fill(0);
 
   // ── Nearby habitat sites ──────────────────────────────────────────────────
   const nearbySites = coord
@@ -148,11 +270,13 @@ export function openDrawer(feature) {
         <span class="drawer-stat-label">Pollinator sightings within ${NEARBY_KM * 1000 | 0} m</span>
       </div>
       <div class="drawer-stat">
-        <span class="drawer-stat-value">${nearbySpecies.size}</span>
+        <span class="drawer-stat-value">${uniqueSpeciesCount}</span>
         <span class="drawer-stat-label">Species observed</span>
       </div>
     </div>
-    ${speciesList.length ? `<p class="drawer-species-list">${speciesList.map(s => `<span class="drawer-chip">${esc(s)}</span>`).join(' ')}</p>` : ''}
+    ${_buildSpeciesSection(speciesByGroup)}
+    <div class="drawer-section-label">Seasonal activity (sightings by month)</div>
+    <div class="drawer-histogram">${buildHistogramSVG(monthCounts)}</div>
   `;
 
   const nearbySitesHtml = nearbySites.length

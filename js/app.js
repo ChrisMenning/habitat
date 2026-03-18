@@ -27,18 +27,20 @@ import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
          registerVectorIcons,
          registerRasterLayer,
-         registerCorridorProximityHeatmap,
+         registerConnectivityMesh,
+         updateConnectivityMesh,
          registerPollinatorTrafficHeatmap,
-         updateCorridorProximityHeatmap,
          updatePollinatorTrafficHeatmap,
          setHeatmapVisibility,
          registerCdlFringeHeatmap,
          updateCdlFringeHeatmap,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
+         setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions,
-         showAlertHighlight, clearAlertHighlight, fitToCoords } from './map.js';
+         showAlertHighlight, clearAlertHighlight, fitToCoords,
+         getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
          setLoading, setStatus, getDefaultDates,
          buildPopupHTML, buildAreaPopupHTML }          from './ui.js';
@@ -50,8 +52,10 @@ import { openDrawer, closeDrawer, isDrawerFeature,
          setSightings as setDrawerSightings,
          setHabitatSites as setDrawerHabitatSites }   from './drawer.js';
 import { initTimeline, updateTimelineBounds,
-         mountTimelineDrag }                          from './timeline.js';
-import { setExportData, exportReport }                from './export.js';
+         mountTimelineDrag, registerTemporalLayer }   from './timeline.js';
+import { setExportData, exportReport, exportMapPng }  from './export.js';
+import { parsePermalink, applyPermalinkState,
+         initPermalink }                               from './permalink.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -122,6 +126,10 @@ function setLayerActive(id, visible) {
 }
 
 // â”€â”€ Map setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// Timeline year-range state (shared with permalink)
+let _timelineStartYear = new Date().getFullYear() - 1;
+let _timelineEndYear   = new Date().getFullYear();
 
 const map = initMap('map');
 
@@ -307,6 +315,12 @@ async function loadObservations() {
     if (treatmentResult.status === 'fulfilled') {
       setAreaFeatures('gbcc-treatment', treatmentResult.value);
       counts['gbcc-treatment'] = treatmentResult.value.features.length;
+      registerTemporalLayer(
+        'gbcc-treatment',
+        treatmentResult.value.features,
+        f => f.properties?.date,
+        filtered => setAreaFeatures('gbcc-treatment', { type: 'FeatureCollection', features: filtered }),
+      );
     } else {
       console.warn('GBCC treatments failed:', treatmentResult.reason);
       counts['gbcc-treatment'] = 0;
@@ -355,6 +369,12 @@ async function loadObservations() {
 
     const corridorFeats    = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
     const waystationFeats  = waystationGeoJSON().features;
+    registerTemporalLayer(
+      'waystations',
+      waystationFeats,
+      f => f.properties?.registered,
+      filtered => setLayerFeatures('waystation', filtered),
+    );
     const pfasFeats        = pfasResult.status      === 'fulfilled' ? pfasResult.value.features     : [];
     const hnpFeats         = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
     const allHabitatFeats  = [...corridorFeats, ...waystationFeats, ...hnpFeats];
@@ -412,7 +432,7 @@ async function loadObservations() {
     updateTimelineBounds(allPollinatorFeatures);
 
     // Heatmaps â€” update with latest habitat node data
-    updateCorridorProximityHeatmap(corridorFeats);
+    updateConnectivityMesh(corridorFeats);
     updatePollinatorTrafficHeatmap(corridorFeats, waystationFeats, hnpFeats);
 
     // CDL fringe â€” static per-load; update source data once available
@@ -476,8 +496,8 @@ map.on('load', () => {
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }
-  // 0c. Heatmap layers â€” registered early so they sit above rasters but below vectors
-  registerCorridorProximityHeatmap(false);
+  // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers
+  registerConnectivityMesh(false);
   registerPollinatorTrafficHeatmap(false);
   // 0d. CDL fringe heatmap â€” agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
@@ -527,6 +547,13 @@ map.on('load', () => {
   }
 
   // Build the side-panel UI
+  // Opacity callback: routes to the correct setter based on layer type
+  function handleOpacity(id, opacity) {
+    if (AREA_LAYERS.some(l => l.id === id))    setAreaLayerOpacity(id, opacity);
+    else if (_rasterLayerIds.has(id))          setRasterOpacity(id, opacity);
+    else                                       setPointLayerOpacity(id, opacity);
+  }
+
   // Habitat Programs = active planting programs (corridor only)
   // Conservation = background land protection + treatments + hazards
   const habitatAreaLayers     = AREA_LAYERS.filter(l => l.id === 'gbcc-corridor');
@@ -541,7 +568,8 @@ map.on('load', () => {
       { groupLabel: 'Homegrown National Park',    layers: HNP_LAYER          },
     ],
     setLayerActive,
-    document.getElementById('panel-habitat-inner')
+    document.getElementById('panel-habitat-inner'),
+    handleOpacity,
   );
 
   // â”€â”€ Conservation Areas & Hazards (secondary, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -552,7 +580,8 @@ map.on('load', () => {
       { groupLabel: 'Hazards',             layers: HAZARD_LAYERS      },
     ],
     setLayerActive,
-    document.getElementById('panel-areas-inner')
+    document.getElementById('panel-areas-inner'),
+    handleOpacity,
   );
 
   // â”€â”€ Land Cover Analysis (NLCD classes + CDL, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -570,7 +599,8 @@ map.on('load', () => {
       { groupLabel: 'Cropland Data Layer (USDA)', layers: RASTER_LAYERS },
     ],
     setLayerActive,
-    document.getElementById('panel-landcover-inner')
+    document.getElementById('panel-landcover-inner'),
+    handleOpacity,
   );
 
   // â”€â”€ Sightings (tertiary, for impact correlation, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -579,7 +609,9 @@ map.on('load', () => {
       { groupLabel: 'iNaturalist',     layers: LAYERS      },
       { groupLabel: 'GBIF',            layers: GBIF_LAYERS },
     ],
-    setLayerActive
+    setLayerActive,
+    null,
+    handleOpacity,
   );
   buildEstLegend();
   buildAreaLegend(setLayerActive);
@@ -589,9 +621,9 @@ map.on('load', () => {
   document.getElementById('date-from').value = from;
   document.getElementById('date-to').value   = to;
 
-  // Heatmap toggle wiring
-  document.getElementById('toggle-heatmap-proximity')?.addEventListener('change', e => {
-    setHeatmapVisibility('corridor-proximity-heat', e.target.checked);
+  // Connectivity mesh toggle wiring
+  document.getElementById('toggle-connectivity-mesh')?.addEventListener('change', e => {
+    setHeatmapVisibility('connectivity-mesh', e.target.checked);
   });
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
@@ -618,6 +650,7 @@ map.on('load', () => {
 
   // Export button
   document.getElementById('btn-export').addEventListener('click', exportReport);
+  document.getElementById('btn-export-png')?.addEventListener('click', exportMapPng);
 
   // Help / About modals
   document.getElementById('btn-help')?.addEventListener('click',  () => document.getElementById('modal-help')?.removeAttribute('hidden'));
@@ -640,18 +673,30 @@ map.on('load', () => {
   buildFilterChips(document.getElementById('panel-filter-chips'));
   initFilters((layerId, features) => setLayerFeatures(layerId, features));
 
-  // Timeline scrubber â€” range goes back to earliest recorded sighting (~2009
+  // Timeline scrubber + month filter — range goes back to earliest recorded sighting (~2009
   // for iNaturalist; GBIF records can go further).  Default window is last 1 yr.
-  initTimeline((startYear, endYear) => {
+  initTimeline((startYear, endYear, activeMonths) => {
+    _timelineStartYear = startYear;
+    _timelineEndYear   = endYear;
     setDatePredicate(dateStr => {
       if (!dateStr) return true;
-      const y = new Date(dateStr).getFullYear();
-      return y >= startYear && y <= endYear;
+      const d = new Date(dateStr);
+      const y = d.getFullYear();
+      if (y < startYear || y > endYear) return false;
+      if (activeMonths.size > 0 && !activeMonths.has(d.getMonth())) return false;
+      return true;
     });
   }, 2009);
   mountTimelineDrag();
 
-  // Drawer close button
+  // Permalink — restore state from URL hash, then init sync
+  const _permalinkState = parsePermalink();
+  if (_permalinkState) applyPermalinkState(_permalinkState, map);
+  initPermalink(
+    () => getMap(),
+    () => [_timelineStartYear, _timelineEndYear],
+  );
+
   document.getElementById('site-drawer-close').addEventListener('click', closeDrawer);
 
   // Clicking empty map space clears any active alert highlight
