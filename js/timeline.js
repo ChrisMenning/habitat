@@ -13,9 +13,9 @@
 /** @type {function(startYear:number, endYear:number): void} */
 let _onRange = null;
 
-let _minYear = 2000;
-let _maxYear = new Date().getFullYear();
-let _startYear = _minYear;
+let _minYear   = 2000;
+let _maxYear   = new Date().getFullYear();
+let _startYear = _maxYear - 1;
 let _endYear   = _maxYear;
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -31,7 +31,8 @@ export function initTimeline(onRange, dataMinYear) {
   _onRange   = onRange;
   _minYear   = dataMinYear ?? 2000;
   _maxYear   = new Date().getFullYear();
-  _startYear = _minYear;
+  // Default: show last 1 year
+  _startYear = _maxYear - 1;
   _endYear   = _maxYear;
   _render();
 }
@@ -52,10 +53,20 @@ export function updateTimelineBounds(allSightings) {
   const changed = min !== _minYear || max !== _maxYear;
   _minYear = min;
   _maxYear = max;
-  // Only reset handles if the data range actually changed
+  // Expand the range bounds but keep the user's current handles locked
+  // to "last 1 year" unless they've already been dragged.
   if (changed) {
-    _startYear = _minYear;
-    _endYear   = _maxYear;
+    // Preserve a "last year" default if handles are still at init positions
+    if (_startYear === _endYear - 1 && _endYear === _maxYear) {
+      // handles already reflect "last 1 year" — just update min bound
+    } else if (_startYear <= _minYear && _endYear >= _maxYear) {
+      // handles were at full extent — reset to last 1 year
+      _startYear = _maxYear - 1;
+      _endYear   = _maxYear;
+    }
+    // Clamp handles to new valid range
+    _startYear = Math.max(_minYear, _startYear);
+    _endYear   = Math.min(_maxYear, _endYear);
     _render();
     _onRange?.(_startYear, _endYear);
   }

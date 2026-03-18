@@ -312,3 +312,4 @@ export async function fetchChemicalHazards() {
 
   return raw;
 }
+

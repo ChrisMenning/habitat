@@ -328,6 +328,331 @@ function proxyNlcdTile(code, z, x, y, res) {
   }).on('error', err => { res.writeHead(502); res.end(err.message); });
 }
 
+// ── Agricultural fringe heatmap (NLCD-based) ─────────────────────────────────
+// Fetches NLCD 2021 WMS tiles at z=10 covering the Green Bay 15 km radius,
+// decodes the palette PNG, and emits a heatmap point for every pixel that
+// maps to NLCD code 81 (Pasture/Hay) or 82 (Cultivated Crops).
+//
+// This reuses the proven MRLC WMS infrastructure (same source as the
+// per-class NLCD overlays).  The raw unfiltered full-layer tile is fetched,
+// then each pixel's palette entry is matched against NLCD_COLORS.
+//
+// Cached for 24 h.  Sampling stride 8 px ≈ 19 m spacing at z=10.
+
+// Tile grid at z=10 covering Green Bay center (~[-88.013, 44.513]), r=15 km.
+const FRINGE_Z     = 10;
+const FRINGE_TILES = [];
+for (let tx = 260; tx <= 262; tx++)
+  for (let ty = 369; ty <= 371; ty++)
+    FRINGE_TILES.push([tx, ty]);
+
+// NLCD agricultural codes to include in the fringe heatmap, with weights.
+//   82 Cultivated Crops — row/field crops adjacent to the corridor
+//   81 Pasture/Hay      — may include alfalfa and clover
+const FRINGE_NLCD_WEIGHTS = { 81: 0.55, 82: 1.0 };
+
+/**
+ * Build a Map from PLTE palette index → NLCD code by matching each PLTE
+ * RGB triple against the verified NLCD_COLORS table (±20 tolerance).
+ * Only entries matching a code in FRINGE_NLCD_WEIGHTS are included.
+ */
+function buildFringePaletteMap(plte) {
+  const map = new Map();
+  const TOL = 20;
+  const entryCount = plte.length / 3;
+  for (let i = 0; i < entryCount; i++) {
+    const r = plte[i * 3], g = plte[i * 3 + 1], b = plte[i * 3 + 2];
+    for (const [codeStr, [tr, tg, tb]] of Object.entries(NLCD_COLORS)) {
+      if (Math.abs(r - tr) <= TOL && Math.abs(g - tg) <= TOL && Math.abs(b - tb) <= TOL) {
+        const code = Number(codeStr);
+        if (FRINGE_NLCD_WEIGHTS[code] !== undefined) map.set(i, code);
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+/** Decode a palette PNG to raw indices (one byte per pixel). */
+function decodePaletteToIndices(inflated, width, height) {
+  const stride  = 1 + width;
+  const out     = new Uint8Array(width * height);
+  const prevRow = Buffer.alloc(width);
+  for (let y = 0; y < height; y++) {
+    const filterByte = inflated[y * stride];
+    const raw        = inflated.slice(y * stride + 1, (y + 1) * stride);
+    const decoded    = Buffer.alloc(width);
+    for (let i = 0; i < raw.length; i++) {
+      const a = i >= 1 ? decoded[i - 1] : 0;
+      const b = prevRow[i];
+      const c = i >= 1 ? prevRow[i - 1] : 0;
+      switch (filterByte) {
+        case 0: decoded[i] = raw[i]; break;
+        case 1: decoded[i] = (raw[i] + a) & 0xFF; break;
+        case 2: decoded[i] = (raw[i] + b) & 0xFF; break;
+        case 3: decoded[i] = (raw[i] + Math.floor((a + b) / 2)) & 0xFF; break;
+        case 4: decoded[i] = (raw[i] + paethPredictor(a, b, c)) & 0xFF; break;
+        default: decoded[i] = raw[i];
+      }
+    }
+    for (let x = 0; x < width; x++) out[y * width + x] = decoded[x];
+    decoded.copy(prevRow);
+  }
+  return out;
+}
+
+/** Convert a slippy-map tile pixel offset to WGS 84 [lng, lat]. */
+function pixelToLngLat(z, tx, ty, px, py) {
+  const n      = Math.pow(2, z);
+  const lng    = (tx + px / 256) / n * 360 - 180;
+  const latRad = Math.atan(Math.sinh(Math.PI * (1 - 2 * (ty + py / 256) / n)));
+  return [+(lng.toFixed(5)), +(latRad * 180 / Math.PI).toFixed(5)];
+}
+
+/** Fetch a remote HTTPS URL and return the body as a Buffer. */
+function httpsGetBuf(hostname, path) {
+  return new Promise((resolve, reject) => {
+    https.get(
+      { hostname, path, timeout: 15000, headers: { 'User-Agent': 'habitat-map/1.0' } },
+      r => {
+        if (r.statusCode !== 200) { r.resume(); reject(new Error(`HTTP ${r.statusCode}`)); return; }
+        const chunks = [];
+        r.on('data', c => chunks.push(c));
+        r.on('end', () => resolve(Buffer.concat(chunks)));
+      }
+    ).on('error', reject);
+  });
+}
+
+let cdlFringeCache     = null;
+let cdlFringeCacheTime = 0;
+
+async function computeCdlFringe() {
+  const STRIDE = 8;  // sample every 8th pixel ≈ ~19 m per point at z=10
+  const NLCD_WMS_HOST = 'www.mrlc.gov';
+  const results = await Promise.allSettled(
+    FRINGE_TILES.map(([tx, ty]) => {
+      const bbox = tileToBbox3857(FRINGE_Z, tx, ty);
+      const wmsPath =
+        '/geoserver/mrlc_display/NLCD_2021_Land_Cover_L48/ows' +
+        '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap' +
+        '&LAYERS=NLCD_2021_Land_Cover_L48' +
+        '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
+        '&CRS=EPSG%3A3857&STYLES=&WIDTH=256&HEIGHT=256' +
+        '&BBOX=' + bbox;
+      return httpsGetBuf(NLCD_WMS_HOST, wmsPath).then(buf => ({ buf, tx, ty }));
+    })
+  );
+
+  const features = [];
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue;
+    const { buf, tx, ty } = result.value;
+
+    let offset = 8, ihdr = null, plte = null;
+    const idatBufs = [];
+    while (offset < buf.length - 4) {
+      const len  = buf.readUInt32BE(offset);
+      const type = buf.slice(offset + 4, offset + 8).toString('ascii');
+      const data = buf.slice(offset + 8, offset + 8 + len);
+      offset += 12 + len;
+      if      (type === 'IHDR') ihdr = { width: data.readUInt32BE(0), height: data.readUInt32BE(4), colorType: data[9] };
+      else if (type === 'PLTE') plte = data;
+      else if (type === 'IDAT') idatBufs.push(data);
+    }
+    if (!ihdr || ihdr.colorType !== 3 || !plte || idatBufs.length === 0) continue;
+
+    let inflated;
+    try { inflated = zlib.inflateSync(Buffer.concat(idatBufs)); } catch { continue; }
+
+    const paletteMap = buildFringePaletteMap(plte);
+    if (paletteMap.size === 0) continue;   // no agricultural entries in this tile
+
+    const indices = decodePaletteToIndices(inflated, ihdr.width, ihdr.height);
+    for (let py = 0; py < ihdr.height; py += STRIDE) {
+      for (let px = 0; px < ihdr.width; px += STRIDE) {
+        const idx    = indices[py * ihdr.width + px];
+        const code   = paletteMap.get(idx);
+        if (code === undefined) continue;
+        const weight = FRINGE_NLCD_WEIGHTS[code];
+        const [lng, lat] = pixelToLngLat(FRINGE_Z, tx, ty, px, py);
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { weight },
+        });
+      }
+    }
+  }
+  return features;
+}
+
+async function proxyCdlFringe(res) {
+  const now = Date.now();
+  if (cdlFringeCache && now - cdlFringeCacheTime < 24 * 60 * 60 * 1000) {
+    res.writeHead(200, { 'Content-Type': 'application/json',
+                         'Access-Control-Allow-Origin': '*',
+                         'Cache-Control': 'public, max-age=86400' });
+    res.end(cdlFringeCache);
+    return;
+  }
+  try {
+    const features    = await computeCdlFringe();
+    cdlFringeCache     = JSON.stringify({ type: 'FeatureCollection', features });
+    cdlFringeCacheTime = Date.now();
+    res.writeHead(200, { 'Content-Type': 'application/json',
+                         'Access-Control-Allow-Origin': '*',
+                         'Cache-Control': 'public, max-age=86400' });
+    res.end(cdlFringeCache);
+  } catch (err) {
+    res.writeHead(502);
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
+// ── USDA NASS QuickStats proxy ────────────────────────────────────────────────
+// Provides Wisconsin managed honey-bee colony counts and Brown County crop
+// census data that sharpen the pollinator mismatch alert.
+//
+// Requires a free API key from https://quickstats.nass.usda.gov/api
+//   Option A: NASS_API_KEY=your_key node serve.js
+//   Option B: create ./nass-key.txt containing only your key
+// Without a key the endpoint returns { available:false } and the app falls back
+// to CDL-only analysis.
+
+function getNassApiKey() {
+  if (process.env.NASS_API_KEY) return process.env.NASS_API_KEY.trim();
+  try { return fs.readFileSync(path.join(ROOT, 'nass-key.txt'), 'utf8').trim(); }
+  catch { return ''; }
+}
+
+function nassGet(params, cb) {
+  const apiKey = getNassApiKey();
+  if (!apiKey) { cb(null, null); return; }
+  const qs = Object.entries({ key: apiKey, format: 'JSON', ...params })
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const reqPath = '/api/api_GET/?' + qs;
+  https.get(
+    { hostname: 'quickstats.nass.usda.gov', path: reqPath, timeout: 15000,
+      headers: { 'User-Agent': 'habitat-map/1.0' } },
+    r => {
+      const chunks = [];
+      r.on('data', c => chunks.push(c));
+      r.on('end', () => {
+        try { cb(null, JSON.parse(Buffer.concat(chunks).toString())); }
+        catch (e) { cb(e, null); }
+      });
+    }
+  ).on('error', e => cb(e, null));
+}
+
+function parseNassValue(str) {
+  if (!str) return null;
+  const t = str.trim();
+  if (!t || t.startsWith('(')) return null;   // (D) withheld, (Z) near-zero, (NA)
+  const n = parseInt(t.replace(/,/g, ''), 10);
+  return isNaN(n) ? null : n;
+}
+
+function combineNassData(coloniesData, cropsData) {
+  const result = { available: true, colonies: null, coloniesYear: null,
+                   notableAcres: {}, totalNotableAcres: 0 };
+
+  // Extract most recent non-suppressed colony count (take highest value per year
+  // to get the all-practices total rather than an organic/conventional subset).
+  if (coloniesData?.data?.length) {
+    const byYear = {};
+    for (const r of coloniesData.data) {
+      const v = parseNassValue(r.Value);
+      if (v === null) continue;
+      const yr = Number(r.year);
+      if (!byYear[yr] || v > byYear[yr]) byYear[yr] = v;
+    }
+    const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+    if (years.length) {
+      result.colonies     = byYear[years[0]];
+      result.coloniesYear = years[0];
+    }
+  }
+
+  // Extract bee-dependent crop acres for Brown County (Census 2022).
+  // Use only domain_desc=TOTAL rows to avoid double-counting.
+  const BEE_KEYWORDS = ['ALFALFA', 'CLOVER', 'CUCUMBERS', 'SQUASH', 'PUMPKINS',
+                        'CRANBERRIES', 'BLUEBERRIES', 'APPLES', 'CHERRIES'];
+  if (cropsData?.data?.length) {
+    for (const row of cropsData.data) {
+      if (row.domain_desc !== 'TOTAL') continue;
+      const v = parseNassValue(row.Value);
+      if (!v) continue;
+      const commodity = (row.commodity_desc || '').toUpperCase();
+      for (const kw of BEE_KEYWORDS) {
+        if (commodity.includes(kw)) {
+          result.notableAcres[row.commodity_desc] =
+            (result.notableAcres[row.commodity_desc] || 0) + v;
+          break;
+        }
+      }
+    }
+  }
+  result.totalNotableAcres = Object.values(result.notableAcres).reduce((s, v) => s + v, 0);
+  return result;
+}
+
+let nassCache    = null;
+let nassCacheTime = 0;
+
+function proxyQuickStats(res) {
+  if (!getNassApiKey()) {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({
+      available: false,
+      reason: 'No NASS API key. Register free at https://quickstats.nass.usda.gov/api ' +
+              'then set NASS_API_KEY env var or create ./nass-key.txt',
+    }));
+    return;
+  }
+
+  const now = Date.now();
+  if (nassCache && now - nassCacheTime < 24 * 60 * 60 * 1000) {
+    res.writeHead(200, { 'Content-Type': 'application/json',
+                         'Access-Control-Allow-Origin': '*',
+                         'Cache-Control': 'public, max-age=86400' });
+    res.end(nassCache);
+    return;
+  }
+
+  let pending = 2, coloniesData = null, cropsData = null;
+  function finish() {
+    const combined = combineNassData(coloniesData, cropsData);
+    nassCache     = JSON.stringify(combined);
+    nassCacheTime = Date.now();
+    res.writeHead(200, { 'Content-Type': 'application/json',
+                         'Access-Control-Allow-Origin': '*',
+                         'Cache-Control': 'public, max-age=86400' });
+    res.end(nassCache);
+  }
+
+  // Query 1: Wisconsin managed honey-bee colony inventory (SURVEY, recent years)
+  nassGet({
+    source_desc:      'SURVEY',
+    commodity_desc:   'HONEY',
+    statisticcat_desc:'COLONIES',
+    agg_level_desc:   'STATE',
+    state_fips_code:  '55',
+    year__GE:         '2018',
+  }, (err, data) => { if (!err) coloniesData = data; if (--pending === 0) finish(); });
+
+  // Query 2: Brown County bee-dependent crop area harvested (Census 2022)
+  nassGet({
+    source_desc:      'CENSUS',
+    year:             '2022',
+    state_fips_code:  '55',
+    county_code:      '009',
+    statisticcat_desc:'AREA HARVESTED',
+    agg_level_desc:   'COUNTY',
+  }, (err, data) => { if (!err) cropsData = data; if (--pending === 0) finish(); });
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
@@ -342,6 +667,18 @@ const server = http.createServer((req, res) => {
   // Proxy: USDA NASS CDL county statistics (no CORS headers on their server)
   if (pathname === '/api/cdl-stats') {
     proxyCdlStats(res);
+    return;
+  }
+
+  // Proxy: CDL agricultural fringe heatmap points
+  if (pathname === '/api/cdl-fringe') {
+    proxyCdlFringe(res);
+    return;
+  }
+
+  // Proxy: USDA NASS QuickStats (colonies + county crops)
+  if (pathname === '/api/quickstats') {
+    proxyQuickStats(res);
     return;
   }
 

@@ -89,6 +89,25 @@ export async function fetchCdlStats() {
   }
 }
 
+/**
+ * Fetches USDA NASS QuickStats data via the /api/quickstats proxy in serve.js.
+ *
+ * Returns an object with colony count and notable crop acres on success.
+ * `available: false` means no API key is configured; the app degrades cleanly.
+ *
+ * @returns {Promise<{available:boolean, colonies:number|null, coloniesYear:number|null,
+ *   notableAcres:object, totalNotableAcres:number}|null>}
+ */
+export async function fetchQuickStats() {
+  try {
+    const res = await fetch('/api/quickstats');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 function parseCdlStats(json) {
   const rows = json?.rows;
   if (!Array.isArray(rows) || rows.length === 0) return null;
@@ -123,4 +142,24 @@ function parseCdlStats(json) {
     beeOfCropPct: cropAcres > 0 ? beeAcres / cropAcres * 100 : 0,
     topBeeCrops:  topBeeCrops.slice(0, 5),
   };
+}
+
+/**
+ * Fetches the CDL agricultural fringe heatmap point data via the
+ * /api/cdl-fringe proxy in serve.js.
+ *
+ * Returns a GeoJSON FeatureCollection whose Point features carry a `weight`
+ * property [0–1] indicating bee-pollination dependency for that crop pixel.
+ * Returns null on failure so the overlay is silently skipped.
+ *
+ * @returns {Promise<GeoJSON.FeatureCollection|null>}
+ */
+export async function fetchCdlFringe() {
+  try {
+    const res = await fetch('/api/cdl-fringe');
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
 }

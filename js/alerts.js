@@ -61,6 +61,7 @@ export function computeAlerts({
   pollinatorSightings = [],
   hnpFeatures        = [],
   cdlStats           = null,
+  quickStats         = null,
 }) {
   const alerts = [];
 
@@ -232,13 +233,27 @@ export function computeAlerts({
     const habitatCount   = allHabitat.length;
     const coveragePct    = (habitatCount * SITE_COVER_KM2 / REGION_KM2) * 100;
 
+    // Build optional colony-count context from NASS QuickStats when available.
+    let colonyNote = '';
+    if (quickStats?.available && quickStats.colonies) {
+      colonyNote = ` Wisconsin tracked ${quickStats.colonies.toLocaleString()} managed honey bee colonies in ${quickStats.coloniesYear}.`;
+    }
+    // Build optional Census crop-acreage corroboration when available.
+    let censusNote = '';
+    if (quickStats?.available && quickStats.totalNotableAcres > 0) {
+      const topCensus = Object.entries(quickStats.notableAcres)
+        .sort(([, a], [, b]) => b - a).slice(0, 2)
+        .map(([name, acres]) => `${name} (${acres.toLocaleString()} ac)`).join(', ');
+      censusNote = ` Census 2022 confirms bee-dependent crops in Brown County: ${topCensus}.`;
+    }
+
     if (beePct > 8 && coveragePct < 12) {
       const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
       alerts.push({
         level:  'warn',
         icon:   '⚖️',
         key:    'mismatch-high',
-        text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region. Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
+        text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
         coords: [],
       });
     } else if (beePct > 4) {
@@ -247,7 +262,7 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '⚖️',
         key:    'mismatch-moderate',
-        text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}). Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
+        text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}).${colonyNote}${censusNote} Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
         coords: [],
       });
     }

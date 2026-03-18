@@ -22,11 +22,18 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          corridorCentroids }                          from './areas.js';
 import { waystationGeoJSON }                          from './waystations.js';
 import { fetchHnpYards }                              from './hnp.js';
-import { fetchCdlStats }                              from './landcover.js';
+import { fetchCdlStats, fetchQuickStats, fetchCdlFringe } from './landcover.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
          registerVectorIcons,
          registerRasterLayer,
+         registerCorridorProximityHeatmap,
+         registerPollinatorTrafficHeatmap,
+         updateCorridorProximityHeatmap,
+         updatePollinatorTrafficHeatmap,
+         setHeatmapVisibility,
+         registerCdlFringeHeatmap,
+         updateCdlFringeHeatmap,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
@@ -68,6 +75,8 @@ function updateIntelBar({ corridorCount, waystationCount, inatCount, gbifCount, 
   document.getElementById('intel-val-gbif').textContent       = gbifCount.toLocaleString();
   document.getElementById('intel-val-alerts').textContent     = alertCount;
   document.getElementById('intel-val-cache').textContent      = fromCache ? 'Cached' : 'Live';
+  // Pulsing glow when there are active alerts
+  document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', alertCount > 0);
 }
 
 // ── Map setup ─────────────────────────────────────────────────────────────────
@@ -126,6 +135,7 @@ async function loadObservations() {
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
       corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
+      quickStatsResult, cdlFringeResult,
     ] = await Promise.allSettled([
 
       // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
@@ -164,7 +174,9 @@ async function loadObservations() {
       withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments),
       withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards),
       withCache('area/hnp',            AREA_TTL, fetchHnpYards),
-      withCache('area/cdl-stats',      AREA_TTL, fetchCdlStats),
+      withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats),
+      withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
+      withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
     ]);
 
     const counts = {};
@@ -273,7 +285,8 @@ async function loadObservations() {
       counts['hnp'] = 0;
     }
 
-    const cdlStats = cdlStatsResult.status === 'fulfilled' ? cdlStatsResult.value : null;
+    const cdlStats   = cdlStatsResult.status   === 'fulfilled' ? cdlStatsResult.value   : null;
+    const quickStats  = quickStatsResult.status  === 'fulfilled' ? quickStatsResult.value  : null;
     if (!cdlStats) console.warn('CDL stats failed:', cdlStatsResult.reason);
     updateCounts(counts);
 
@@ -335,15 +348,34 @@ async function loadObservations() {
       pollinatorSightings: allPollinatorFeatures,
       hnpFeatures:         hnpFeats,
       cdlStats,
+      quickStats,
     });
     renderAlerts(alerts, alert => {
       if (!alert.coords?.length) return;
       showAlertHighlight(alert.coords, alert.level);
-      fitToCoords(alert.coords, { padding: 100, maxZoom: 15 });
+      // Connectivity gap: zoom out more so neither site hides behind the panels.
+      // Other alerts with many coords (opportunity clusters) also benefit from
+      // extra left padding to clear the layer + alerts panels.
+      const isGap = alert.key === 'connectivity-gap';
+      fitToCoords(alert.coords, {
+        padding: isGap
+          ? { top: 80, bottom: 100, left: 540, right: 80 }
+          : { top: 80, bottom: 100, left: 540, right: 80 },
+        maxZoom: isGap ? 12 : 15,
+      });
     });
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
+
+    // Heatmaps — update with latest habitat node data
+    updateCorridorProximityHeatmap(corridorFeats);
+    updatePollinatorTrafficHeatmap(corridorFeats, waystationFeats, hnpFeats);
+
+    // CDL fringe — static per-load; update source data once available
+    if (cdlFringeResult.status === 'fulfilled' && cdlFringeResult.value) {
+      updateCdlFringeHeatmap(cdlFringeResult.value);
+    }
 
     // Combined pollinator count: iNat pollinators + GBIF pollinators
     const pollinatorCount =
@@ -401,6 +433,11 @@ map.on('load', () => {
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }
+  // 0c. Heatmap layers — registered early so they sit above rasters but below vectors
+  registerCorridorProximityHeatmap(false);
+  registerPollinatorTrafficHeatmap(false);
+  // 0d. CDL fringe heatmap — agricultural field edges near the corridor
+  registerCdlFringeHeatmap(true);
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -518,6 +555,25 @@ map.on('load', () => {
   document.getElementById('date-from').value = from;
   document.getElementById('date-to').value   = to;
 
+  // Heatmap toggle wiring
+  document.getElementById('toggle-heatmap-proximity')?.addEventListener('change', e => {
+    setHeatmapVisibility('corridor-proximity-heat', e.target.checked);
+  });
+  document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
+    setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
+  });
+  document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
+    setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
+  });
+
+  // "All layers off" button — unchecks every visible toggle in the panel
+  document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
+    document.querySelectorAll('#panel input[type="checkbox"]:checked').forEach(cb => {
+      cb.checked = false;
+      cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  });
+
   document.getElementById('btn-reload').addEventListener('click', loadObservations);
 
   // Auto-reload when dates change (debounced so the request only fires once
@@ -529,6 +585,20 @@ map.on('load', () => {
   // Export button
   document.getElementById('btn-export').addEventListener('click', exportReport);
 
+  // Help / About modals
+  document.getElementById('btn-help')?.addEventListener('click',  () => document.getElementById('modal-help')?.removeAttribute('hidden'));
+  document.getElementById('btn-about')?.addEventListener('click', () => document.getElementById('modal-about')?.removeAttribute('hidden'));
+  document.querySelectorAll('.modal-close').forEach(btn =>
+    btn.addEventListener('click', () => btn.closest('.modal-overlay')?.setAttribute('hidden', ''))
+  );
+  document.querySelectorAll('.modal-overlay').forEach(el =>
+    el.addEventListener('click', e => { if (e.target === el) el.setAttribute('hidden', ''); })
+  );
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape')
+      document.querySelectorAll('.modal-overlay:not([hidden])').forEach(m => m.setAttribute('hidden', ''));
+  });
+
   // Load static waystation GeoJSON immediately (no async fetch needed)
   setLayerFeatures('waystations', waystationGeoJSON().features);
 
@@ -536,14 +606,15 @@ map.on('load', () => {
   buildFilterChips(document.getElementById('panel-filter-chips'));
   initFilters((layerId, features) => setLayerFeatures(layerId, features));
 
-  // Timeline scrubber
+  // Timeline scrubber — range goes back to earliest recorded sighting (~2009
+  // for iNaturalist; GBIF records can go further).  Default window is last 1 yr.
   initTimeline((startYear, endYear) => {
     setDatePredicate(dateStr => {
       if (!dateStr) return true;
       const y = new Date(dateStr).getFullYear();
       return y >= startYear && y <= endYear;
     });
-  }, new Date().getFullYear() - 10);
+  }, 2009);
   mountTimelineDrag();
 
   // Drawer close button

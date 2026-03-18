@@ -450,6 +450,205 @@ export function setRasterLayerVisibility(id, visible) {
   }
 }
 
+// ── Heatmap layers ────────────────────────────────────────────────────────────
+
+/**
+ * Registers a GeoJSON source + heatmap layer for corridor proximity bands.
+ * The heatmap is seeded with midpoints between every pair of corridor sites
+ * that are ≤ 300 m apart — producing a glowing band along connected nodes.
+ *
+ * @param {boolean} visible
+ */
+export function registerCorridorProximityHeatmap(visible) {
+  _map.addSource('corridor-proximity-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'corridor-proximity-heat-layer',
+    type:   'heatmap',
+    source: 'corridor-proximity-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':   1,
+      // Exponential base-2 radius mirrors tile zoom geometry: each zoom level
+      // doubles screen pixels per metre, so doubling the radius keeps the
+      // geographic footprint constant (~300 m for connected corridor bands).
+      // Stops calibrated for Green Bay latitude (cos 44.5° ≈ 0.714):
+      //   z10 → ~4 px ≈ 280 m   z14 → ~64 px ≈ 270 m
+      'heatmap-radius':   ['interpolate', ['exponential', 2], ['zoom'], 10, 4, 14, 64],
+      // Fixed intensity — zoom-varying intensity was the main source of bloom.
+      'heatmap-intensity': 1.2,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,220,130,0)',
+        0.3,  'rgba(0,220,130,0.35)',
+        0.6,  'rgba(52,211,153,0.65)',
+        0.85, 'rgba(110,231,183,0.85)',
+        1,    'rgba(255,255,255,1)',
+      ],
+      'heatmap-opacity': 0.72,
+    },
+  });
+}
+
+/**
+ * Update the corridor proximity heatmap with current corridor feature data.
+ * Generates midpoints between pairs ≤ 300 m apart plus the endpoints.
+ *
+ * @param {GeoJSON.Feature[]} corridorFeatures
+ */
+export function updateCorridorProximityHeatmap(corridorFeatures) {
+  const source = _map.getSource('corridor-proximity-heat');
+  if (!source) return;
+
+  const R = 6371;
+  function distKm(a, b) {
+    const d1 = (b[1] - a[1]) * Math.PI / 180;
+    const d2 = (b[0] - a[0]) * Math.PI / 180;
+    const x  = Math.sin(d1 / 2) ** 2 + Math.cos(a[1] * Math.PI / 180) * Math.cos(b[1] * Math.PI / 180) * Math.sin(d2 / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+  function pt(coord) { return { type: 'Feature', geometry: { type: 'Point', coordinates: coord }, properties: {} }; }
+
+  const features = [];
+  const THRESHOLD_KM = 0.3;
+  const coords = corridorFeatures.map(f => {
+    const g = f.geometry;
+    if (g.type === 'Point') return g.coordinates;
+    const ring = g.coordinates[0];
+    return [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length];
+  });
+
+  for (let i = 0; i < coords.length; i++) {
+    for (let j = i + 1; j < coords.length; j++) {
+      if (distKm(coords[i], coords[j]) <= THRESHOLD_KM) {
+        // Midpoint + the two endpoints so the fill is continuous
+        features.push(pt(coords[i]));
+        features.push(pt(coords[j]));
+        features.push(pt([(coords[i][0] + coords[j][0]) / 2, (coords[i][1] + coords[j][1]) / 2]));
+      }
+    }
+  }
+
+  source.setData({ type: 'FeatureCollection', features });
+}
+
+/**
+ * Registers the pollinator access traffic heatmap.
+ * Fed from corridor sites + waystations + HNP yards combined.
+ *
+ * @param {boolean} visible
+ */
+export function registerPollinatorTrafficHeatmap(visible) {
+  _map.addSource('pollinator-traffic-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'pollinator-traffic-heat-layer',
+    type:   'heatmap',
+    source: 'pollinator-traffic-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':   1,
+      // ~1 km geographic radius at Green Bay latitude:
+      //   z10 → ~14 px   z14 → ~225 px (capped: use 220 so tiles stay crisp)
+      'heatmap-radius':   ['interpolate', ['exponential', 2], ['zoom'], 10, 14, 14, 220],
+      'heatmap-intensity': 0.8,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(251,191,36,0)',
+        0.2,  'rgba(251,191,36,0.25)',
+        0.5,  'rgba(245,158,11,0.55)',
+        0.75, 'rgba(234,88,12,0.78)',
+        1,    'rgba(255,220,80,1)',
+      ],
+      'heatmap-opacity': 0.60,
+    },
+  });
+}
+
+/**
+ * Update the pollinator traffic heatmap with all three habitat node types.
+ *
+ * @param {GeoJSON.Feature[]} corridorFeatures
+ * @param {GeoJSON.Feature[]} waystationFeatures
+ * @param {GeoJSON.Feature[]} hnpFeatures
+ */
+export function updatePollinatorTrafficHeatmap(corridorFeatures, waystationFeatures, hnpFeatures) {
+  const source = _map.getSource('pollinator-traffic-heat');
+  if (!source) return;
+
+  function toPoint(f) {
+    const g = f.geometry;
+    if (g.type === 'Point') return g.coordinates;
+    const ring = g.coordinates[0];
+    return [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length];
+  }
+
+  const features = [
+    ...corridorFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 1.5 } })),
+    ...waystationFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 1.2 } })),
+    ...hnpFeatures.map(f => ({ type: 'Feature', geometry: { type: 'Point', coordinates: toPoint(f) }, properties: { weight: 0.9 } })),
+  ];
+
+  source.setData({ type: 'FeatureCollection', features });
+}
+
+export function setHeatmapVisibility(id, visible) {
+  const layerId = `${id}-layer`;
+  if (_map.getLayer(layerId)) {
+    _map.setLayoutProperty(layerId, 'visibility', visible ? 'visible' : 'none');
+  }
+}
+
+// ── CDL agricultural fringe heatmap ──────────────────────────────────────────
+
+/**
+ * Registers a heatmap layer visualising bee-dependent CDL crop pixels from
+ * /api/cdl-fringe. Weight [0–1] on each point reflects pollination dependency.
+ * Color ramp: transparent → pale yellow → amber → deep orange-red.
+ */
+export function registerCdlFringeHeatmap(visible) {
+  _map.addSource('cdl-fringe-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  _map.addLayer({
+    id:     'cdl-fringe-heat-layer',
+    type:   'heatmap',
+    source: 'cdl-fringe-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 1, 1],
+      'heatmap-intensity':  1.0,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.15, 'rgba(255,237,74,0.25)',
+        0.35, 'rgba(251,191,36,0.55)',
+        0.55, 'rgba(245,158,11,0.80)',
+        0.75, 'rgba(217,119,6,0.92)',
+        1.0,  'rgba(154,52,18,1.0)',
+      ],
+      'heatmap-radius': [
+        'interpolate', ['exponential', 2], ['zoom'],
+        8, 8,  10, 22,  12, 55,  14, 130,
+      ],
+      'heatmap-opacity': 0.82,
+    },
+  });
+}
+
+/** Replaces the CDL fringe source data. */
+export function updateCdlFringeHeatmap(geojson) {
+  _map.getSource('cdl-fringe-heat')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
 /**
  * Returns the fill layer ids used for pointer hit-testing on area layers.
  * The fill layer covers the polygon interior and is the natural click target.
@@ -712,9 +911,9 @@ export function fitToCoords(coords, { padding = 80, maxZoom = 15 } = {}) {
   const midLng = (minLng + maxLng) / 2;
   const midLat = (minLat + maxLat) / 2;
 
-  // Enforce a minimum ~1.2 km bounding box so nearby / single-point alerts
+  // Enforce a minimum ~2 km bounding box so nearby / single-point alerts
   // don't zoom in so far that a site is off-screen.
-  const MIN_SPREAD = 0.011; // ≈ 1.1 km at Green Bay latitudes
+  const MIN_SPREAD = 0.022; // ≈ 2.2 km at Green Bay latitudes
   const spreadLng = Math.max(maxLng - minLng, MIN_SPREAD);
   const spreadLat = Math.max(maxLat - minLat, MIN_SPREAD);
 
