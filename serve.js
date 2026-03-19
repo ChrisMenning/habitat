@@ -575,8 +575,109 @@ async function proxyNlcdNesting(req, res) {
   }
 }
 
+// ── Brown County parcel ownership proxy ──────────────────────────────────────
+// Brown County, WI publishes parcel data through their ArcGIS REST Feature
+// Service.  The server does not send CORS headers so requests must be proxied.
+//
+// Endpoint:
+//   https://gis.co.brown.wi.us/arcgis/rest/services/OpenData/Parcels_Public_View/FeatureServer/0/query
+//
+// Called with ?bbox=minX,minY,maxX,maxY (WGS 84) from the client.
+// Returns up to 2000 features as GeoJSON.  Cached in memory for 24 h.
+//
+// Brown County assessment schema field assumptions:
+//   OWNNAME / OWN1        — owner name
+//   PARCELID / PARCELNO   — parcel identifier
+//   SITUSADDR / SITEADDR  — site address
+//   CALCACRES / ACRES     — acreage
+//   PROPCLASS / CLASS_CD  — property class code
+
+const PARCEL_BASE_URL =
+  'https://gis.browncountywi.gov/arcgis/rest/services/ParcelAndAddressFeatures/FeatureServer/23/query';
+
+// Viewport-bbox cache: keyed by rounded bbox string, TTL 24 h.
+// This replaces the single county-wide cache — each viewport bbox is cached
+// separately because the county GIS server times out for large areas.
+const _parcelBboxCache    = new Map(); // bboxKey → {body, age}
+const PARCEL_TTL_MS       = 24 * 60 * 60 * 1000;
+
+/** Round bbox components to 2 decimal places for cache keying. */
+function _roundBbox(bbox) {
+  return bbox.split(',').map(v => Math.round(parseFloat(v) * 100) / 100).join(',');
+}
+
+function proxyParcels(reqUrl, res) {
+  const qs      = url.parse(reqUrl, true).query;
+  const rawBbox = qs.bbox || '-88.07,44.47,-87.89,44.57';
+  const bbox    = _roundBbox(rawBbox);
+  const cacheKey = bbox;
+
+  const now = Date.now();
+  const cached = _parcelBboxCache.get(cacheKey);
+  if (cached && now - cached.age < PARCEL_TTL_MS) {
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=86400',
+    });
+    res.end(cached.body);
+    return;
+  }
+
+  const params = new URLSearchParams({
+    where:             '1=1',
+    geometry:          bbox,
+    geometryType:      'esriGeometryEnvelope',
+    inSR:              '4326',
+    spatialRel:        'esriSpatialRelIntersects',
+    returnGeometry:    'true',
+    outSR:             '4326',
+    // Only the 4 fields needed for classification + display
+    outFields:         'PARCELID,PublicOwner,Municipality,MapAreaTxt',
+    f:                 'geojson',
+    resultRecordCount: '2000',
+  });
+
+  const fullUrl = `${PARCEL_BASE_URL}?${params.toString()}`;
+  const parsed  = new URL(fullUrl);
+
+  https.get(
+    { hostname: parsed.hostname, path: parsed.pathname + parsed.search, timeout: 25000,
+      headers: { 'User-Agent': 'habitat-map/1.0' } },
+    upstream => {
+      const chunks = [];
+      upstream.on('data', c => chunks.push(c));
+      upstream.on('end', () => {
+        if (upstream.statusCode !== 200) {
+          res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ error: `Parcel upstream HTTP ${upstream.statusCode}` }));
+          return;
+        }
+        const body = Buffer.concat(chunks).toString('utf8');
+        try {
+          const j = JSON.parse(body);
+          if (j.error) {
+            res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: `ArcGIS error ${j.error.code}: ${j.error.message}` }));
+            return;
+          }
+        } catch { /* pass through non-JSON */ }
+        _parcelBboxCache.set(cacheKey, { body, age: Date.now() });
+        res.writeHead(200, {
+          'Content-Type':                'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control':               'public, max-age=86400',
+        });
+        res.end(body);
+      });
+    }
+  ).on('error', err => {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  });
+}
+
 function proxyNlcdTile(code, z, x, y, res) {
-  if (!targetRgb) { res.writeHead(400); res.end('Unknown NLCD code'); return; }
 
   const bbox = tileToBbox3857(z, x, y);
   const wmsPath =
@@ -1105,6 +1206,12 @@ const server = http.createServer((req, res) => {
   // Batch: NLCD nesting suitability scores for a set of corridor sites
   if (pathname === '/api/nlcd-nesting') {
     proxyNlcdNesting(req, res);
+    return;
+  }
+
+  // Brown County parcel ownership data (GIS portal doesn't send CORS headers)
+  if (pathname === '/api/parcels') {
+    proxyParcels(req.url, res);
     return;
   }
 

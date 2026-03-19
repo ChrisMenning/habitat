@@ -1500,3 +1500,184 @@ export function setNestingBadgeVisibility(visible) {
   }
 }
 
+// ── Parcel ownership layer ────────────────────────────────────────────────────
+//
+// Two sub-layers share the `parcels` GeoJSON source:
+//   parcel-fill    — zoom-interpolated fill opacity (0 at z13 → 0.45 at z15)
+//                    color driven by ownership class via MapLibre match expression
+//   parcel-outline — line layer visible from zoom 12 so users get a structural cue
+//                    before fills appear
+
+import { OWNERSHIP_META } from './parcels.js';
+
+const _OWNERSHIP_FILL_COLOR = [
+  'match', ['get', 'own_class'],
+  'city',          OWNERSHIP_META.city.color,
+  'county',        OWNERSHIP_META.county.color,
+  'state',         OWNERSHIP_META.state.color,
+  'institutional', OWNERSHIP_META.institutional.color,
+  /* private / default */ 'transparent',
+];
+
+/**
+ * Registers the parcel fill and outline layers.
+ * Must be called after the map 'load' event.
+ *
+ * @param {boolean} visible  initial visibility
+ */
+export function registerParcelLayer(visible) {
+  if (_map.getSource('parcels')) return;
+
+  _map.addSource('parcels', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  // Outline — appears one zoom level before fills to give a structural cue
+  _map.addLayer({
+    id:      'parcel-outline',
+    type:    'line',
+    source:  'parcels',
+    minzoom: 12,
+    layout:  { visibility: vis },
+    paint: {
+      'line-color':   '#64748b',
+      'line-width':   [
+        'interpolate', ['linear'], ['zoom'],
+        12, 0.4,
+        15, 1.2,
+      ],
+      'line-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        12, 0.0,
+        13, 0.5,
+        15, 0.75,
+      ],
+    },
+  });
+
+  // Fill — smooth reveal starting at zoom 13
+  _map.addLayer({
+    id:      'parcel-fill',
+    type:    'fill',
+    source:  'parcels',
+    minzoom: 13,
+    layout:  { visibility: vis },
+    paint: {
+      'fill-color':   _OWNERSHIP_FILL_COLOR,
+      'fill-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        13, 0.0,
+        15, 0.45,
+      ],
+    },
+  }, 'parcel-outline');  // insert below outline so outline stays crisp
+}
+
+/**
+ * Replaces parcel source data *and* stamps `own_class` onto each feature's
+ * properties so the paint expression works.
+ *
+ * @param {GeoJSON.FeatureCollection} geojson
+ * @param {function(object):string}   classifyFn — classifyOwnership from parcels.js
+ */
+export function setParcelFeatures(geojson, classifyFn) {
+  const src = _map.getSource('parcels');
+  if (!src) return;
+  // Stamp own_class onto each feature so the MapLibre expression can read it
+  const stamped = {
+    ...geojson,
+    features: geojson.features.map(f => ({
+      ...f,
+      properties: {
+        ...(f.properties ?? {}),
+        own_class: classifyFn(f.properties ?? {}),
+      },
+    })),
+  };
+  src.setData(stamped);
+}
+
+/**
+ * Shows or hides both parcel sub-layers.
+ * @param {boolean} visible
+ */
+export function setParcelLayerVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['parcel-fill', 'parcel-outline']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
+// ── Wikimedia Commons camera-marker layer ────────────────────────────────────
+
+/**
+ * Registers the Commons photo marker layer.
+ * Features carry `title`, `thumburl`, `descurl`, `description`, `artist`,
+ * `license` properties for use in click handlers / lightbox.
+ *
+ * @param {boolean} visible
+ */
+export function registerCommonsLayer(visible) {
+  if (_map.getSource('commons-photos')) return;
+
+  _map.addSource('commons-photos', {
+    type:    'geojson',
+    data:    { type: 'FeatureCollection', features: [] },
+    cluster: false,
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  _map.addLayer({
+    id:     'commons-photo-circle',
+    type:   'circle',
+    source: 'commons-photos',
+    layout: { visibility: vis },
+    paint: {
+      'circle-radius':       7,
+      'circle-color':        '#7c3aed',
+      'circle-opacity':      0.85,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+  });
+
+  _map.addLayer({
+    id:     'commons-photo-icon',
+    type:   'symbol',
+    source: 'commons-photos',
+    layout: {
+      visibility:              vis,
+      'text-field':            '📷',
+      'text-size':             11,
+      'text-allow-overlap':    true,
+      'text-ignore-placement': true,
+    },
+  });
+}
+
+/**
+ * Replaces Commons photo source data.
+ * Features must have Point geometry and appropriate properties.
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setCommonsFeatures(geojson) {
+  const src = _map.getSource('commons-photos');
+  if (src) src.setData(geojson);
+}
+
+/**
+ * Shows or hides the Commons photo layers.
+ * @param {boolean} visible
+ */
+export function setCommonsLayerVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['commons-photo-circle', 'commons-photo-icon']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
+

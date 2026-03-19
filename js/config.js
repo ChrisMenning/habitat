@@ -317,6 +317,22 @@ export const PESTICIDE_LAYER = {
   defaultOn:   false,
 };
 
+export const PARCEL_LAYER = {
+  id:          'parcels',
+  label:       'Parcel Ownership',
+  emoji:       '📐',
+  description: 'Brown County parcel boundaries colored by ownership class (City / County / State / Institutional / Private). Visible at neighborhood zoom (≥ 14). Lazy-loaded on first toggle.',
+  defaultOn:   false,
+};
+
+export const COMMONS_LAYER = {
+  id:          'commons-photos',
+  label:       '📷 Commons Photos',
+  emoji:       '📷',
+  description: 'Wikimedia Commons geotagged nature/habitat photography within 10 km. Click a camera marker to view the photo and license.',
+  defaultOn:   false,
+};
+
 // ── Establishment means ──────────────────────────────────────────────────────
 
 /**

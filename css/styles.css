@@ -1,7 +1,213 @@
 /* ── Reset & base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ── Nesting suitability score (site drawer) ─────────────────────────────── */
+/* ── Parcel ownership table (site drawer) ────────────────────────────────── */
+.drawer-parcels-details {
+  margin-top: 0.75rem;
+}
+.parcel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-top: 6px;
+}
+.parcel-table th,
+.parcel-table td {
+  padding: 4px 6px;
+  text-align: left;
+  border-bottom: 1px solid #374151;
+}
+.parcel-table thead th {
+  background: #1f2937;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+.parcel-table tbody tr:nth-child(even) { background: #111827; }
+.parcel-owner-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.parcel-copy-btn {
+  background: none;
+  border: 1px solid #374151;
+  border-radius: 3px;
+  padding: 2px 5px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+.parcel-copy-btn:hover { border-color: #6b7280; color: #d1d5db; }
+.copy-confirm { color: #34d399; font-size: 0.68rem; }
+.parcel-zoom-hint {
+  font-size: 0.68rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* Zoom hint in layer panel (below parcel toggle row) */
+.parcel-zoom-hint-panel {
+  font-size: 0.68rem;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 40px;
+  margin-top: 0;
+  margin-bottom: 7px;
+  line-height: 1.4;
+  transition: color 0.3s;
+}
+
+/* Loading spinner for parcel section in drawer */
+.parcel-loading {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.parcel-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #374151;
+  border-top-color: #34d399;
+  border-radius: 50%;
+  animation: parcel-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes parcel-spin { to { transform: rotate(360deg); } }
+
+/* Error / unavailable note in drawer parcel section */
+.parcel-unavailable {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+/* owner name cell — allow wrapping on long city-owned names */
+.parcel-td-owner { max-width: 8rem; word-break: break-word; font-size: 0.72rem; color: #d1d5db; }
+/* parcel ID — monospace, narrow */
+.parcel-td-pid   { font-family: ui-monospace, monospace; font-size: 0.68rem; color: #9ca3af; white-space: nowrap; }
+
+/* ── Commons photo grid (site drawer) ───────────────────────────────────── */
+.drawer-photos-details { margin-top: 0.75rem; }
+.commons-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.commons-photo-item { overflow: hidden; aspect-ratio: 4/3; }
+.commons-photo-thumb-btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.commons-photo-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s;
+}
+.commons-photo-thumb:hover { opacity: 0.80; }
+.commons-photo-note {
+  font-size: 0.68rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* ── Photo lightbox overlay ──────────────────────────────────────────────── */
+#lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#lightbox-overlay[hidden] { display: none; }
+.lightbox-box {
+  position: relative;
+  max-width: min(90vw, 820px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #111827;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+.lightbox-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.65);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.lightbox-close:hover { background: rgba(0,0,0,0.88); }
+.lightbox-close:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
+#lightbox-img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+.lightbox-caption {
+  padding: 10px 16px 12px;
+  background: #1f2937;
+}
+.lightbox-desc {
+  font-size: 0.84rem;
+  color: #d1d5db;
+  margin: 0 0 4px;
+  max-height: 3.6em;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.lightbox-credit {
+  font-size: 0.74rem;
+  color: #9ca3af;
+  margin: 0 0 6px;
+}
+#lightbox-link {
+  font-size: 0.74rem;
+  color: #34d399;
+  text-decoration: none;
+}
+#lightbox-link:hover { text-decoration: underline; }
+
+
 .drawer-nesting-row {
   display: flex;
   align-items: center;

@@ -442,5 +442,26 @@
   </div>
 </div>
 
+<!-- Photo lightbox overlay — shown by ui.js openLightbox() -->
+<div id="lightbox-overlay"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="lightbox-title"
+     hidden>
+  <div class="lightbox-box">
+    <button class="lightbox-close" type="button" aria-label="Close photo">✕</button>
+    <img id="lightbox-img" src="" alt="" loading="lazy">
+    <div class="lightbox-caption">
+      <p id="lightbox-title" class="lightbox-desc"></p>
+      <p class="lightbox-credit">
+        <span id="lightbox-artist"></span>
+        <span aria-hidden="true"> · </span>
+        <span id="lightbox-license"></span>
+      </p>
+      <a id="lightbox-link" href="" target="_blank" rel="noopener noreferrer">View on Wikimedia Commons ↗</a>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

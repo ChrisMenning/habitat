@@ -530,3 +530,44 @@ export function buildAreaPopupHTML(props) {
   // Fallback — should never occur
   return `<div class="popup-body"><strong>${esc(props.name || 'Feature')}</strong></div>`;
 }
+
+// ── Photo lightbox ────────────────────────────────────────────────────────────
+
+/**
+ * Opens the full-screen lightbox showing a Wikimedia Commons image.
+ * Keyboard focus is moved to the close button; Escape / overlay-click closes.
+ *
+ * @param {{ thumburl:string, title:string, description:string, artist:string, license:string, descurl:string }} image
+ */
+export function openLightbox(image) {
+  const overlay = document.getElementById('lightbox-overlay');
+  if (!overlay) return;
+
+  const imgEl     = document.getElementById('lightbox-img');
+  const titleEl   = document.getElementById('lightbox-title');
+  const artistEl  = document.getElementById('lightbox-artist');
+  const licenseEl = document.getElementById('lightbox-license');
+  const linkEl    = document.getElementById('lightbox-link');
+
+  if (imgEl) {
+    imgEl.src = image.thumburl;
+    imgEl.alt = image.description || image.title;
+  }
+  if (titleEl)   titleEl.textContent   = image.description || image.title;
+  if (artistEl)  artistEl.textContent  = image.artist;
+  if (licenseEl) licenseEl.textContent = image.license;
+  if (linkEl) {
+    linkEl.href = image.descurl;
+    linkEl.textContent = 'View on Wikimedia Commons ↗';
+  }
+
+  overlay.removeAttribute('hidden');
+  overlay.querySelector('.lightbox-close')?.focus();
+}
+
+/**
+ * Closes the photo lightbox overlay.
+ */
+export function closeLightbox() {
+  document.getElementById('lightbox-overlay')?.setAttribute('hidden', '');
+}
