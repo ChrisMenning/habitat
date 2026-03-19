@@ -343,8 +343,239 @@ function tileToBbox3857(z, x, y) {
  * Fetch a full NLCD WMS tile, filter it to a single class, and write the
  * resulting PNG to the HTTP response.
  */
+// ── NLCD nesting suitability score batch ─────────────────────────────────────
+// Accepts /api/nlcd-nesting?sites=JSON_ARRAY where each element is {id,lng,lat}.
+// For each site fetches NLCD tiles at z=13, counts pixels of classes 31/52/71
+// within a 300m radius, and returns a 0–100 nesting suitability score.
+//
+// Nesting weights:
+//   31  Barren Land         — bare soil/sand, prime ground-nesting substrate  (weight 3)
+//   52  Shrub/Scrub         — stem-nesting; also ground-nesting               (weight 2)
+//   71  Grassland/Herbaceous — ground-nesting bees                            (weight 3)
+
+const NESTING_CODES   = { 31: 3, 52: 2, 71: 3 };
+const NESTING_Z       = 13;
+const NESTING_RADIUS  = 300; // metres
+const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
+
+const _nestingTileCache    = new Map(); // key → { palMap, indices, width, height }
+const _nestingTileCacheAge = new Map(); // key → timestamp
+
+/** Convert [lng, lat] to slippy tile [tx, ty] at zoom z. */
+function _lngLatToTile(z, lng, lat) {
+  const n     = Math.pow(2, z);
+  const tx    = Math.floor((lng + 180) / 360 * n);
+  const latR  = lat * Math.PI / 180;
+  const ty    = Math.floor(
+    (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n
+  );
+  return [tx, ty];
+}
+
+/** All tiles whose bounding box intersects a 300m circle around [lng, lat]. */
+function _tilesForRadius(z, lng, lat, radiusM) {
+  const dLng = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+  const dLat = radiusM / 111320;
+  const [txL]  = _lngLatToTile(z, lng - dLng, lat);
+  const [txR]  = _lngLatToTile(z, lng + dLng, lat);
+  const [, tyT] = _lngLatToTile(z, lng, lat + dLat);
+  const [, tyB] = _lngLatToTile(z, lng, lat - dLat);
+  const tiles = [];
+  for (let tx = txL; tx <= txR; tx++)
+    for (let ty = tyT; ty <= tyB; ty++)
+      tiles.push([tx, ty]);
+  return tiles;
+}
+
+/** Build a palette-index → NLCD code map for only the nesting classes. */
+function _buildNestingPaletteMap(plte) {
+  const map = new Map();
+  const TOL = 20;
+  const count = plte.length / 3;
+  for (let i = 0; i < count; i++) {
+    const r = plte[i * 3], g = plte[i * 3 + 1], b = plte[i * 3 + 2];
+    for (const [codeStr, [tr, tg, tb]] of Object.entries(NLCD_COLORS)) {
+      const code = Number(codeStr);
+      if (NESTING_CODES[code] === undefined) continue;
+      if (Math.abs(r - tr) <= TOL && Math.abs(g - tg) <= TOL && Math.abs(b - tb) <= TOL) {
+        map.set(i, code);
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Fetch and decode an NLCD WMS tile at zoom z.
+ * Returns { palMap, indices, width, height } or null on error.
+ * Results are cached for 24 h.
+ */
+async function _getNlcdTileData(z, tx, ty) {
+  const key = `${z}/${tx}/${ty}`;
+  const now = Date.now();
+  if (_nestingTileCache.has(key) && now - _nestingTileCacheAge.get(key) < NESTING_TTL) {
+    return _nestingTileCache.get(key);
+  }
+  const bbox = tileToBbox3857(z, tx, ty);
+  let buf;
+  try {
+    buf = await httpsGetBuf('www.mrlc.gov',
+      '/geoserver/mrlc_display/NLCD_2021_Land_Cover_L48/ows' +
+      '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap' +
+      '&LAYERS=NLCD_2021_Land_Cover_L48' +
+      '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
+      '&CRS=EPSG%3A3857&STYLES=&WIDTH=256&HEIGHT=256' +
+      '&BBOX=' + bbox);
+  } catch { return null; }
+
+  let offset = 8, ihdr = null, plte = null;
+  const idatBufs = [];
+  while (offset < buf.length - 4) {
+    const len  = buf.readUInt32BE(offset);
+    const type = buf.slice(offset + 4, offset + 8).toString('ascii');
+    const data = buf.slice(offset + 8, offset + 8 + len);
+    offset += 12 + len;
+    if      (type === 'IHDR') ihdr = { width: data.readUInt32BE(0), height: data.readUInt32BE(4), colorType: data[9] };
+    else if (type === 'PLTE') plte = data;
+    else if (type === 'IDAT') idatBufs.push(data);
+  }
+  if (!ihdr || ihdr.colorType !== 3 || !plte || idatBufs.length === 0) return null;
+  let inflated;
+  try { inflated = zlib.inflateSync(Buffer.concat(idatBufs)); } catch { return null; }
+  const indices = decodePaletteToIndices(inflated, ihdr.width, ihdr.height);
+  const palMap  = _buildNestingPaletteMap(plte);
+  const result  = { palMap, indices, width: ihdr.width, height: ihdr.height };
+  _nestingTileCache.set(key, result);
+  _nestingTileCacheAge.set(key, now);
+  return result;
+}
+
+/**
+ * Count nesting-class pixels within radiusM of [lng, lat] in a single decoded tile.
+ * Returns { counts: {31:N,52:N,71:N}, total: N }.
+ */
+function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
+  const { palMap, indices, width, height } = tile;
+  const counts = { 31: 0, 52: 0, 71: 0 };
+  let total = 0;
+  const latR    = lat * Math.PI / 180;
+  const cosLat  = Math.cos(latR);
+  // Convert radiusM to approximate degree offsets for bounding-box pre-filter
+  const dLng = radiusM / (111320 * cosLat);
+  const dLat = radiusM / 111320;
+  // Fractional pixel coords of the site in this tile
+  const n    = Math.pow(2, z);
+  const fpx  = ((lng + 180) / 360 * n - tx) * 256;
+  const fpyNum = Math.log(Math.tan(latR) + 1 / Math.cos(latR));
+  const fpy  = ((1 - fpyNum / Math.PI) / 2 * n - ty) * 256;
+  // Pixel radius bounds (approximate using longitude-scale for x, latitude-scale for y)
+  const rpx  = dLng / (360 / (256 * n));
+  const rpy  = dLat / (1 / (256 * n));  // rough — good enough for 300m
+  const pxLo = Math.max(0,         Math.floor(fpx - rpx));
+  const pxHi = Math.min(width - 1, Math.ceil(fpx + rpx));
+  const pyLo = Math.max(0,         Math.floor(fpy - rpy));
+  const pyHi = Math.min(height - 1, Math.ceil(fpy + rpy));
+
+  for (let py = pyLo; py <= pyHi; py++) {
+    for (let px = pxLo; px <= pxHi; px++) {
+      // Convert pixel to WGS 84 and check distance (equirectangular approximation)
+      const [pLng, pLat] = pixelToLngLat(z, tx, ty, px, py);
+      const dx = (pLng - lng) * cosLat * 111320;
+      const dy = (pLat - lat) * 111320;
+      if (dx * dx + dy * dy > radiusM * radiusM) continue;
+      total++;
+      const code = palMap.get(indices[py * width + px]);
+      if (code !== undefined) counts[code] = (counts[code] || 0) + 1;
+    }
+  }
+  return { counts, total };
+}
+
+/**
+ * Convert raw pixel counts to a 0–100 nesting score.
+ * Scaling: 20% weighted-coverage → 100 points.
+ */
+function _nestingRawToScore(counts, total) {
+  if (!total) return 0;
+  const raw = (counts[31] || 0) * 3 + (counts[52] || 0) * 2 + (counts[71] || 0) * 3;
+  // raw / (total * 3) = weighted proportion; × 500 scales so 20% → 100
+  return Math.min(100, Math.round(raw / (total * 3) * 500));
+}
+
+/** Compute nesting scores for a batch of {id, lng, lat} sites. */
+async function _computeNestingBatch(sites) {
+  // Collect all unique tiles needed
+  const tileKeys = new Map(); // 'z/tx/ty' → [tx, ty]
+  for (const s of sites) {
+    for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
+      const k = `${NESTING_Z}/${tx}/${ty}`;
+      if (!tileKeys.has(k)) tileKeys.set(k, [tx, ty]);
+    }
+  }
+  // Fetch all unique tiles in parallel
+  const fetched = new Map();
+  await Promise.allSettled(
+    [...tileKeys.entries()].map(async ([k, [tx, ty]]) => {
+      const data = await _getNlcdTileData(NESTING_Z, tx, ty);
+      if (data) fetched.set(k, { data, tx, ty });
+    })
+  );
+  // Score each site
+  return sites.map(s => {
+    const aggCounts = { 31: 0, 52: 0, 71: 0 };
+    let aggTotal = 0;
+    for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
+      const k = `${NESTING_Z}/${tx}/${ty}`;
+      const t = fetched.get(k);
+      if (!t) continue;
+      const { counts, total } = _countNestingPixels(t.data, NESTING_Z, tx, ty, s.lng, s.lat, NESTING_RADIUS);
+      aggCounts[31] += counts[31] || 0;
+      aggCounts[52] += counts[52] || 0;
+      aggCounts[71] += counts[71] || 0;
+      aggTotal += total;
+    }
+    const score = _nestingRawToScore(aggCounts, aggTotal);
+    return { id: s.id, score, counts: aggCounts, total: aggTotal };
+  });
+}
+
+async function proxyNlcdNesting(req, res) {
+  const parsed = url.parse(req.url, true);
+  let sites;
+  try {
+    const raw = parsed.query.sites;
+    if (!raw) throw new Error('missing sites');
+    sites = JSON.parse(decodeURIComponent(raw));
+    if (!Array.isArray(sites) || sites.some(s => typeof s.lng !== 'number' || typeof s.lat !== 'number')) {
+      throw new Error('invalid sites array');
+    }
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: e.message }));
+    return;
+  }
+  // Limit batch size to prevent abuse
+  if (sites.length > 200) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'batch too large (max 200 sites)' }));
+    return;
+  }
+  try {
+    const results = await _computeNestingBatch(sites);
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=86400',
+    });
+    res.end(JSON.stringify(results));
+  } catch (err) {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
 function proxyNlcdTile(code, z, x, y, res) {
-  const targetRgb = NLCD_COLORS[code];
   if (!targetRgb) { res.writeHead(400); res.end('Unknown NLCD code'); return; }
 
   const bbox = tileToBbox3857(z, x, y);
@@ -868,6 +1099,12 @@ const server = http.createServer((req, res) => {
   // Proxy: NOAA GHCND daily-summaries (current-year TMAX/TMIN for GDD accumulation)
   if (pathname === '/api/noaa/ghcnd') {
     proxyNoaaGhcnd(req.url, res);
+    return;
+  }
+
+  // Batch: NLCD nesting suitability scores for a set of corridor sites
+  if (pathname === '/api/nlcd-nesting') {
+    proxyNlcdNesting(req, res);
     return;
   }
 

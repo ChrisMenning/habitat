@@ -15,6 +15,7 @@
 
 import { esc } from './ui.js';
 import { computeMonthHistogram } from './alerts.js';
+import { nestingTier, nestingDescription } from './nesting.js';
 
 const NEARBY_KM = 0.75;
 
@@ -23,6 +24,11 @@ let _sightings = [];
 
 /** All loaded habitat site features — updated after each load. */
 let _habitatSites = [];
+
+/** Nesting scores keyed by site name — updated asynchronously after NLCD fetch. */
+let _nestingScores = new Map();
+
+export function setNestingScores(scores) { _nestingScores = scores; }
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
 
@@ -345,6 +351,27 @@ export function openDrawer(feature) {
     return '';
   })();
 
+  // ── Nesting suitability score ─────────────────────────────────────────────
+  const nestingHtml = (() => {
+    const key  = p.name || p.registrant || '';
+    const info = _nestingScores.get(key);
+    if (!info) return '';
+    const { tier, label, color } = nestingTier(info.score);
+    const desc  = nestingDescription(info.score, info.counts ?? {});
+    const ariaL = `Nesting suitability: ${info.score} out of 100 — ${label}. ${desc}`;
+    return `
+      <div class="drawer-section-label">Nesting suitability (NLCD 300 m radius)</div>
+      <div class="drawer-nesting-row"
+           role="img"
+           aria-label="${esc(ariaL)}">
+        <div class="drawer-nesting-score" style="background:${color};">${info.score}</div>
+        <div class="drawer-nesting-detail">
+          <span class="drawer-nesting-label" style="color:${color};">${esc(label)}</span>
+          <span class="drawer-nesting-desc">${esc(desc)}</span>
+        </div>
+      </div>`;
+  })();
+
   body.innerHTML = `
     <div class="drawer-header" style="background:${headerColor};">
       <div class="drawer-header-label">${esc(titleLabel)}</div>
@@ -353,6 +380,7 @@ export function openDrawer(feature) {
     <div class="drawer-content">
       ${approxHtml}
       ${metaHtml}
+      ${nestingHtml}
       ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>
       ${nearbySightingsHtml}

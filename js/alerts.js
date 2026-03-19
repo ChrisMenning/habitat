@@ -90,6 +90,7 @@ export function computeAlerts({
   quickStats         = null,
   climateData        = null,
   pesticideCounties  = [],
+  nestingScores      = new Map(),
 }) {
   const alerts = [];
 
@@ -460,6 +461,32 @@ export function computeAlerts({
         text:   `High Pesticide Pressure: ${criticalSites.length} habitat site${criticalSites.length > 1 ? 's fall' : ' falls'} in a critical-band county (${countyNames.join(', ')}). Dominant row-crop agriculture drives neonicotinoid seed treatment and intensive herbicide use in this area. Coordinated buffer plantings and reduced spray windows would significantly benefit pollinators at: ${siteNames.join(', ')}${extra}.`,
         coords: criticalSites.map(centroid),
         layers: ['gbcc-corridor', 'waystations', 'pesticide'],
+      });
+    }
+  }
+
+  // ── Alert: Poor Nesting Habitat ──────────────────────────────────────────
+  // Fires when any corridor site scores below 25 on the 300 m NLCD nesting index.
+  // Level ‘opportunity’: flagging these sites as candidates for bare-ground or
+  // grassland enhancement rather than treating them as imminent threats.
+  if (nestingScores.size > 0) {
+    const poorSites = corridorFeatures.filter(f => {
+      const key  = f.properties?.name ?? '';
+      const info = nestingScores.get(key);
+      return info && info.score < 25;
+    });
+    if (poorSites.length > 0) {
+      const names = poorSites
+        .map(f => f.properties?.name || 'Corridor site')
+        .slice(0, 3);
+      const extra = poorSites.length > 3 ? ` +${poorSites.length - 3} more` : '';
+      alerts.push({
+        level:  'opportunity',
+        icon:   '🌱',
+        key:    'poor-nesting-habitat',
+        text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index — little bare ground, shrubland, or grassland detected within 300 m. Adding bare-soil patches, sand berms, or letting edges go unmowed would significantly expand nesting resources: ${names.join(', ')}${extra}.`,
+        coords: poorSites.map(centroid),
+        layers: ['gbcc-corridor'],
       });
     }
   }

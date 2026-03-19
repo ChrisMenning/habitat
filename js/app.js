@@ -37,6 +37,9 @@ import { initMap, registerLayer, registerAreaLayer,
          registerPesticideLayer,
          setPesticideFeatures,
          setPesticideLayerVisibility,
+         registerNestingBadgeLayer,
+         setNestingBadgeFeatures,
+         setNestingBadgeVisibility,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
@@ -54,7 +57,8 @@ import { initFilters, setBaseFeatures, setHabitatCoords,
          setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
 import { openDrawer, closeDrawer, isDrawerFeature,
          setSightings as setDrawerSightings,
-         setHabitatSites as setDrawerHabitatSites }   from './drawer.js';
+         setHabitatSites as setDrawerHabitatSites,
+         setNestingScores as setDrawerNestingScores }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
          mountTimelineDrag, registerTemporalLayer }   from './timeline.js';
 import { setExportData, exportReport, exportMapPng }  from './export.js';
@@ -63,6 +67,7 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
+import { fetchNestingScores, enrichCentroidsWithNesting } from './nesting.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -143,6 +148,11 @@ function setLayerActive(id, visible) {
     refreshConnectivityMesh();
   }
 
+  // Nesting badges follow NLCD active state
+  if (_rasterLayerIds.has(id)) {
+    syncNestingBadgeVisibility();
+  }
+
   // Sync panel checkbox (programmatic assignment does NOT fire 'change')
   const cb = document.getElementById(`toggle-${id}`);
   if (cb) cb.checked = visible;
@@ -169,6 +179,21 @@ let _ebirdAllFeats      = [];
 let _ebirdHummingOnly   = false;
 // Active site-layer set — reflects current toggle state for the three site-layer types.
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
+
+// Nesting score state — populated async after corridor data loads
+let _nestingScores    = new Map();   // site name → {score, counts, total}
+let _nestingLoaded    = false;        // true once first fetch completes
+let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
+
+/** Show/hide nesting badges based on whether any NLCD layer is currently on. */
+function syncNestingBadgeVisibility() {
+  if (!_nestingLoaded) return;
+  const anyNlcd = NLCD_LAYERS.some(l => {
+    const cb = document.getElementById(`toggle-${l.id}`);
+    return cb?.checked;
+  });
+  setNestingBadgeVisibility(anyNlcd);
+}
 
 const map = initMap('map');
 
@@ -381,8 +406,23 @@ async function loadObservations() {
     // â”€â”€ GBCC Pollinator Corridor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (corridorResult.status === 'fulfilled') {
       setAreaFeatures('gbcc-corridor', corridorResult.value);
-      setAreaMarkersFeatures('gbcc-corridor', corridorCentroids(corridorResult.value));
+      const _corridorCentroids = corridorCentroids(corridorResult.value);
+      setAreaMarkersFeatures('gbcc-corridor', _corridorCentroids);
       counts['gbcc-corridor'] = corridorResult.value.features.length;
+      // Async: fetch NLCD nesting scores and update badges progressively
+      fetchNestingScores(_corridorCentroids.features).then(scores => {
+        _nestingScores = scores;
+        _nestingLoaded = true;
+        setDrawerNestingScores(scores);
+        const enriched = enrichCentroidsWithNesting(_corridorCentroids, scores);
+        setNestingBadgeFeatures(enriched);
+        syncNestingBadgeVisibility();
+        // Re-render alerts to include the poor-nesting-habitat alert
+        if (_lastAlertArgs) {
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores });
+          renderAlerts(updatedAlerts, _alertFocusHandler);
+        }
+      }).catch(() => { /* nesting scores unavailable — silent degradation */ });
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -512,7 +552,7 @@ async function loadObservations() {
     }
 
     // Alerts
-    const alerts = computeAlerts({
+    _lastAlertArgs = {
       corridorFeatures:    corridorFeats,
       waystationFeatures:  waystationFeats,
       pfasFeatures:        pfasFeats,
@@ -522,8 +562,9 @@ async function loadObservations() {
       quickStats,
       climateData:         getClimateState(),
       pesticideCounties,
-    });
-    renderAlerts(alerts, alert => {
+    };
+    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
+    const _alertFocusHandler = alert => {
       if (!alert.coords?.length) return;
       // Ensure all layers relevant to this alert are visible before zooming.
       for (const layerId of alert.layers ?? []) {
@@ -535,7 +576,8 @@ async function loadObservations() {
         padding: { top: 80, bottom: 100, left: 540, right: 80 },
         maxZoom: isGap ? 12 : 15,
       });
-    });
+    };
+    renderAlerts(alerts, _alertFocusHandler);
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
@@ -630,6 +672,9 @@ map.on('load', async () => {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
   }  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
   registerPesticideLayer('pesticide', PESTICIDE_LAYER.defaultOn);
+  // 0d. Nesting badge layer — rendered above all other layers; badges start hidden
+  //     until nesting scores arrive and an NLCD layer is toggled on.
+  registerNestingBadgeLayer(false);
   // 0d. Connectivity mesh — registered early so it sits above rasters but below point layers.
   // Visibility matches the corridor layer's defaultOn; no separate toggle.
   registerConnectivityMesh(true);

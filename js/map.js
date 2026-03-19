@@ -1402,3 +1402,101 @@ export function setPesticideLayerVisibility(id, visible) {
     if (_map.getLayer(lid)) _map.setLayoutProperty(lid, 'visibility', vis);
   }
 }
+
+// ── Nesting habitat indicator badge layer ─────────────────────────────────────
+//
+// Two sub-layers share the `nesting-badges` GeoJSON source:
+//   nesting-badge-circle  — filled circle, tinted by tier, offset to upper-right
+//   nesting-badge-text    — white score number centred on the circle
+//
+// Only shown at zoom ≥ 13 (same as NLCD tiles become meaningful), and only
+// when the caller has set visibility 'visible' (tied to NLCD active state).
+
+const NESTING_MIN_ZOOM = 13;
+
+/**
+ * Registers the nesting badge source and two sub-layers.
+ * Must be called after the map 'load' event fires.
+ *
+ * @param {boolean} visible
+ */
+export function registerNestingBadgeLayer(visible) {
+  if (_map.getSource('nesting-badges')) return;
+
+  _map.addSource('nesting-badges', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  // Tier → badge background color
+  const tierColor = [
+    'match', ['get', 'nesting_tier'],
+    'good',     '#6b3a2a',
+    'moderate', '#b58a5a',
+    /* default: low */ '#9ca3af',
+  ];
+
+  // Badge background circle — circle-translate offsets it upper-right of the marker
+  _map.addLayer({
+    id:      'nesting-badge-circle',
+    type:    'circle',
+    source:  'nesting-badges',
+    minzoom: NESTING_MIN_ZOOM,
+    layout:  { visibility: vis },
+    paint: {
+      'circle-radius':        9,
+      'circle-color':         tierColor,
+      'circle-opacity':       0.96,
+      'circle-stroke-color':  '#ffffff',
+      'circle-stroke-width':  1.5,
+      'circle-translate':     [13, -13],
+      'circle-translate-anchor': 'viewport',
+    },
+  });
+
+  // Score number text — text-offset aligns with circle-translate at text-size 9
+  // (12/9 ≈ 1.33 ems → matches 13px circle-translate)
+  _map.addLayer({
+    id:      'nesting-badge-text',
+    type:    'symbol',
+    source:  'nesting-badges',
+    minzoom: NESTING_MIN_ZOOM,
+    layout: {
+      visibility:              vis,
+      'text-field':            ['to-string', ['get', 'nesting_score']],
+      'text-font':             ['Noto Sans Bold'],
+      'text-size':             9,
+      'text-offset':           [1.44, -1.44],
+      'text-allow-overlap':    true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      'text-color': '#ffffff',
+    },
+  });
+}
+
+/**
+ * Replaces badge source data.
+ * Features must carry `nesting_score` (number) and `nesting_tier` (string) properties.
+ *
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setNestingBadgeFeatures(geojson) {
+  const src = _map.getSource('nesting-badges');
+  if (src) src.setData(geojson);
+}
+
+/**
+ * Shows or hides both nesting badge sub-layers.
+ * @param {boolean} visible
+ */
+export function setNestingBadgeVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['nesting-badge-circle', 'nesting-badge-text']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
