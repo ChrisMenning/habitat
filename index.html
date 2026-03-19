@@ -270,11 +270,13 @@
       </ul>
 
       <h3>🔆 Analysis Overlays</h3>
-      <p>Three computed heatmap layers appear in the Habitat Programs section and the Land Cover section:</p>
+      <p>Several computed layers supplement the raw data:</p>
       <ul>
         <li><strong>🐝 Bee-Crop Field Fringe</strong> — amber heatmap of NLCD agricultural pixels (Cultivated Crops + Pasture/Hay) near the corridor. Warmer = higher bee-pollination demand from nearby fields. Helps identify which corridor sites sit closest to fields that need pollination services.</li>
         <li><strong>🔆 Corridor Proximity Bands</strong> — green glow between corridor nodes within 300 m of each other, highlighting already-connected habitat pairs.</li>
         <li><strong>🌡 Pollinator Access Traffic</strong> — amber/orange heatmap combining corridor sites, waystations, and HNP yards into a composite density surface. Shows where pollinator access is densest across the region.</li>
+        <li><strong>🧪 Pesticide Pressure</strong> — county-level choropleth (pale yellow → deep red) showing agricultural pesticide application intensity. On by default. Four bands from Low to Critical based on crop type and known pesticide-use patterns. Found in the Conservation Areas &amp; Hazards panel.</li>
+        <li><strong>🪨 Nesting Habitat Badge</strong> — small circular badge on each corridor site marker showing a 0–100 nesting suitability score. Computed from NLCD classes 31 (Barren), 52 (Shrub/Scrub), and 71 (Grassland/Herbaceous) within 300 m of the site. Gray = Low (0–33), Tan = Moderate (34–66), Dark brown = Good (67–100). Badges appear automatically once any NLCD layer is toggled on.</li>
       </ul>
 
       <h3>⚡ Alerts Panel <span class="modal-key">right side</span></h3>
@@ -287,6 +289,11 @@
         <li><span class="modal-badge modal-badge--bal">⚖️ Mismatch</span> — crop demand vs. habitat supply</li>
       </ul>
       <p>The ⚡ count in the intel bar pulses when alerts are present. Click it to scroll to the alerts panel.</p>
+      <p>Two alerts relate to the new overlays:</p>
+      <ul>
+        <li><span class="modal-badge modal-badge--warn">⚠️ Warning</span> <strong>High Pesticide Pressure</strong> — fires when a corridor site or waystation falls in a Critical-band county (top quartile pesticide intensity). Includes affected site names and county context.</li>
+        <li><span class="modal-badge modal-badge--opp">🌱 Opportunity</span> <strong>Poor Nesting Habitat</strong> — fires when any corridor site scores below 25 out of 100. Suggests bare-soil patches, unmowed edges, or shrub/grassland additions near those sites.</li>
+      </ul>
 
       <h3>🔭 Sightings &amp; Date Range</h3>
       <p>iNaturalist and GBIF observations are filtered by the From/To date inputs. Change the dates and click <strong>↺ Load Observations</strong> (or wait for the debounce after typing). The <strong>timeline scrubber</strong> at the bottom of the page provides a quick year-range filter without re-fetching from the network.</p>
@@ -410,14 +417,24 @@
         <li><strong>Connectivity Gap</strong> — finds the widest inter-site gap among corridor sites that are still within 8 km, flags if &gt;2.5 km (exceeds most native bee foraging range)</li>
         <li><strong>Quadrant Coverage</strong> — divides the map area into four quadrants around the centroid of all sites; flags any quadrant with no habitat</li>
         <li><strong>Pollinator Mismatch</strong> — compares bee-dependent crop acreage % against estimated habitat coverage based on site count and assumed coverage per site</li>
+        <li><strong>High Pesticide Pressure</strong> — flags corridor sites and waystations in counties with Critical-band pesticide intensity (band 4 of 4)</li>
+        <li><strong>Poor Nesting Habitat</strong> — fires for corridor sites scoring below 25/100 on the NLCD-derived nesting suitability index</li>
       </ul>
+
+      <h4>🧪 Pesticide Pressure</h4>
+      <p><strong>Source:</strong> Embedded county-level estimates derived from USDA NASS crop data and known pesticide-use patterns for NE Wisconsin</p>
+      <p>County-level agricultural pesticide intensity for the 9 counties in the Green Bay analysis region. Scores reflect crop mix (row crops, alfalfa, cranberries) and associated neonicotinoid seed treatment use. Displayed as a choropleth (pale yellow → deep red) with four bands: Low, Moderate, High, Critical. On by default. The Pesticide Pressure alert fires for any habitat site in a Critical-band county.</p>
+
+      <h4>🪨 NLCD Nesting Suitability</h4>
+      <p><strong>Source:</strong> <a href="https://www.mrlc.gov/" target="_blank">MRLC NLCD 2021</a>, computed server-side via <code>/api/nlcd-nesting</code></p>
+      <p>For each corridor site, fetches NLCD 2021 WMS tiles at zoom 13 (≈14 m/px) and counts pixels of three nesting-relevant classes within 300 m: class 31 Barren Land (weight 3), class 52 Shrub/Scrub (weight 2), class 71 Grassland/Herbaceous (weight 3). The weighted pixel fraction is normalized to a 0–100 score. Gray = Low (0–33, alert threshold &lt;25), Tan = Moderate (34–66), Dark brown = Good (67–100). Scores are fetched asynchronously after corridor data loads and appear as badges on corridor site markers whenever any NLCD layer is active. The score and a plain-language description also appear in the site detail drawer. Tile results are cached 24 h server-side.</p>
 
       <h3>Technical Architecture</h3>
       <p>Bay Hive runs entirely in the browser as ES modules, served by a minimal Node.js static file server (<code>serve.js</code>) that also acts as a CORS proxy for data sources that don't send cross-origin headers. No build step, no framework, no npm install required.</p>
       <ul>
         <li><strong>Map rendering:</strong> <a href="https://maplibre.org/" target="_blank">MapLibre GL JS 3.6.2</a></li>
-        <li><strong>NLCD tile filtering:</strong> Pure Node.js PNG decoder — CRC32, Paeth predictor, palette PNG support, RGBA encoder — all without npm dependencies</li>
-        <li><strong>Caching:</strong> Browser IndexedDB (via a lightweight wrapper in <code>cache.js</code>)</li>
+        <li><strong>NLCD tile filtering &amp; nesting scoring:</strong> Pure Node.js PNG decoder — CRC32, Paeth predictor, palette PNG support, RGBA encoder — all without npm dependencies. The same infrastructure powers both the per-class tile proxy and the <code>/api/nlcd-nesting</code> batch scoring endpoint.</li>
+        <li><strong>Caching:</strong> Browser IndexedDB (via a lightweight wrapper in <code>cache.js</code>); NLCD tiles cached 24 h server-side in memory</li>
         <li><strong>No tracking, no analytics, no external JS beyond MapLibre</strong></li>
       </ul>
 

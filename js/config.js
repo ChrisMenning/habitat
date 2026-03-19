@@ -314,7 +314,7 @@ export const PESTICIDE_LAYER = {
   label:       'Pesticide Pressure',
   emoji:       '🧪',
   description: 'County-level agricultural pesticide intensity · CDL crop-type proxy · USDA application rate lookup',
-  defaultOn:   true,
+  defaultOn:   false,
 };
 
 // ── Establishment means ──────────────────────────────────────────────────────
