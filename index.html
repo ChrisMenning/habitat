@@ -36,15 +36,24 @@
 
 <!-- ── Intelligence summary bar ────────────────────────────────────────────── -->
 <div id="intel-bar" aria-label="Situational summary">
-  <div class="intel-stat" id="intel-corridor">
+  <div class="intel-stat intel-stat--clickable" id="intel-corridor"
+       role="button" tabindex="0"
+       aria-label="View corridor sites"
+       title="Click to view corridor sites">
     <span class="intel-val" id="intel-val-corridor">—</span>
     <span class="intel-lbl"><i class="ph ph-path" aria-hidden="true"></i> Corridor area</span>
   </div>
-  <div class="intel-stat" id="intel-habitat">
+  <div class="intel-stat intel-stat--clickable" id="intel-habitat"
+       role="button" tabindex="0"
+       aria-label="View habitat network breakdown"
+       title="Click to view habitat network">
     <span class="intel-val" id="intel-val-habitat">—</span>
     <span class="intel-lbl"><i class="ph ph-tree" aria-hidden="true"></i> Habitat nodes</span>
   </div>
-  <div class="intel-stat" id="intel-inat">
+  <div class="intel-stat intel-stat--clickable" id="intel-inat"
+       role="button" tabindex="0"
+       aria-label="View top pollinator species"
+       title="Click to view top pollinator species">
     <span class="intel-val" id="intel-val-inat">—</span>
     <span class="intel-lbl"><i class="ph ph-butterfly" aria-hidden="true"></i> Pollinators sighted</span>
   </div>
@@ -54,11 +63,17 @@
     <span class="intel-val" id="intel-val-climate">—</span>
     <span class="intel-lbl" id="intel-lbl-climate"><i class="ph ph-thermometer" aria-hidden="true"></i> <span id="intel-lbl-climate-text">Season phase</span></span>
   </div>
-  <div class="intel-stat" id="intel-ebird">
+  <div class="intel-stat intel-stat--clickable" id="intel-ebird"
+       role="button" tabindex="0"
+       aria-label="View eBird species list"
+       title="Click to view eBird species">
     <span class="intel-val" id="intel-val-ebird">—</span>
     <span class="intel-lbl"><i class="ph ph-bird" aria-hidden="true"></i> eBird sightings</span>
   </div>
-  <div class="intel-stat" id="intel-species">
+  <div class="intel-stat intel-stat--clickable" id="intel-species"
+       role="button" tabindex="0"
+       aria-label="View native species list"
+       title="Click to view native species">
     <span class="intel-val" id="intel-val-species">—</span>
     <span class="intel-lbl"><i class="ph ph-flower" aria-hidden="true"></i> Native species</span>
   </div>
@@ -157,6 +172,7 @@
         aria-expanded="false"
         title="Intelligence Alerts">
       <span class="ab-icon" aria-hidden="true"><i class="ph ph-lightning"></i></span>
+      <span class="ab-badge" id="ab-badge-alerts" aria-hidden="true" style="display:none"></span>
       <span class="ab-label">Alerts</span>
     </button>
 

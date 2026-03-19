@@ -62,12 +62,12 @@ import { initMap, registerLayer, registerAreaLayer,
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
          setLoading, setStatus, initActivityBar,
          buildPopupHTML, buildAreaPopupHTML,
-         closeLightbox }                               from './ui.js';
+         esc, closeLightbox }                               from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts }                from './alerts.js';
 import { initFilters, setBaseFeatures, setHabitatCoords,
          setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
-import { openDrawer, closeDrawer, isDrawerFeature,
+import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
          setSightings as setDrawerSightings,
          setHabitatSites as setDrawerHabitatSites,
          setNestingScores as setDrawerNestingScores,
@@ -109,6 +109,14 @@ function formatArea(sqft) {
   return `${Math.round(sqft).toLocaleString()} sq ft`;
 }
 
+/** Updates the notification badge on the activity-bar alerts button. */
+function _updateAlertBadge(n) {
+  const badge = document.getElementById('ab-badge-alerts');
+  if (!badge) return;
+  if (n > 0) { badge.textContent = n; badge.style.display = ''; }
+  else        { badge.textContent = ''; badge.style.display = 'none'; }
+}
+
 /** Populates the intel-bar summary strip with current data counts. */
 function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
   document.getElementById('intel-val-corridor').textContent  = formatArea(corridorSqFt);
@@ -124,6 +132,7 @@ function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddSt
   document.getElementById('intel-val-species').textContent   = nativeSpeciesCount > 0 ? nativeSpeciesCount.toLocaleString() : '—';
   document.getElementById('intel-val-alerts').textContent    = alertCount;
   document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', alertCount > 0);
+  _updateAlertBadge(alertCount);
 }
 
 // ── Layer visibility helpers (module-level so loadObservations can use them) ──
@@ -222,6 +231,12 @@ let _parcelFeatures = [];
 let _parcelLoaded   = false;
 let _commonsLoaded  = false;
 
+// Intel drawer data — cached after each observation load so click handlers
+// always have access to the latest dataset without a re-fetch.
+let _inatByLayer      = {};    // layerId → Feature[]  (raw iNat features)
+let _gbifPollinators  = [];    // GBIF pollinator features
+let _gbifNativePlants = [];    // GBIF native plant features
+
 /** Show/hide nesting badges based on whether any NLCD layer is currently on. */
 function syncNestingBadgeVisibility() {
   if (!_nestingLoaded) return;
@@ -297,6 +312,7 @@ const _refreshParcelViewport = _debounce(async () => {
       // Sync ribbon and export snapshot so all counts agree
       document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
       document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+      _updateAlertBadge(updatedAlerts.length);
       setExportData({ alerts: updatedAlerts });
     }
   } catch (err) {
@@ -567,6 +583,7 @@ async function loadObservations() {
           // Sync ribbon and export snapshot so all counts agree
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+          _updateAlertBadge(updatedAlerts.length);
           setExportData({ alerts: updatedAlerts });
         }
       }).catch(() => { /* nesting scores unavailable — silent degradation */ });
@@ -666,6 +683,10 @@ async function loadObservations() {
 
     // Filter chip base features
     const byLayer = inatResult.status === 'fulfilled' ? inatResult.value : {};
+    // Cache for intel drawer click handlers
+    _inatByLayer      = byLayer;
+    _gbifPollinators  = gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value              : [];
+    _gbifNativePlants = gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native      : [];
     for (const layer of LAYERS) setBaseFeatures(layer.id, byLayer[layer.id] ?? []);
     setBaseFeatures('gbif-pollinators',       gbifPollResult.status     === 'fulfilled' ? gbifPollResult.value              : []);
     setBaseFeatures('gbif-native-plants',     gbifPlantResult.status    === 'fulfilled' ? gbifPlantResult.value.native      : []);
@@ -1233,6 +1254,121 @@ map.on('load', async () => {
   document.getElementById('intel-climate')?.addEventListener('click', openClimateFromBar);
   document.getElementById('intel-climate')?.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openClimateFromBar(); }
+  });
+
+  // ── Intel bar stat drawers ────────────────────────────────────────────────
+  function _featCentroid(f) {
+    const g = f.geometry;
+    if (!g) return null;
+    if (g.type === 'Point') return g.coordinates;
+    const ring = g.coordinates?.[0];
+    return ring?.length
+      ? [ring.reduce((s, c) => s + c[0], 0) / ring.length, ring.reduce((s, c) => s + c[1], 0) / ring.length]
+      : null;
+  }
+
+  // Corridor stat → show corridor site list
+  const openCorridorDrawer = () => {
+    if (!_corridorFeats.length) return;
+    const sorted = [..._corridorFeats].sort((a, b) => (b.properties?.area_sqft ?? 0) - (a.properties?.area_sqft ?? 0));
+    const totalSqft = _corridorFeats.reduce((s, f) => s + (+(f.properties?.area_sqft ?? 0)), 0);
+    const rows = sorted.map(f => {
+      const p = f.properties ?? {};
+      return `<tr><td>${esc(p.name || 'Unnamed')}</td><td style="text-align:right">${p.area_sqft > 0 ? formatArea(+p.area_sqft) : '—'}</td></tr>`;
+    }).join('');
+    openIntelDrawer('Pollinator Corridor',
+      `<p class="drawer-intel-note">${_corridorFeats.length} active sites · ${formatArea(totalSqft)} total</p>
+       <table class="drawer-intel-table"><thead><tr><th>Site</th><th>Area</th></tr></thead><tbody>${rows}</tbody></table>`);
+    setLayerActive('gbcc-corridor', true);
+    const coords = _corridorFeats.map(_featCentroid).filter(Boolean);
+    if (coords.length) { showAlertHighlight(coords, 'positive'); fitToCoords(coords, { padding: { top: 80, bottom: 80, left: 80, right: 340 } }); }
+  };
+  document.getElementById('intel-corridor')?.addEventListener('click', openCorridorDrawer);
+  document.getElementById('intel-corridor')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCorridorDrawer(); }
+  });
+
+  // Habitat stat → show habitat network summary
+  const openHabitatDrawer = () => {
+    const total = _corridorFeats.length + _waystationFeats.length + _hnpFeats.length;
+    if (!total) return;
+    openIntelDrawer('Habitat Network',
+      `<div class="drawer-intel-stat-grid">
+         <div class="drawer-intel-stat-cell"><strong>${_corridorFeats.length}</strong><span>Corridor sites</span></div>
+         <div class="drawer-intel-stat-cell"><strong>${_waystationFeats.length}</strong><span>Waystations</span></div>
+         <div class="drawer-intel-stat-cell"><strong>${_hnpFeats.length}</strong><span>HNP yards</span></div>
+       </div>
+       <p class="drawer-intel-note">${total} total habitat nodes across 3 programs</p>`);
+    const coords = [..._corridorFeats, ..._waystationFeats, ..._hnpFeats].map(_featCentroid).filter(Boolean);
+    if (coords.length) { showAlertHighlight(coords, 'positive'); fitToCoords(coords, { padding: { top: 80, bottom: 80, left: 80, right: 340 } }); }
+  };
+  document.getElementById('intel-habitat')?.addEventListener('click', openHabitatDrawer);
+  document.getElementById('intel-habitat')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openHabitatDrawer(); }
+  });
+
+  // iNat/GBIF pollinator stat → show top pollinator species
+  const openPollinatorDrawer = () => {
+    const all = [...(_inatByLayer['pollinators'] ?? []), ..._gbifPollinators];
+    if (!all.length) return;
+    const freq = {};
+    for (const f of all) { const n = f.properties?.common || f.properties?.name || 'Unknown'; freq[n] = (freq[n] ?? 0) + 1; }
+    const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 25);
+    const rows = top.map(([name, cnt]) =>
+      `<tr><td>${esc(name)}</td><td style="text-align:right">${cnt}</td></tr>`).join('');
+    openIntelDrawer('Pollinator Sightings',
+      `<p class="drawer-intel-note">${all.length.toLocaleString()} total observations · top species</p>
+       <table class="drawer-intel-table"><thead><tr><th>Species</th><th>#</th></tr></thead><tbody>${rows}</tbody></table>`);
+    setLayerActive('pollinators', true);
+    const coords = all.map(f => f.geometry?.coordinates).filter(Boolean);
+    if (coords.length) showAlertHighlight(coords.slice(0, 200), 'positive');
+  };
+  document.getElementById('intel-inat')?.addEventListener('click', openPollinatorDrawer);
+  document.getElementById('intel-inat')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPollinatorDrawer(); }
+  });
+
+  // eBird stat → show top bird species
+  const openEbirdDrawer = () => {
+    if (!_ebirdAllFeats.length) return;
+    const freq = {};
+    for (const f of _ebirdAllFeats) { const n = f.properties?.common || f.properties?.name || 'Unknown'; freq[n] = (freq[n] ?? 0) + 1; }
+    const top = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 30);
+    const rows = top.map(([name, cnt]) =>
+      `<tr><td>${esc(name)}</td><td style="text-align:right">${cnt}</td></tr>`).join('');
+    openIntelDrawer('eBird Sightings',
+      `<p class="drawer-intel-note">${_ebirdAllFeats.length.toLocaleString()} observations · top species</p>
+       <table class="drawer-intel-table"><thead><tr><th>Species</th><th>#</th></tr></thead><tbody>${rows}</tbody></table>`);
+    setLayerActive('ebird', true);
+    const coords = _ebirdAllFeats.map(f => f.geometry?.coordinates).filter(Boolean);
+    if (coords.length) showAlertHighlight(coords.slice(0, 200), 'positive');
+  };
+  document.getElementById('intel-ebird')?.addEventListener('click', openEbirdDrawer);
+  document.getElementById('intel-ebird')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEbirdDrawer(); }
+  });
+
+  // Native species stat → show unique native species list
+  const openNativeDrawer = () => {
+    const inatNative = _inatByLayer['native-plants'] ?? [];
+    const all = [...inatNative, ..._gbifNativePlants];
+    if (!all.length) return;
+    const seen = new Map();
+    for (const f of inatNative) { const n = f.properties?.name || f.properties?.common; if (n) seen.set(n, 'iNat'); }
+    for (const f of _gbifNativePlants) { const n = f.properties?.name || f.properties?.common; if (n && !seen.has(n)) seen.set(n, 'GBIF'); }
+    const sorted = [...seen.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const rows = sorted.map(([name, src]) =>
+      `<tr><td>${esc(name)} <span class="td-source">${esc(src)}</span></td></tr>`).join('');
+    openIntelDrawer('Native Species',
+      `<p class="drawer-intel-note">${seen.size} unique species · iNat + GBIF</p>
+       <table class="drawer-intel-table"><thead><tr><th>Species</th></tr></thead><tbody>${rows}</tbody></table>`);
+    setLayerActive('native-plants', true);
+    const coords = all.map(f => f.geometry?.coordinates).filter(Boolean);
+    if (coords.length) showAlertHighlight(coords.slice(0, 200), 'positive');
+  };
+  document.getElementById('intel-species')?.addEventListener('click', openNativeDrawer);
+  document.getElementById('intel-species')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNativeDrawer(); }
   });
 
   // Wire click interactions on all layers (points + polygon fills)

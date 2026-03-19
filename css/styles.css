@@ -634,6 +634,25 @@ body {
 #ab-btn-alerts.ab-btn--active { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.4); color: #f59e0b; }
 #ab-btn-alerts.ab-btn--active::before { background: #f59e0b; }
 
+/* Notification badge on activity bar buttons (e.g. alert count) */
+.ab-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #f59e0b;
+  color: #0d1f12;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px #0d1f12;
+}
+
 #panel-alerts { padding: 4px 0 6px; }
 
 /* Badge inside the alerts pane header */
@@ -1216,6 +1235,10 @@ details > summary:focus-visible {
 .intel-stat--climate:hover       { background: rgba(94,234,212,0.08); }
 .intel-stat--climate:focus-visible { outline: 2px solid #5eead4; outline-offset: -2px; }
 
+.intel-stat--clickable { cursor: pointer; }
+.intel-stat--clickable:hover { background: rgba(52,211,153,0.08); }
+.intel-stat--clickable:focus-visible { outline: 2px solid #34d399; outline-offset: -2px; }
+
 /* ── Alerts panel ──────────────────────────────────────────────────────────── */
 .alerts-badge {
   font-size: 10px;
@@ -1400,6 +1423,74 @@ details > summary:focus-visible {
 .drawer-content {
   padding: 14px 16px 24px;
   flex: 1;
+}
+
+/* Intel drawer body wrapper */
+.drawer-body { padding: 14px 16px 24px; }
+.drawer-intel-note {
+  font-size: 11px;
+  color: #6ee7b7;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+.drawer-intel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: #d1fae5;
+}
+.drawer-intel-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #34d399;
+  padding: 3px 6px 5px;
+  border-bottom: 1px solid #1e3a22;
+}
+.drawer-intel-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 11px;
+  color: #d1fae5;
+  vertical-align: top;
+}
+.drawer-intel-table tr:last-child td { border-bottom: none; }
+.drawer-intel-table .td-source {
+  font-size: 10px;
+  color: #6b7280;
+  display: block;
+}
+.drawer-intel-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.drawer-intel-stat-cell {
+  background: rgba(5,150,105,0.07);
+  border: 1px solid rgba(52,211,153,0.12);
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.drawer-intel-stat-cell strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #6ee7b7;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.drawer-intel-stat-cell span {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  margin-top: 3px;
 }
 
 .drawer-meta {

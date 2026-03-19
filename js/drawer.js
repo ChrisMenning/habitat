@@ -559,6 +559,28 @@ export function closeDrawer() {
   drawer.setAttribute('aria-hidden', 'true');
 }
 
+/**
+ * Open the drawer with a plain title and arbitrary HTML body.
+ * Used by intel-bar stats to surface summary data panels.
+ *
+ * @param {string} title    Heading shown at the top of the drawer
+ * @param {string} bodyHtml HTML string for the drawer body content
+ */
+export function openIntelDrawer(title, bodyHtml) {
+  const drawer = document.getElementById('site-drawer');
+  const body   = document.getElementById('site-drawer-body');
+  if (!drawer || !body) return;
+  body.innerHTML =
+    `<div class="drawer-header">` +
+      `<h2 class="drawer-title">${title}</h2>` +
+    `</div>` +
+    `<div class="drawer-body">${bodyHtml}</div>`;
+  drawer.scrollTop = 0;
+  drawer.classList.add('drawer--open');
+  drawer.setAttribute('aria-hidden', 'false');
+  document.getElementById('site-drawer-close')?.focus();
+}
+
 /** Returns true if the feature should open the drawer rather than a popup. */
 export function isDrawerFeature(props) {
   const drawerSources = new Set([
