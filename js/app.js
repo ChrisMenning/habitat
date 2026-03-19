@@ -1147,6 +1147,9 @@ map.on('load', async () => {
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
   });
+  document.getElementById('toggle-bees-richness')?.addEventListener('change', e => {
+    setHeatmapVisibility('bees-richness', e.target.checked);
+  });
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
