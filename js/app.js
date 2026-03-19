@@ -724,6 +724,16 @@ async function loadObservations() {
     });
 
     // Export snapshot
+    const _topSpecies = (() => {
+      const freq = {};
+      for (const f of byLayer['pollinators'] ?? []) {
+        const sp = f.properties?.common || f.properties?.name;
+        if (sp) freq[sp] = (freq[sp] || 0) + 1;
+      }
+      return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 15)
+        .map(([name, count]) => ({ name, count }));
+    })();
+
     setExportData({
       corridorCount:      counts['gbcc-corridor'] ?? 0,
       waystationCount:    _waystationFeats.length,
@@ -737,6 +747,34 @@ async function loadObservations() {
       mapZoom:            map.getZoom(),
       mapCenter:          map.getCenter().toArray(),
       activeFilters:      [],
+      // Extended fields
+      hnpCount:           _hnpFeats.length,
+      ebirdCount,
+      habitatNodeCount,
+      pollinatorCount,
+      nativeSpeciesCount,
+      corridorSqFt,
+      inatByLayer: {
+        pollinators:    counts['pollinators']    ?? 0,
+        nativePlants:   counts['native-plants']  ?? 0,
+        otherPlants:    counts['other-plants']   ?? 0,
+        otherWildlife:  counts['other-wildlife'] ?? 0,
+      },
+      gbifByLayer: {
+        pollinators:     counts['gbif-pollinators']       ?? 0,
+        nativePlants:    counts['gbif-native-plants']     ?? 0,
+        nonNativePlants: counts['gbif-non-native-plants'] ?? 0,
+      },
+      topSpecies:         _topSpecies,
+      pfasFeatures:       pfasFeats,
+      cdlStats,
+      quickStats,
+      climateState:       getClimateState(),
+      pesticideCounties,
+      nestingScores:      _nestingScores,
+      padusCount:         counts['padus']         ?? 0,
+      snaCount:           counts['dnr-sna']        ?? 0,
+      dnrManagedCount:    counts['dnr-managed']    ?? 0,
     });
 
   } catch (err) {
