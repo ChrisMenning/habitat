@@ -14,7 +14,7 @@ const fs    = require('fs');
 const path  = require('path');
 const url   = require('url');
 
-const PORT    = 3000;
+const PORT    = process.env.PORT || 3000;
 const ROOT    = __dirname;
 
 // ── Centralised API key loader ────────────────────────────────────────────────
@@ -1885,7 +1885,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
   // Pre-warm the parcel tile cache in the background.

@@ -1,0 +1,12 @@
+{
+  "name": "habitat",
+  "version": "1.0.0",
+  "description": "Pollinator habitat corridor map — Green Bay, WI",
+  "main": "serve.js",
+  "scripts": {
+    "start": "node serve.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
