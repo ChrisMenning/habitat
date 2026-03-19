@@ -54,6 +54,7 @@ function buildGbifUrl(extraParams, offset, d1, d2) {
   const encoded = new URLSearchParams({
     hasCoordinate:      'true',
     hasGeospatialIssue: 'false',
+    occurrenceStatus:   'PRESENT',   // exclude absence records
     limit:              String(PER_PAGE),
     offset:             String(offset),
     ...extraParams,
@@ -117,6 +118,83 @@ async function fetchGbifAll(extraParams, d1, d2, onProgress) {
   return { occurrences: results.slice(0, GBIF_MAX_OBS), total };
 }
 
+// ── Data-quality filtering ───────────────────────────────────────────────────
+
+/**
+ * basisOfRecord values that represent non-wild or pre-modern occurrences.
+ * These are excluded from all layers regardless of taxon.
+ *
+ * FOSSIL_SPECIMEN  — pre-modern; irrelevant for contemporary habitat analysis.
+ * LIVING_SPECIMEN  — captive or cultivated individuals (zoos, botanical gardens);
+ *                    these are NOT wild occurrences and distort range maps.
+ */
+const EXCLUDED_BASIS = new Set(['FOSSIL_SPECIMEN', 'LIVING_SPECIMEN']);
+
+/**
+ * GBIF data-quality issue flags that indicate the coordinate is spatially
+ * unreliable.  Records carrying any of these are dropped.
+ *
+ * Intentionally excluded from this deny-list (minor precision issues only):
+ *   COORDINATE_ROUNDED, GEODETIC_DATUM_ASSUMED_WGS84, TAXON_MATCH_HIGHERRANK
+ */
+const FATAL_COORD_ISSUES = new Set([
+  'COORDINATE_INVALID',
+  'ZERO_COORDINATE',
+  'COORDINATE_OUT_OF_RANGE',
+  'COUNTRY_COORDINATE_MISMATCH',
+  'PRESUMED_SWAPPED_COORDINATE',
+  'GEODETIC_DATUM_INVALID',
+]);
+
+/**
+ * Maximum coordinate uncertainty radius (metres).  Within a 15 km study
+ * circle a record with uncertainty > 10 km could fall anywhere in the area,
+ * making it useless for local habitat correlation.
+ */
+const MAX_UNCERTAINTY_M = 10_000;
+
+/**
+ * Filters raw GBIF occurrences for data quality.
+ *
+ * Removes:
+ *   • absence records (occurrenceStatus !== 'PRESENT')
+ *   • fossil and captive/cultivated specimens
+ *   • records with fatal coordinate quality flags
+ *   • records with coordinate uncertainty > 10 km
+ *   • (when requireSpecies=true) records not resolved to species rank,
+ *     which typically means GBIF couldn't match the record to a named species
+ *     and the taxon identity is uncertain — important for pollinators where
+ *     a genus-only ID doesn't confirm which pollinator family the animal belongs to
+ *
+ * @param {object[]} occurrences
+ * @param {{ requireSpecies?: boolean }} [opts]
+ * @returns {object[]}
+ */
+function filterOccurrences(occurrences, { requireSpecies = false } = {}) {
+  return occurrences.filter(o => {
+    // Presence check (API param should already handle this; belt-and-suspenders)
+    if (o.occurrenceStatus && o.occurrenceStatus !== 'PRESENT') return false;
+
+    // Fossil / captive specimens are not wild contemporary records
+    if (EXCLUDED_BASIS.has(o.basisOfRecord)) return false;
+
+    // Fatal spatial issues
+    const issues = Array.isArray(o.issues) ? o.issues : [];
+    if (issues.some(f => FATAL_COORD_ISSUES.has(f))) return false;
+
+    // Excessive coordinate uncertainty makes local-scale placement meaningless
+    if (o.coordinateUncertaintyInMeters != null &&
+        o.coordinateUncertaintyInMeters > MAX_UNCERTAINTY_M) return false;
+
+    // Species-level identification required for pollinators:
+    // a record identified only to genus or family cannot confirm whether
+    // this individual belongs to a pollinator species within that group.
+    if (requireSpecies && !o.speciesKey && !o.species) return false;
+
+    return true;
+  });
+}
+
 // ── Public data-fetching API ──────────────────────────────────────────────────
 
 /**
@@ -160,7 +238,10 @@ export async function fetchGbifPollinators(d1, d2, onProgress) {
     }
   }
 
-  const occurrences = [...seen.values()];
+  // Apply data-quality filters.  requireSpecies ensures every returned record
+  // has a resolved species identity — a genus-only Apidae record, for example,
+  // cannot confirm which bee species was observed.
+  const occurrences = filterOccurrences([...seen.values()], { requireSpecies: true });
   onProgress?.(occurrences.length, occurrences.length);
   return { occurrences, total: occurrences.length };
 }
@@ -176,7 +257,12 @@ export async function fetchGbifPollinators(d1, d2, onProgress) {
  * @returns {Promise<{occurrences: object[], total: number}>}
  */
 export async function fetchGbifPlants(d1, d2, onProgress) {
-  return fetchGbifAll({ kingdom: 'Plantae' }, d1, d2, onProgress);
+  const raw = await fetchGbifAll({ kingdom: 'Plantae' }, d1, d2, onProgress);
+  // Apply quality filters.  requireSpecies is false for plants because many
+  // herbarium specimens carry only genus-level determinations yet are still
+  // valid for establishment-means analysis and historical range context.
+  const occurrences = filterOccurrences(raw.occurrences, { requireSpecies: false });
+  return { occurrences, total: raw.total };
 }
 
 // ── Wisconsin establishment lookup via GBIF Species API ───────────────────────
