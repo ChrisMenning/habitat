@@ -79,6 +79,8 @@ import { fetchPesticideCounties }                      from './pesticide.js';
 import { fetchNestingScores, enrichCentroidsWithNesting } from './nesting.js';
 import { fetchParcelsForBbox, classifyOwnership }         from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
+import { fetchSnapshotIndex, fetchSnapshot,
+         availableYears, renderTrendChart }            from './history.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -744,6 +746,83 @@ async function loadObservations() {
     setLoading(false);
   }
 }
+// ── Historical trends ─────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch available snapshots and render year-over-year trend charts into
+ * #panel-history-inner.  Called asynchronously after the main data load so
+ * it never delays the primary render.
+ *
+ * Memory policy: holds at most 5 years x 2 sources = 10 small objects.
+ * References are nullified after rendering to allow GC.
+ */
+async function loadHistoricalTrends() {
+  const container = document.getElementById('panel-history-inner');
+  if (!container) return;
+
+  let index;
+  try { index = await fetchSnapshotIndex(); }
+  catch { index = []; }
+
+  const inatYears = availableYears(index, 'inat').slice(-5);
+  const noaaYears = availableYears(index, 'noaa').slice(-5);
+
+  if (inatYears.length < 2 && noaaYears.length < 2) {
+    container.innerHTML =
+      '<p class="layer-desc" style="margin:0.5rem 0.25rem;">No trend data yet.<br>' +
+      'Trigger a harvest via:<br>' +
+      '<code style="font-size:0.72rem;word-break:break-all;">POST /api/harvest ' +
+      '{ &quot;source&quot;: &quot;inat&quot;, &quot;year&quot;: 2025 }</code></p>';
+    return;
+  }
+
+  // Fetch up to 5 most recent inat years, one at a time (avoid parallel RAM spike)
+  let inatPoints = null;
+  if (inatYears.length >= 2) {
+    inatPoints = [];
+    for (const yr of inatYears) {
+      const snap = await fetchSnapshot('inat', yr);
+      if (snap) inatPoints.push({ year: yr, value: snap.total ?? 0 });
+    }
+  }
+
+  // Fetch up to 5 most recent noaa years sequentially
+  let noaaPoints = null;
+  if (noaaYears.length >= 2) {
+    noaaPoints = [];
+    for (const yr of noaaYears) {
+      const snap = await fetchSnapshot('noaa', yr);
+      if (snap) noaaPoints.push({ year: yr, value: snap.gddTotal ?? 0 });
+    }
+  }
+
+  container.innerHTML = '';
+
+  if (inatPoints && inatPoints.length >= 2) {
+    const wrap = document.createElement('div');
+    wrap.className = 'history-chart-block';
+    wrap.innerHTML =
+      '<p class="layer-group-label" style="margin:0.5rem 0 0.25rem;">iNat pollinator sightings</p>' +
+      '<div id="history-chart-inat"></div>';
+    container.appendChild(wrap);
+    renderTrendChart('history-chart-inat', inatPoints, 'iNaturalist pollinator sighting totals by year');
+  }
+
+  if (noaaPoints && noaaPoints.length >= 2) {
+    const wrap = document.createElement('div');
+    wrap.className = 'history-chart-block';
+    wrap.innerHTML =
+      '<p class="layer-group-label" style="margin:0.75rem 0 0.25rem;">GDD accumulation (base 50 °F)</p>' +
+      '<div id="history-chart-noaa"></div>';
+    container.appendChild(wrap);
+    renderTrendChart('history-chart-noaa', noaaPoints, 'Annual growing degree day totals by year');
+  }
+
+  // Nullify refs to allow GC
+  inatPoints = null;
+  noaaPoints = null;
+}
+
 
 // â”€â”€ Map ready â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -1083,6 +1162,8 @@ map.on('load', async () => {
 
   // Initial data load
   loadObservations();
+  // Historical trends — deferred so it never delays the primary render
+  setTimeout(() => loadHistoricalTrends(), 0);
 });
 
 

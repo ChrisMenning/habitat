@@ -1329,10 +1329,383 @@ function proxyEbird(reqUrl, res) {
   });
 }
 
+// ── Historical snapshot system ────────────────────────────────────────────────
+//
+// Snapshots are pre-aggregated summaries stored as small JSON files under
+// ./snapshots/.  Raw records are never written — only counters and top-N maps
+// are held in memory during a harvest, then discarded once the file is written.
+//
+// POST /api/harvest  { source, year }  — triggers one harvest, writes file
+// GET  /api/snapshots                  — returns index of available files
+// GET  /api/snapshots/:filename        — serves one snapshot file
+
+const SNAPSHOTS_DIR = path.join(ROOT, 'snapshots');
+
+// Ensure the directory exists at startup without crashing if it already does.
+try { fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true }); } catch { /* already exists */ }
+
+// ── iNat classification helpers (mirrors js/classify.js without ES modules) ──
+const INSECT_POLLINATOR_RE = /\bbee(s)?\b|bumblebee|bumble\s+bee|honey\s+bee|mason\s+bee|sweat\s+bee|leafcutter|miner\s+bee|butterfly|butterflies|\bskipper(s)?\b|\bmoth(s)?\b|hoverfly|hover[\s-]fl(y|ies)|flower\s+fl(y|ies)/i;
+
+function _classifyInat(obs) {
+  const taxon  = obs.taxon;
+  if (!taxon) return 'other-wildlife';
+  const iconic = taxon.iconic_taxon_name;
+  const cn     = taxon.preferred_common_name ?? '';
+
+  // Pollinator check (mirrors isPollinator in classify.js)
+  if (iconic === 'Aves' && /hummingbird/i.test(cn))  return 'pollinators';
+  if (iconic === 'Insecta' && INSECT_POLLINATOR_RE.test(cn)) return 'pollinators';
+
+  // Plant native/non-native (mirrors classifyObs)
+  if (iconic === 'Plantae') {
+    const em  = taxon.establishment_means;
+    const raw = em ? (typeof em === 'string' ? em : (em.establishment_means ?? '')).toLowerCase().trim() : '';
+    const key = raw === 'naturalized' ? 'naturalised' : raw;
+    return (key === 'native' || key === 'endemic') ? 'native-plants' : 'other-plants';
+  }
+
+  return 'other-wildlife';
+}
+
+// ── GBIF classification helper ────────────────────────────────────────────────
+function _classifyGbif(occ) {
+  const kingdom = (occ.kingdom ?? '').toLowerCase();
+  const cn      = (occ.vernacularName ?? occ.species ?? '').toLowerCase();
+  if (INSECT_POLLINATOR_RE.test(cn)) return 'pollinators';
+  if (kingdom === 'plantae') {
+    const status = (occ.establishmentMeans ?? '').toLowerCase();
+    return (status === 'native' || status === 'endemic') ? 'native-plants' : 'other-plants';
+  }
+  return 'other-wildlife';
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+function _monthKey(dateStr) {
+  if (!dateStr) return null;
+  const m = String(dateStr).slice(5, 7);
+  return /^\d{2}$/.test(m) ? m : null;
+}
+
+function _topN(freq, n) {
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([name, count]) => ({ name, count }));
+}
+
+function _jsonRes(res, status, obj) {
+  res.writeHead(status, {
+    'Content-Type':                'application/json',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(JSON.stringify(obj));
+}
+
+// ── Harvest: iNat ─────────────────────────────────────────────────────────────
+async function _harvestInat(year) {
+  const CENTER_LAT = 44.5133, CENTER_LNG = -88.0133, RADIUS_KM = 15;
+  const PER_PAGE = 200, MAX_OBS = 5000;
+
+  const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  const byMonth = {};
+  const speciesFreq = {};
+  let total = 0, fetched = 0, idBelow = null;
+
+  while (fetched < MAX_OBS) {
+    const params = new URLSearchParams({
+      lat: CENTER_LAT, lng: CENTER_LNG, radius: RADIUS_KM,
+      per_page: PER_PAGE, order: 'desc', order_by: 'id',
+      preferred_place_id: 59,
+      d1: `${year}-01-01`, d2: `${year}-12-31`,
+    });
+    params.append('has[]', 'geo');
+    if (idBelow) params.set('id_below', String(idBelow));
+
+    const resHttp = await httpsGetBuf('api.inaturalist.org', `/v1/observations?${params}`);
+    const data = JSON.parse(resHttp.toString());
+    total = data.total_results ?? total;
+    const results = data.results ?? [];
+    if (!results.length) break;
+
+    for (const obs of results) {
+      const layer = _classifyInat(obs);
+      byLayer[layer]++;
+      const mk = _monthKey(obs.observed_on ?? obs.time_observed_at);
+      if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
+      const sp = obs.taxon?.preferred_common_name || obs.taxon?.name;
+      if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+      idBelow = idBelow ? Math.min(idBelow, obs.id) : obs.id;
+    }
+    fetched += results.length;
+    if (results.length < PER_PAGE) break;
+  }
+
+  return {
+    source: 'inat', year, harvestedAt: new Date().toISOString(),
+    total: fetched, byLayer,
+    speciesRichness: Object.keys(speciesFreq).length,
+    topSpecies: _topN(speciesFreq, 10),
+    byMonth,
+  };
+}
+
+// ── Harvest: GBIF ─────────────────────────────────────────────────────────────
+async function _harvestGbif(year) {
+  const CENTER_LAT = 44.5133, CENTER_LNG = -88.0133, RADIUS_KM = 15;
+  const latDelta = RADIUS_KM / 111.0;
+  const lngDelta = RADIUS_KM / (111.0 * Math.cos(CENTER_LAT * Math.PI / 180));
+  const minLat = (CENTER_LAT - latDelta).toFixed(4);
+  const maxLat = (CENTER_LAT + latDelta).toFixed(4);
+  const minLng = (CENTER_LNG - lngDelta).toFixed(4);
+  const maxLng = (CENTER_LNG + lngDelta).toFixed(4);
+
+  const PER_PAGE = 300, MAX_OBS = 1200;
+  const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  const byMonth = {};
+  const speciesFreq = {};
+  let fetched = 0, offset = 0;
+
+  while (fetched < MAX_OBS) {
+    const encoded = new URLSearchParams({
+      hasCoordinate: 'true', hasGeospatialIssue: 'false',
+      limit: String(PER_PAGE), offset: String(offset),
+    }).toString();
+    const gbifUrl = `https://api.gbif.org/v1/occurrence/search?${encoded}`
+      + `&decimalLatitude=${minLat},${maxLat}`
+      + `&decimalLongitude=${minLng},${maxLng}`
+      + `&eventDate=${year}-01-01,${year}-12-31`;
+
+    const parsedU = new URL(gbifUrl);
+    const buf = await httpsGetBuf(parsedU.hostname, parsedU.pathname + parsedU.search);
+    const data = JSON.parse(buf.toString());
+    const batch = data.results ?? [];
+    if (!batch.length) break;
+
+    for (const occ of batch) {
+      const layer = _classifyGbif(occ);
+      byLayer[layer]++;
+      const mk = _monthKey(occ.eventDate);
+      if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
+      const sp = occ.vernacularName || occ.species;
+      if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+    }
+    fetched += batch.length;
+    if (data.endOfRecords || fetched >= MAX_OBS) break;
+    offset += PER_PAGE;
+  }
+
+  return {
+    source: 'gbif', year, harvestedAt: new Date().toISOString(),
+    total: fetched, byLayer,
+    speciesRichness: Object.keys(speciesFreq).length,
+    topSpecies: _topN(speciesFreq, 10),
+    byMonth,
+  };
+}
+
+// ── Harvest: NOAA GHCND ───────────────────────────────────────────────────────
+async function _harvestNoaa(year) {
+  const token = getNoaaToken();
+  if (!token) return { available: false, reason: 'No NOAA_CDO_TOKEN configured' };
+
+  const nceiPath =
+    `/access/services/data/v1?dataset=daily-summaries` +
+    `&stations=${NOAA_STATION_ID}` +
+    `&startDate=${year}-01-01&endDate=${year}-12-31` +
+    `&dataTypes=TMAX,TMIN&format=json&units=standard`;
+
+  let buf;
+  try {
+    buf = await new Promise((resolve, reject) => {
+      https.get(
+        { hostname: 'www.ncei.noaa.gov', path: nceiPath, timeout: 30000,
+          headers: { token, 'User-Agent': 'habitat-map/1.0' } },
+        r => {
+          const chunks = [];
+          r.on('data', c => chunks.push(c));
+          r.on('end', () => resolve(Buffer.concat(chunks)));
+        }
+      ).on('error', reject);
+    });
+  } catch (e) {
+    return { available: false, reason: e.message };
+  }
+
+  const records = JSON.parse(buf.toString());
+  if (!Array.isArray(records)) return { available: false, reason: 'Unexpected NOAA response' };
+
+  // Group by month; accumulate GDD base-50°F (TMAX+TMIN)/2 - 50, floor 0
+  const months = {};
+  let gddTotal = 0;
+  for (const r of records) {
+    const mk = _monthKey(r.DATE);
+    if (!mk) continue;
+    if (!months[mk]) months[mk] = { tmaxSum: 0, tminSum: 0, days: 0, gdd: 0 };
+    const tmax = r.TMAX != null ? r.TMAX : null;
+    const tmin = r.TMIN != null ? r.TMIN : null;
+    if (tmax !== null && tmin !== null) {
+      const avg = (tmax + tmin) / 2;
+      const gdd = Math.max(0, avg - 50);
+      months[mk].tmaxSum += tmax;
+      months[mk].tminSum += tmin;
+      months[mk].gdd     += gdd;
+      months[mk].days++;
+      gddTotal += gdd;
+    }
+  }
+
+  const byMonth = {};
+  for (const [mk, m] of Object.entries(months)) {
+    byMonth[mk] = {
+      avgTmax: m.days ? +(m.tmaxSum / m.days).toFixed(1) : null,
+      avgTmin: m.days ? +(m.tminSum / m.days).toFixed(1) : null,
+      gdd:     +m.gdd.toFixed(1),
+    };
+  }
+
+  return { source: 'noaa', year, harvestedAt: new Date().toISOString(), gddTotal: +gddTotal.toFixed(1), byMonth };
+}
+
+// ── Harvest: NASS QuickStats ──────────────────────────────────────────────────
+async function _harvestNass(year) {
+  if (!getNassApiKey()) return { available: false, reason: 'No NASS_API_KEY configured' };
+
+  const results = await new Promise((resolve) => {
+    let pending = 2, coloniesData = null, cropsData = null;
+    const done = () => { if (--pending === 0) resolve({ coloniesData, cropsData }); };
+    nassGet({ source_desc: 'SURVEY', commodity_desc: 'HONEY', statisticcat_desc: 'COLONIES',
+              agg_level_desc: 'STATE', state_fips_code: '55', year: String(year) },
+      (_, d) => { coloniesData = d; done(); });
+    nassGet({ source_desc: 'CENSUS', year: String(year), state_fips_code: '55', county_code: '009',
+              statisticcat_desc: 'AREA HARVESTED', agg_level_desc: 'COUNTY' },
+      (_, d) => { cropsData = d; done(); });
+  });
+
+  // Reuse the existing combine helper
+  const combined = combineNassData(results.coloniesData, results.cropsData);
+  return { source: 'nass', year, harvestedAt: new Date().toISOString(), ...combined };
+}
+
+// ── Harvest: CDL stats ────────────────────────────────────────────────────────
+async function _harvestCdl(year) {
+  const cdlUrl = `https://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLStat?year=${year}&fips=55009&format=json`;
+  let xml;
+  try { xml = (await httpsGetBuf('nassgeodata.gmu.edu',
+    `/axis2/services/CDLService/GetCDLStat?year=${year}&fips=55009&format=json`)).toString(); }
+  catch (e) { return { available: false, reason: e.message }; }
+
+  const match = xml.match(/<returnURL>([^<]+)<\/returnURL>/);
+  if (!match) return { available: false, reason: 'CDL service returned no data URL' };
+
+  let raw;
+  try {
+    const u = new URL(match[1]);
+    raw = (await httpsGetBuf(u.hostname, u.pathname + u.search)).toString();
+  } catch (e) { return { available: false, reason: e.message }; }
+
+  const fixed = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*:)/g, '$1"$2"$3');
+  let parsed;
+  try { parsed = JSON.parse(fixed); } catch { return { available: false, reason: 'CDL JSON parse failed' }; }
+
+  const rows = (parsed.rows ?? []).map(r => ({ category: r.Category ?? r.category ?? '', acreage: +(r.Acreage ?? r.acreage ?? 0) }));
+  return { source: 'cdl', year, harvestedAt: new Date().toISOString(), rows };
+}
+
+// ── POST /api/harvest ─────────────────────────────────────────────────────────
+function handleHarvest(req, res) {
+  let body = '';
+  req.on('data', c => { body += c; if (body.length > 1024) { body = ''; req.destroy(); } });
+  req.on('end', async () => {
+    let source, year;
+    try {
+      const parsed = JSON.parse(body);
+      source = parsed.source;
+      year   = parseInt(parsed.year, 10);
+      if (!['inat','gbif','noaa','nass','cdl'].includes(source)) throw new Error('invalid source');
+      if (!year || year < 2000 || year > new Date().getFullYear()) throw new Error('invalid year');
+    } catch (e) {
+      _jsonRes(res, 400, { ok: false, error: e.message });
+      return;
+    }
+
+    const file = `${source}-${year}.json`;
+    const dest = path.join(SNAPSHOTS_DIR, file);
+
+    let snapshot;
+    try {
+      switch (source) {
+        case 'inat': snapshot = await _harvestInat(year); break;
+        case 'gbif': snapshot = await _harvestGbif(year); break;
+        case 'noaa': snapshot = await _harvestNoaa(year); break;
+        case 'nass': snapshot = await _harvestNass(year); break;
+        case 'cdl':  snapshot = await _harvestCdl(year);  break;
+      }
+      fs.writeFileSync(dest, JSON.stringify(snapshot, null, 2));
+      const records = snapshot.total ?? snapshot.rows?.length ?? 0;
+      _jsonRes(res, 200, { ok: true, file, records });
+    } catch (err) {
+      _jsonRes(res, 502, { ok: false, error: err.message });
+    }
+  });
+}
+
+// ── GET /api/snapshots (index + individual files) ─────────────────────────────
+function handleSnapshotsIndex(res) {
+  let entries;
+  try { entries = fs.readdirSync(SNAPSHOTS_DIR); } catch { entries = []; }
+  const files = entries.filter(f => /^[a-z]+-\d{4}\.json$/.test(f)).sort();
+  _jsonRes(res, 200, { files });
+}
+
+function handleSnapshotFile(filename, res) {
+  // Strict whitelist: only lowercase letters, hyphen, 4-digit year, .json
+  if (!/^[a-z]+-\d{4}\.json$/.test(filename)) {
+    _jsonRes(res, 400, { error: 'Invalid snapshot filename' });
+    return;
+  }
+  const filePath = path.join(SNAPSHOTS_DIR, filename);
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      _jsonRes(res, err.code === 'ENOENT' ? 404 : 500, { error: err.message });
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=86400',
+    });
+    res.end(data);
+  });
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
   const pathname = url.parse(req.url).pathname;
+
+  // Historical snapshot harvest (POST only)
+  if (pathname === '/api/harvest') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { Allow: 'POST', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+      return;
+    }
+    handleHarvest(req, res);
+    return;
+  }
+
+  // Snapshot index + individual file serving
+  if (pathname === '/api/snapshots') {
+    handleSnapshotsIndex(res);
+    return;
+  }
+  const snapshotMatch = pathname.match(/^\/api\/snapshots\/(.+)$/);
+  if (snapshotMatch) {
+    handleSnapshotFile(snapshotMatch[1], res);
+    return;
+  }
 
   // Proxy: HNP guest API (no CORS headers on their server)
   if (pathname === '/api/hnp-plantings') {
