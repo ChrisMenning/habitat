@@ -97,7 +97,7 @@ async function fetchGbifPage(extraParams, offset, d1, d2) {
  * Fetches all available occurrences for a single taxon query, up to GBIF_MAX_OBS,
  * using offset-based pagination.
  */
-async function fetchGbifAll(extraParams, d1, d2, onProgress) {
+export async function fetchGbifAll(extraParams, d1, d2, onProgress) {
   const results = [];
   let offset = 0;
   let total  = 0;
@@ -116,6 +116,58 @@ async function fetchGbifAll(extraParams, d1, d2, onProgress) {
   }
 
   return { occurrences: results.slice(0, GBIF_MAX_OBS), total };
+}
+
+// ── GBIF backbone taxonomy keys ─────────────────────────────────────────────
+//
+// The GBIF occurrence search API requires NUMERIC backbone keys for taxon
+// filtering (orderKey, familyKey, kingdomKey). The plain string parameters
+// "order", "family", "kingdom" are NOT recognised by the API and are silently
+// ignored, causing the query to return ALL occurrences in the bounding box.
+//
+// Keys are from the GBIF backbone taxonomy (https://www.gbif.org/dataset/d7dddbf4-...)
+// and are stable long-term identifiers.
+//
+// Verify any key at: https://api.gbif.org/v1/species/<key>
+
+/** Lepidoptera order (butterflies & moths) — nubKey 797 */
+const KEY_LEPIDOPTERA  = 797;
+/** Apidae (honey, bumble, carpenter, cuckoo bees) — nubKey 4334 */
+const KEY_APIDAE       = 4334;
+/** Halictidae (metallic-green, sweat bees) — nubKey 7908 */
+const KEY_HALICTIDAE   = 7908;
+/** Megachilidae (mason, leafcutter bees) — nubKey 7911 */
+const KEY_MEGACHILIDAE = 7911;
+/** Andrenidae (mining bees) — nubKey 7901 */
+const KEY_ANDRENIDAE   = 7901;
+/** Colletidae (plasterer, polyester bees) — nubKey 7905 */
+const KEY_COLLETIDAE   = 7905;
+/** Syrphidae (hoverflies/flower flies) — nubKey 6920 */
+const KEY_SYRPHIDAE    = 6920;
+/** Plantae kingdom — nubKey 6 */
+const KEY_PLANTAE      = 6;
+/** Animalia kingdom — nubKey 1 */
+const KEY_ANIMALIA     = 1;
+
+/**
+ * Interpreted taxonomy families that constitute pollinators.
+ * Used as a secondary client-side guard after the API call.
+ * GBIF returns the interpreted `family` string on each occurrence.
+ */
+const POLLINATOR_FAMILIES = new Set([
+  'Apidae', 'Halictidae', 'Megachilidae', 'Andrenidae', 'Colletidae', 'Syrphidae',
+]);
+
+/**
+ * Returns true when a raw GBIF occurrence record represents a pollinator.
+ * Matches Lepidoptera (order-level) plus the specific bee/hoverfly families.
+ * Applied after the API call as a belt-and-suspenders guard.
+ *
+ * @param {object} o - raw GBIF occurrence
+ * @returns {boolean}
+ */
+function isGbifPollinator(o) {
+  return o.order === 'Lepidoptera' || POLLINATOR_FAMILIES.has(o.family);
 }
 
 // ── Data-quality filtering ───────────────────────────────────────────────────
@@ -170,7 +222,7 @@ const MAX_UNCERTAINTY_M = 10_000;
  * @param {{ requireSpecies?: boolean }} [opts]
  * @returns {object[]}
  */
-function filterOccurrences(occurrences, { requireSpecies = false } = {}) {
+export function filterOccurrences(occurrences, { requireSpecies = false } = {}) {
   return occurrences.filter(o => {
     // Presence check (API param should already handle this; belt-and-suspenders)
     if (o.occurrenceStatus && o.occurrenceStatus !== 'PRESENT') return false;
@@ -216,13 +268,17 @@ export async function fetchGbifPollinators(d1, d2, onProgress) {
   // Fire pollinator family/order requests sequentially in two small batches
   // to stay within GBIF's rate limit (~60 req/min). Two batches of 3 with a
   // short pause between is well within the limit while still being fast.
+  // orderKey / familyKey are numeric GBIF backbone IDs — the only parameters
+  // the GBIF occurrence search API actually recognises for taxon filtering.
+  // Do NOT use plain "order" / "family" string params; those are silently ignored.
   const queries = [
-    { order:  'Lepidoptera'  }, // butterflies + moths
-    { family: 'Apidae'       }, // honey/bumble/carpenter bees
-    { family: 'Halictidae'   }, // metallic green, sweat bees
-    { family: 'Megachilidae' }, // mason, leafcutter bees
-    { family: 'Andrenidae'   }, // mining bees
-    { family: 'Syrphidae'    }, // hoverflies
+    { orderKey:  KEY_LEPIDOPTERA  }, // butterflies + moths
+    { familyKey: KEY_APIDAE       }, // honey/bumble/carpenter bees
+    { familyKey: KEY_HALICTIDAE   }, // metallic green, sweat bees
+    { familyKey: KEY_MEGACHILIDAE }, // mason, leafcutter bees
+    { familyKey: KEY_ANDRENIDAE   }, // mining bees
+    { familyKey: KEY_COLLETIDAE   }, // plasterer, polyester bees
+    { familyKey: KEY_SYRPHIDAE    }, // hoverflies
   ];
 
   const seen = new Map();
@@ -233,14 +289,19 @@ export async function fetchGbifPollinators(d1, d2, onProgress) {
     );
     for (const page of batch) {
       if (page.status === 'fulfilled') {
-        for (const o of page.value.results ?? []) seen.set(o.key, o);
+        for (const o of page.value.results ?? []) {
+          // Secondary taxonomy guard: verify the record's interpreted family/order
+          // matches a pollinator group. Catches any stray records that slip through
+          // if the backbone key lookup behaves unexpectedly.
+          if (isGbifPollinator(o)) seen.set(o.key, o);
+        }
       }
     }
   }
 
   // Apply data-quality filters.  requireSpecies ensures every returned record
-  // has a resolved species identity — a genus-only Apidae record, for example,
-  // cannot confirm which bee species was observed.
+  // has a resolved species identity — a genus-only Apidae record cannot
+  // confirm which bee species was observed.
   const occurrences = filterOccurrences([...seen.values()], { requireSpecies: true });
   onProgress?.(occurrences.length, occurrences.length);
   return { occurrences, total: occurrences.length };
@@ -257,11 +318,35 @@ export async function fetchGbifPollinators(d1, d2, onProgress) {
  * @returns {Promise<{occurrences: object[], total: number}>}
  */
 export async function fetchGbifPlants(d1, d2, onProgress) {
-  const raw = await fetchGbifAll({ kingdom: 'Plantae' }, d1, d2, onProgress);
+  // kingdomKey: 6 = Plantae in the GBIF backbone taxonomy.
+  // Using the numeric key is required; the string "kingdom=Plantae" is ignored.
+  const raw = await fetchGbifAll({ kingdomKey: KEY_PLANTAE }, d1, d2, onProgress);
   // Apply quality filters.  requireSpecies is false for plants because many
   // herbarium specimens carry only genus-level determinations yet are still
   // valid for establishment-means analysis and historical range context.
   const occurrences = filterOccurrences(raw.occurrences, { requireSpecies: false });
+  return { occurrences, total: raw.total };
+}
+
+/**
+ * Fetches non-pollinator animal occurrences from GBIF.
+ *
+ * Queries all Animalia (kingdomKey: 1) within the study area, then filters out
+ * pollinator taxa client-side so there is no double-counting with the
+ * gbif-pollinators layer.  Includes birds, mammals, reptiles, amphibians,
+ * fish, and non-pollinator invertebrates.
+ *
+ * @param {string|undefined}                   d1
+ * @param {string|undefined}                   d2
+ * @param {function(number, number): void}     [onProgress]
+ * @returns {Promise<{occurrences: object[], total: number}>}
+ */
+export async function fetchGbifWildlife(d1, d2, onProgress) {
+  // kingdomKey: 1 = Animalia in the GBIF backbone taxonomy.
+  const raw = await fetchGbifAll({ kingdomKey: KEY_ANIMALIA }, d1, d2, onProgress);
+  // Exclude pollinator taxa already covered by the pollinators layer.
+  const nonPollinator = raw.occurrences.filter(o => !isGbifPollinator(o));
+  const occurrences   = filterOccurrences(nonPollinator, { requireSpecies: true });
   return { occurrences, total: raw.total };
 }
 

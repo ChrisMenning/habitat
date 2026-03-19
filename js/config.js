@@ -99,6 +99,50 @@ export const GBIF_LAYERS = [
     description: 'Introduced, naturalised & invasive plant records',
     defaultOn:   false,
   },
+  {
+    id:          'gbif-wildlife',
+    label:       'Wildlife',
+    emoji:       '🦌',
+    description: 'Non-pollinator animals (birds, mammals, reptiles, amphibians) from museums and research surveys',
+    defaultOn:   false,
+  },
+];
+
+/**
+ * FWS North American Bee Distribution Tool layers.
+ * Data source: GBIF occurrence records for the six recognized bee families,
+ * mirroring the dataset behind https://www.fws.gov/beetool.
+ * Conservation status from NatureServe G-ranks (embedded static lookup).
+ *
+ * Three layers:
+ *   bees-records   — all bee occurrence points, colored amber
+ *   bees-richness  — heatmap density (species richness proxy)
+ *   bees-imperiled — occurrence points for G1–G3 / IUCN VU+ species, colored red
+ *
+ * @type {Array<{id: string, label: string, emoji: string, description: string, defaultOn: boolean}>}
+ */
+export const BEE_LAYERS = [
+  {
+    id:          'bees-records',
+    label:       'Bee Records',
+    emoji:       '🐝',
+    description: 'All GBIF occurrence records across 6 bee families (Andrenidae, Apidae, Colletidae, Halictidae, Megachilidae, Melittidae) — the same data source as the FWS Bee Distribution Tool, scoped to Brown County.',
+    defaultOn:   false,
+  },
+  {
+    id:          'bees-richness',
+    label:       'Species Richness',
+    emoji:       '🗺️',
+    description: 'Heatmap of bee record density — a spatial proxy for species richness. Brighter areas have more bee specimens documented in GBIF collections.',
+    defaultOn:   false,
+  },
+  {
+    id:          'bees-imperiled',
+    label:       'Imperiled Species',
+    emoji:       '⚠️',
+    description: 'Occurrences of bee species with NatureServe global ranks G1–G3 (Critically Imperiled to Vulnerable) or IUCN Vulnerable / Endangered / Critically Endangered. Includes federally listed species (e.g. Rusty-patched Bumble Bee).',
+    defaultOn:   false,
+  },
 ];
 
 // ── Protected area polygon layers ────────────────────────────────────────────
@@ -379,6 +423,10 @@ export const FILL_COLOR_EXPR = [
   'gbif-pollinators',      '#38bdf8',  // sky-blue  (same as iNat pollinators)
   'gbif-native-plants',    '#4ade80',  // green-400 (same as iNat native-plants)
   'gbif-non-native-plants','#e879f9',  // fuchsia   (same as iNat other-plants)
+  'gbif-wildlife',         '#94a3b8',  // slate-400 (same as iNat other-wildlife)
+  // FWS Bee Distribution Tool layers
+  'bees-records',          '#f59e0b',  // amber    (honey-bee amber — all bee records)
+  'bees-imperiled',        '#ef4444',  // red      (conservation concern)
   // Waystation points (violet — distinct from any sighting layer)
   'waystations',           '#8b5cf6',  // violet
   // Homegrown National Park native planting yards

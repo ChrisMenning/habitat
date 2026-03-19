@@ -901,6 +901,61 @@ export function updateCdlFringeHeatmap(geojson) {
   );
 }
 
+// ── Bee species richness heatmap ─────────────────────────────────────────────
+
+/**
+ * Registers the bee species richness heatmap layer.
+ *
+ * Fed from all 6 bee family GBIF records, one HeatmapWeightPoint per
+ * occurrence, so hotspots reflect areas with high documentation density —
+ * a spatial proxy for bee species richness.
+ *
+ * Color ramp:  transparent → pale amber → honey-amber → deep amber → brown,
+ * matching the amber color scheme used for the bees-records circle layer.
+ *
+ * @param {boolean} visible
+ */
+export function registerBeeRichnessHeatmap(visible) {
+  _map.addSource('bees-richness', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'bees-richness-layer',
+    type:   'heatmap',
+    source: 'bees-richness',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    1,
+      'heatmap-radius':    ['interpolate', ['exponential', 2], ['zoom'], 10, 16, 14, 240],
+      'heatmap-intensity': 0.9,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(245,158,11,0)',
+        0.15, 'rgba(245,158,11,0.25)',
+        0.35, 'rgba(234,88,12,0.55)',
+        0.60, 'rgba(217,119,6,0.82)',
+        0.85, 'rgba(180,83,9,0.95)',
+        1.0,  'rgba(120,53,15,1.0)',
+      ],
+      'heatmap-opacity': 0.72,
+    },
+  });
+}
+
+/**
+ * Replaces the bee richness heatmap source data.
+ * Accepts the same GeoJSON features array as bees-records.
+ *
+ * @param {GeoJSON.Feature[]} features
+ */
+export function updateBeeRichnessHeatmap(features) {
+  _map.getSource('bees-richness')?.setData({
+    type: 'FeatureCollection',
+    features: (features ?? []).filter(f => f?.geometry),
+  });
+}
+
 /**
  * Returns the fill layer ids used for pointer hit-testing on area layers.
  * The fill layer covers the polygon interior and is the natural click target.

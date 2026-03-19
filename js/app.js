@@ -10,12 +10,15 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
-import { fetchGbifPollinators, fetchGbifPlants,
+import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
          gbifToGeoJSON, resolveOccurrenceEstKeys,
          partitionPlantOccurrences }                   from './gbif.js';
+import { fetchBeesAll, beesToGeoJSON,
+         filterImperiledFeatures,
+         computeSpeciesRichness }                      from './bees.js';
 import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          fetchPollinatorCorridor, fetchCorridorTreatments,
          fetchChemicalHazards,
@@ -34,6 +37,8 @@ import { initMap, registerLayer, registerAreaLayer,
          setHeatmapVisibility,
          registerCdlFringeHeatmap,
          updateCdlFringeHeatmap,
+         registerBeeRichnessHeatmap,
+         updateBeeRichnessHeatmap,
          registerPesticideLayer,
          setPesticideFeatures,
          setPesticideLayerVisibility,
@@ -142,6 +147,7 @@ function areaOrPointVisibility(id, visible) {
   else if (id === 'pesticide')            setPesticideLayerVisibility('pesticide', visible);
   else if (id === 'parcels')              setParcelLayerVisibility(visible);
   else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
+  else if (id === 'bees-richness')        setHeatmapVisibility('bees-richness', visible);
   else                                    setLayerVisibility(id, visible);
 }
 
@@ -375,7 +381,7 @@ async function loadObservations() {
   try {
     // All sources run in parallel. Failures in one never block the others.
     const [
-      inatResult, gbifPollResult, gbifPlantResult,
+      inatResult, gbifPollResult, gbifPlantResult, gbifWildlifeResult, beesResult,
       padusResult, snaResult, dnrResult,
       corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
       quickStatsResult, cdlFringeResult, ebirdResult, pesticideResult,
@@ -394,19 +400,29 @@ async function loadObservations() {
 
       // Caches the final GeoJSON features array — resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/all`, OBS_TTL, async () => {
+      withCache(`obs/gbif-poll/v2`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
       }),
 
-      withCache(`obs/gbif-plants/all`, OBS_TTL, async () => {
+      withCache(`obs/gbif-plants/v2`, OBS_TTL, async () => {
         const { occurrences }       = await fetchGbifPlants(undefined, undefined);
         const { native, nonNative } = await partitionPlantOccurrences(occurrences);
         return {
           native:    gbifToGeoJSON(native,    'gbif-native-plants').features,
           nonNative: gbifToGeoJSON(nonNative, 'gbif-non-native-plants').features,
         };
+      }),
+
+      withCache(`obs/gbif-wildlife/v1`, OBS_TTL, async () => {
+        const { occurrences } = await fetchGbifWildlife(undefined, undefined);
+        return gbifToGeoJSON(occurrences, 'gbif-wildlife').features;
+      }),
+
+      withCache(`obs/bees/v1`, OBS_TTL, async () => {
+        const { occurrences } = await fetchBeesAll(undefined, undefined);
+        return beesToGeoJSON(occurrences, 'bees-records').features;
       }),
 
       // ── Static area data (fixed keys, 24 h TTL) ──────────────────────────────────────────────
@@ -471,6 +487,31 @@ async function loadObservations() {
       counts['gbif-non-native-plants'] = 0;
     }
 
+    // ── GBIF Wildlife (non-pollinator animals) ────────────────────────────────
+    if (gbifWildlifeResult.status === 'fulfilled') {
+      const feats = gbifWildlifeResult.value;
+      setLayerFeatures('gbif-wildlife', feats);
+      counts['gbif-wildlife'] = feats.length;
+      gbifCount += feats.length;
+    } else {
+      console.warn('GBIF wildlife failed:', gbifWildlifeResult.reason);
+      counts['gbif-wildlife'] = 0;
+    }
+
+    // ── FWS Bee Distribution (all 6 families) ─────────────────────────────────
+    if (beesResult.status === 'fulfilled') {
+      const allFeats       = beesResult.value;
+      const imperiledFeats = filterImperiledFeatures(allFeats);
+      setLayerFeatures('bees-records',   allFeats);
+      setLayerFeatures('bees-imperiled', imperiledFeats);
+      updateBeeRichnessHeatmap(allFeats);
+      counts['bees-records']   = allFeats.length;
+      counts['bees-imperiled'] = imperiledFeats.length;
+    } else {
+      console.warn('Bee distribution failed:', beesResult.reason);
+      counts['bees-records']   = 0;
+      counts['bees-imperiled'] = 0;
+    }
 
 
     // ── PAD-US protected areas ────────────────────────────────────────
@@ -617,9 +658,12 @@ async function loadObservations() {
     // Filter chip base features
     const byLayer = inatResult.status === 'fulfilled' ? inatResult.value : {};
     for (const layer of LAYERS) setBaseFeatures(layer.id, byLayer[layer.id] ?? []);
-    setBaseFeatures('gbif-pollinators',       gbifPollResult.status  === 'fulfilled' ? gbifPollResult.value              : []);
-    setBaseFeatures('gbif-native-plants',     gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.native      : []);
-    setBaseFeatures('gbif-non-native-plants', gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative   : []);
+    setBaseFeatures('gbif-pollinators',       gbifPollResult.status     === 'fulfilled' ? gbifPollResult.value              : []);
+    setBaseFeatures('gbif-native-plants',     gbifPlantResult.status    === 'fulfilled' ? gbifPlantResult.value.native      : []);
+    setBaseFeatures('gbif-non-native-plants', gbifPlantResult.status    === 'fulfilled' ? gbifPlantResult.value.nonNative   : []);
+    setBaseFeatures('gbif-wildlife',          gbifWildlifeResult.status === 'fulfilled' ? gbifWildlifeResult.value          : []);
+    setBaseFeatures('bees-records',           beesResult.status         === 'fulfilled' ? beesResult.value                  : []);
+    setBaseFeatures('bees-imperiled',         beesResult.status         === 'fulfilled' ? filterImperiledFeatures(beesResult.value) : []);
 
     // Habitat centroids for near-habitat filter
     const habitatCoords = allHabitatFeats.map(f => {
@@ -765,7 +809,10 @@ async function loadObservations() {
         pollinators:     counts['gbif-pollinators']       ?? 0,
         nativePlants:    counts['gbif-native-plants']     ?? 0,
         nonNativePlants: counts['gbif-non-native-plants'] ?? 0,
+        wildlife:        counts['gbif-wildlife']          ?? 0,
       },
+      beeRecords:   counts['bees-records']   ?? 0,
+      beeImperiled: counts['bees-imperiled'] ?? 0,
       topSpecies:         _topSpecies,
       pfasFeatures:       pfasFeats,
       cdlStats,
@@ -937,6 +984,11 @@ map.on('load', async () => {
   registerLayer('gbif-pollinators',       GBIF_LAYERS.find(l => l.id === 'gbif-pollinators').defaultOn,       { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-butterfly', iconSize: 0.40 });
   registerLayer('gbif-native-plants',     GBIF_LAYERS.find(l => l.id === 'gbif-native-plants').defaultOn,     { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower' });
   registerLayer('gbif-non-native-plants', GBIF_LAYERS.find(l => l.id === 'gbif-non-native-plants').defaultOn, { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-flower-tulip' });
+  registerLayer('gbif-wildlife',          GBIF_LAYERS.find(l => l.id === 'gbif-wildlife').defaultOn,          { gbif: true, radius: 7, opacity: 0.55, symbol: 'icon-deer' });
+  // 3b. FWS Bee Distribution Tool layers — GBIF records for 6 bee families + NatureServe status
+  registerLayer('bees-records',   BEE_LAYERS.find(l => l.id === 'bees-records').defaultOn,   { gbif: true, radius: 8, opacity: 0.60, symbol: 'icon-butterfly', iconSize: 0.38 });
+  registerLayer('bees-imperiled', BEE_LAYERS.find(l => l.id === 'bees-imperiled').defaultOn, { gbif: true, radius: 9, opacity: 0.75, symbol: 'icon-butterfly', iconSize: 0.38 });
+  registerBeeRichnessHeatmap(BEE_LAYERS.find(l => l.id === 'bees-richness').defaultOn);
   // 4. iNaturalist layers — topmost
   // iNat layers — SVG icons per category
   registerLayer('pollinators',    LAYERS.find(l => l.id === 'pollinators').defaultOn,    { radius: 8, symbol: 'icon-butterfly', iconSize: 0.40 });
@@ -1032,10 +1084,11 @@ map.on('load', async () => {
   // ── Sightings (tertiary, for impact correlation, collapsed) ──────────────────
   buildLayerPanel(
     [
-      { groupLabel: 'iNaturalist',        layers: LAYERS      },
-      { groupLabel: 'GBIF',               layers: GBIF_LAYERS },
-      { groupLabel: 'eBird (Cornell Lab)', layers: EBIRD_LAYER },
-      { groupLabel: 'Wikimedia Commons',  layers: [COMMONS_LAYER] },
+      { groupLabel: 'iNaturalist',                  layers: LAYERS      },
+      { groupLabel: 'GBIF',                         layers: GBIF_LAYERS },
+      { groupLabel: 'eBird (Cornell Lab)',           layers: EBIRD_LAYER },
+      { groupLabel: 'Wikimedia Commons',            layers: [COMMONS_LAYER] },
+      { groupLabel: 'FWS Bee Distribution Tool 🐝', layers: BEE_LAYERS  },
     ],
     setLayerActive,
     null,

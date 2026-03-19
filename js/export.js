@@ -40,6 +40,8 @@ export function exportReport() {
     waystationCount    = 0,
     inatCount          = 0,
     gbifCount          = 0,
+    beeRecords         = 0,
+    beeImperiled       = 0,
     hnpCount           = 0,
     ebirdCount         = 0,
     habitatNodeCount   = 0,
@@ -230,6 +232,9 @@ export function exportReport() {
       ['Pollinators (GBIF)',          gbifByLayer.pollinators  ?? 0],
       ['Native plants (GBIF)',        gbifByLayer.nativePlants ?? 0],
       ['Non-native plants (GBIF)',    gbifByLayer.nonNativePlants ?? 0],
+      ['Wildlife (GBIF)',             gbifByLayer.wildlife ?? 0],
+      ['Bee Records (FWS · GBIF)',     beeRecords],
+      ['Imperiled Bee Species (FWS)',  beeImperiled],
       ['Bird sightings (eBird)',      ebirdCount],
     ].map(([layer, n]) =>
       `<tr><td>${escHtml(layer)}</td><td class="num">${n.toLocaleString()}</td></tr>`

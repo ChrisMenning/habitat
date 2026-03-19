@@ -336,6 +336,44 @@ export function buildPopupHTML(props) {
       </div>`;
   }
 
+  // FWS Bee Distribution Tool layers — show family + conservation status
+  if (props.source === 'gbif-bee') {
+    const TIER_COLORS = {
+      cr: { bg: '#ef4444', label: 'Critically Imperiled' },
+      en: { bg: '#f97316', label: 'Endangered / Imperiled' },
+      vu: { bg: '#f59e0b', label: 'Vulnerable' },
+      nt: { bg: '#eab308', label: 'Near Threatened' },
+    };
+    const tier       = TIER_COLORS[props.conserv_tier];
+    const statusHtml = tier
+      ? `<span class="popup-est-badge" style="background:${esc(tier.bg)};">
+           ● ${esc(tier.label)}${props.g_rank ? ` · ${esc(props.g_rank)}` : ''}
+           ${props.iucn_cat ? ` · IUCN ${esc(props.iucn_cat)}` : ''}
+         </span>
+         ${props.conserv_note ? `<p style="font-size:0.72rem;margin:2px 0 4px;color:#6b7280;">${esc(props.conserv_note)}</p>` : ''}`
+      : '';
+    const imgHtml = props.image
+      ? `<img src="${esc(props.image)}" alt="${esc(props.common || props.name)}"
+              loading="lazy" style="width:100%;height:130px;object-fit:cover;display:block;">`
+      : '';
+    return `
+      ${imgHtml}
+      <div class="popup-body">
+        <strong class="popup-name">${esc(props.common || props.name)}</strong>
+        ${props.common ? `<em class="popup-sci">${esc(props.name)}</em>` : ''}
+        <span class="popup-source">GBIF · FWS Bee Distribution · ${esc(props.dataset)}</span>
+        ${statusHtml}
+        <dl class="popup-meta">
+          <dt>Family</dt>   <dd>${esc(props.family) || '—'}</dd>
+          <dt>Date</dt>     <dd>${esc(props.date)   || '—'}</dd>
+          <dt>Collected</dt><dd>${esc(props.user)   || '—'}</dd>
+        </dl>
+        ${props.url
+          ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">View on GBIF →</a>`
+          : ''}
+      </div>`;
+  }
+
   const conf    = ESTABLISHMENT[props.est_key] ?? ESTABLISHMENT.unknown;
   const isGbif  = props.source === 'gbif';
 
