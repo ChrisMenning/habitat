@@ -510,7 +510,7 @@ body {
 #alerts-panel {
   position: absolute;
   top: 12px;
-  left: 246px;
+  left: 68px;
   width: 270px;
   max-height: calc(100% - 24px);
   overflow-y: auto;
@@ -522,6 +522,11 @@ body {
   /* Amber top accent */
   border-top: 2px solid #f59e0b;
   animation: hud-in 0.4s 0.1s ease both;
+  transition: left 0.22s cubic-bezier(0.4,0,0.2,1);
+}
+/* Shift alerts panel right when a flyout pane is open */
+body.flyout-open #alerts-panel {
+  left: 316px; /* 68px flyout-start + 240px pane + 8px gap */
 }
 
 #alerts-panel-header {
@@ -584,36 +589,6 @@ body {
   animation: pulse-warn 2.5s ease-in-out infinite;
 }
 
-.panel-section {
-  padding: 10px 14px 12px;
-}
-
-.panel-section + .panel-section {
-  border-top: 1px solid #1e3a22;
-}
-
-/* Collapsible summary used as panel section header */
-details > summary.panel-collapsible {
-  list-style: none;
-  cursor: pointer;
-  user-select: none;
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-details > summary.panel-collapsible::after {
-  content: '\25B6';
-  font-size: 7px;
-  margin-left: auto;
-  color: #34d399;
-  transition: transform 0.18s;
-  display: inline-block;
-}
-details[open] > summary.panel-collapsible::after {
-  transform: rotate(90deg);
-}
-details > summary.panel-collapsible::-webkit-details-marker { display: none; }
 details > summary:focus-visible {
   outline: 2px solid #34d399;
   outline-offset: 2px;
@@ -626,15 +601,6 @@ details > summary:focus-visible {
 
 #panel-layers {
   margin-top: 10px;
-}
-
-.panel-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: #86efac;
-  margin-bottom: 9px;
 }
 
 /* ── Layer toggles ─────────────────────────────────────────────────────────── */
@@ -833,13 +799,7 @@ details > summary:focus-visible {
   padding-top: 0;
 }
 
-/* Primary habitat section — deep green tint to anchor it as the focal layer */
-.panel-section.panel-primary {
-  background: rgba(5,150,105,0.08);
-  border-left: 2px solid rgba(52,211,153,0.3);
-}
-
-/* Contextual note below a section heading */
+/* Contextual note below a flyout pane heading */
 .panel-section-note {
   font-size: 11px;
   color: #9ca3af;

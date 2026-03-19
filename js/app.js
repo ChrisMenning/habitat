@@ -60,7 +60,7 @@ import { initMap, registerLayer, registerAreaLayer,
          zoomToCluster, getEffectiveClusteredCoords,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
-         setLoading, setStatus,
+         setLoading, setStatus, initActivityBar,
          buildPopupHTML, buildAreaPopupHTML,
          closeLightbox }                               from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
@@ -1035,14 +1035,14 @@ map.on('load', async () => {
     handleOpacity,
   );
 
-  // ── Conservation Areas & Hazards (secondary, collapsed) ──────────────────────
+  // ── Conservation Areas & Hazards (pane-conservation) ────────────────────────
   buildLayerPanel(
     [
+      { groupLabel: 'Ownership',           layers: [PARCEL_LAYER]     },
       { groupLabel: 'Habitat Treatments',  layers: conservationLayers.filter(l => l.id === 'gbcc-treatment') },
       { groupLabel: 'Protected Lands',     layers: conservationLayers.filter(l => !l.id.startsWith('gbcc-')) },
       { groupLabel: 'Hazards',             layers: HAZARD_LAYERS      },
       { groupLabel: 'Chemical Threats',    layers: [PESTICIDE_LAYER]  },
-      { groupLabel: 'Ownership',           layers: [PARCEL_LAYER]     },
     ],
     setLayerActive,
     document.getElementById('panel-areas-inner'),
@@ -1089,21 +1089,33 @@ map.on('load', async () => {
     handleOpacity,
   );
 
-  // ── Sightings (tertiary, for impact correlation, collapsed) ──────────────────
+  // ── Sightings (pane-sightings) ────────────────────────────────────────────────
   buildLayerPanel(
     [
-      { groupLabel: 'iNaturalist',                  layers: LAYERS      },
-      { groupLabel: 'GBIF',                         layers: GBIF_LAYERS },
-      { groupLabel: 'eBird (Cornell Lab)',           layers: EBIRD_LAYER },
-      { groupLabel: 'Wikimedia Commons',            layers: [COMMONS_LAYER] },
-      { groupLabel: 'FWS Bee Distribution Tool 🐝', layers: BEE_LAYERS  },
+      { groupLabel: 'iNaturalist',         layers: LAYERS          },
+      { groupLabel: 'GBIF',                layers: GBIF_LAYERS     },
+      { groupLabel: 'eBird (Cornell Lab)', layers: EBIRD_LAYER     },
+      { groupLabel: 'Wikimedia Commons',   layers: [COMMONS_LAYER] },
     ],
     setLayerActive,
     null,
     handleOpacity,
   );
+
+  // ── Analysis — Bee Records / Species Richness / Imperiled (pane-analysis) ───
+  buildLayerPanel(
+    [
+      { groupLabel: 'FWS Bee Distribution Tool 🐝', layers: BEE_LAYERS },
+    ],
+    setLayerActive,
+    document.getElementById('panel-bee-layers'),
+    handleOpacity,
+  );
   buildEstLegend();
   buildAreaLegend(setLayerActive);
+
+  // Initialise the activity bar (opens/closes flyout panes)
+  initActivityBar();
 
   // Permalink — restore state from URL hash, then init sync
   const _permalinkState = parsePermalink();
@@ -1118,7 +1130,7 @@ map.on('load', async () => {
   });
   // "All layers off" button — unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
-    document.querySelectorAll('#panel input[type="checkbox"]:checked').forEach(cb => {
+    document.querySelectorAll('#panel-flyout input[type="checkbox"]:checked').forEach(cb => {
       cb.checked = false;
       cb.dispatchEvent(new Event('change', { bubbles: true }));
     });

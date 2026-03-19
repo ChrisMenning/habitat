@@ -76,123 +76,215 @@
     <span>Fetching observations…</span>
   </div>
 
-  <!-- ── Layer controls panel (left) ─────────────────────────────────────── -->
-  <div id="panel" role="complementary" aria-label="Map layer controls">
+  <!-- ── Icon Activity Bar ─────────────────────────────────────────────────── -->
+  <nav id="activity-bar" aria-label="Map layer controls">
 
-    <!-- ── Panel header with "all off" control ───────────────────────────── -->
-    <div class="panel-header">
-      <span class="panel-header-title">⬡ Layers</span>
-      <button id="btn-layers-all-off" class="panel-header-btn" title="Hide all layers">All off</button>
+    <button class="ab-btn" id="ab-btn-habitat"
+        data-flyout="pane-habitat"
+        aria-pressed="false"
+        aria-controls="pane-habitat"
+        aria-expanded="false"
+        title="Habitat Sites">
+      <span class="ab-icon" aria-hidden="true">🌿</span>
+      <span class="ab-label">Habitat</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-sightings"
+        data-flyout="pane-sightings"
+        aria-pressed="false"
+        aria-controls="pane-sightings"
+        aria-expanded="false"
+        title="Sightings">
+      <span class="ab-icon" aria-hidden="true">🔭</span>
+      <span class="ab-label">Sightings</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-analysis"
+        data-flyout="pane-analysis"
+        aria-pressed="false"
+        aria-controls="pane-analysis"
+        aria-expanded="false"
+        title="Analysis Layers">
+      <span class="ab-icon" aria-hidden="true">📊</span>
+      <span class="ab-label">Analysis</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-conservation"
+        data-flyout="pane-conservation"
+        aria-pressed="false"
+        aria-controls="pane-conservation"
+        aria-expanded="false"
+        title="Conservation Areas &amp; Hazards">
+      <span class="ab-icon" aria-hidden="true">🛡️</span>
+      <span class="ab-label">Conserv.</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-landcover"
+        data-flyout="pane-landcover"
+        aria-pressed="false"
+        aria-controls="pane-landcover"
+        aria-expanded="false"
+        title="Land Cover &amp; Cropland">
+      <span class="ab-icon" aria-hidden="true">🗺️</span>
+      <span class="ab-label">Landcover</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-legend"
+        data-flyout="pane-legend"
+        aria-pressed="false"
+        aria-controls="pane-legend"
+        aria-expanded="false"
+        title="Map Legend">
+      <span class="ab-icon" aria-hidden="true">📖</span>
+      <span class="ab-label">Legend</span>
+    </button>
+
+    <button class="ab-btn" id="ab-btn-trends"
+        data-flyout="pane-trends"
+        aria-pressed="false"
+        aria-controls="pane-trends"
+        aria-expanded="false"
+        title="Historical Trends">
+      <span class="ab-icon" aria-hidden="true">📈</span>
+      <span class="ab-label">Trends</span>
+    </button>
+
+    <div class="ab-spacer" role="separator" aria-hidden="true"></div>
+
+    <button id="btn-layers-all-off" class="ab-btn ab-btn--danger"
+        title="Turn all layers off"
+        aria-label="Turn all layers off">
+      <span class="ab-icon" aria-hidden="true">⊘</span>
+      <span class="ab-label">All off</span>
+    </button>
+
+  </nav>
+
+  <!-- ── Slide-out flyout container ────────────────────────────────────────── -->
+  <div id="panel-flyout">
+
+    <!-- Pane: Habitat Sites ──────────────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-habitat"
+        role="region" aria-label="Habitat Sites"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-habitat-title">🌿 Habitat Sites</span>
+        <button class="flyout-pane-close" aria-label="Close Habitat Sites panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <p class="panel-section-note">Active pollinator habitat sites in the Green Bay area.</p>
+        <div id="panel-habitat-inner"><!-- populated by ui.js --></div>
+      </div>
     </div>
 
-    <!-- ── PRIMARY: Habitat investment programs ──────────────────────────── -->
-    <section class="panel-section panel-primary" id="panel-habitat">
-      <h2 class="panel-title">Habitat Programs</h2>
-      <p class="panel-section-note">Active pollinator habitat sites in the Green Bay area.</p>
-      <div id="panel-habitat-inner">
-        <!-- populated by ui.js -->
+    <!-- Pane: Sightings ─────────────────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-sightings"
+        role="region" aria-label="Sightings"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-sightings-title">🔭 Sightings</span>
+        <button class="flyout-pane-close" aria-label="Close Sightings panel">✕</button>
       </div>
-
-      <!-- Heatmap overlays — secondary toggles -->
-      <div class="panel-heatmap-group">
-        <p class="layer-group-label">Analysis Overlays</p>
-        <label class="layer-row" for="toggle-heatmap-traffic">
-          <div class="toggle">
-            <input type="checkbox" id="toggle-heatmap-traffic" checked aria-label="Pollinator Activity Heat Map">
-            <div class="toggle-track" aria-hidden="true"></div>
-          </div>
-          <span class="layer-emoji" aria-hidden="true">🌡</span>
-          <span class="layer-label">Pollinator Activity Heat Map</span>
-        </label>
-        <p class="layer-desc">Combined density of all pollinator sightings (iNaturalist, GBIF, eBird) — shows where pollinators are most active.</p>
-      </div>
-    </section>
-
-    <!-- ── SECONDARY: Background area context ────────────────────────────── -->
-    <section class="panel-section" id="panel-areas">
-      <details>
-        <summary class="panel-title panel-collapsible">Conservation Areas &amp; Hazards</summary>
-        <div id="panel-areas-inner">
-          <!-- populated by ui.js -->
-        </div>
-      </details>
-    </section>
-
-    <!-- ── LAND COVER ANALYSIS (NLCD + CDL raster layers) ────────────────── -->
-    <section class="panel-section" id="panel-landcover">
-      <details>
-        <summary class="panel-title panel-collapsible">Land Cover &amp; Cropland</summary>
-
-        <!-- CDL fringe overlay — top of section, on by default -->
-        <div class="panel-heatmap-group">
-          <p class="layer-group-label">Agricultural Pressure Overlay</p>
-          <label class="layer-row" for="toggle-cdl-fringe">
-            <div class="toggle">
-              <input type="checkbox" id="toggle-cdl-fringe" checked aria-label="Bee-crop agricultural fringe heatmap">
-              <div class="toggle-track" aria-hidden="true"></div>
-            </div>
-            <span class="layer-emoji" aria-hidden="true">🐝</span>
-            <span class="layer-label">Bee-Crop Field Fringe</span>
-          </label>
-          <p class="layer-desc">Heatmap of bee-dependent crop pixels from the NLCD raster — shows exactly where cultivated fields and pasture border the corridor. Warmer = higher pollination demand.</p>
-        </div>
-
-        <p class="panel-section-note">Raster overlays for fragmentation and mismatch analysis. Toggle on to see underlying land use context.</p>
-        <div id="panel-landcover-inner">
-          <!-- populated by ui.js -->
-        </div>
-      </details>
-    </section>
-
-
-    <!-- ── TERTIARY: Sightings for impact correlation ──────────────────────── -->
-    <section class="panel-section" id="panel-sightings">
-      <details>
-        <summary class="panel-title panel-collapsible">🔭 Sightings</summary>
+      <div class="flyout-pane-body">
         <p class="panel-section-note">Observe species activity near habitat sites.</p>
-
-        <!-- Filter chips -->
-        <div id="panel-filter-chips">
-          <!-- populated by filters.js -->
-        </div>
-
+        <div id="panel-filter-chips"><!-- populated by filters.js --></div>
         <div id="panel-dates-inner">
           <button id="btn-reload" class="reload-btn">↺ Load Observations</button>
         </div>
+        <div id="panel-layers"><!-- populated by ui.js --></div>
+      </div>
+    </div>
 
-        <div id="panel-layers">
-          <!-- populated by ui.js -->
-        </div>
+    <!-- Pane: Analysis (Heatmaps + Bee layers) ──────────────────────────── -->
+    <div class="flyout-pane" id="pane-analysis"
+        role="region" aria-label="Analysis Layers"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-analysis-title">📊 Analysis</span>
+        <button class="flyout-pane-close" aria-label="Close Analysis panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <p class="panel-section-note">Density heatmaps and bee species intelligence layers.</p>
+        <p class="layer-group-label">Activity Heatmap</p>
+        <label class="layer-row" for="toggle-heatmap-traffic">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-heatmap-traffic" checked
+                   aria-label="Pollinator Activity Heat Map">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true">🌡</span>
+          <span class="layer-label">Pollinator Activity</span>
+        </label>
+        <p class="layer-desc">Combined density of all pollinator sightings (iNat, GBIF, eBird) — shows where pollinators are most active.</p>
+        <!-- Bee Records / Species Richness / Imperiled Species -->
+        <div id="panel-bee-layers"><!-- populated by ui.js --></div>
+      </div>
+    </div>
 
-      </details>
-    </section>
+    <!-- Pane: Conservation Areas & Hazards ──────────────────────────────── -->
+    <div class="flyout-pane" id="pane-conservation"
+        role="region" aria-label="Conservation Areas and Hazards"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-conservation-title">🛡️ Conservation &amp; Hazards</span>
+        <button class="flyout-pane-close" aria-label="Close Conservation and Hazards panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <div id="panel-areas-inner"><!-- populated by ui.js --></div>
+      </div>
+    </div>
 
-    <section class="panel-section" id="panel-history">
-      <details>
-        <summary class="panel-title panel-collapsible">📈 Historical Trends</summary>
-        <div id="panel-history-inner">
-          <!-- populated by history.js via app.js -->
-        </div>
-      </details>
-    </section>
+    <!-- Pane: Land Cover & Cropland ─────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-landcover"
+        role="region" aria-label="Land Cover and Cropland"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-landcover-title">🗺️ Land Cover &amp; Cropland</span>
+        <button class="flyout-pane-close" aria-label="Close Land Cover panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <p class="layer-group-label">Agricultural Pressure Overlay</p>
+        <label class="layer-row" for="toggle-cdl-fringe">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-cdl-fringe" checked
+                   aria-label="Bee-crop agricultural fringe heatmap">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true">🐝</span>
+          <span class="layer-label">Bee-Crop Field Fringe</span>
+        </label>
+        <p class="layer-desc">Heatmap of bee-dependent crop pixels from the NLCD raster — shows where cultivated fields and pasture border the corridor. Warmer = higher pollination demand.</p>
+        <p class="panel-section-note">Raster overlays for fragmentation and mismatch analysis.</p>
+        <div id="panel-landcover-inner"><!-- populated by ui.js --></div>
+      </div>
+    </div>
 
-    <section class="panel-section" id="panel-area-legend">
-      <details>
-        <summary class="panel-title panel-collapsible">Map Layer Legend</summary>
-        <div id="panel-area-legend-inner">
-          <!-- populated by ui.js -->
-        </div>
-      </details>
-    </section>
+    <!-- Pane: Legend ────────────────────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-legend"
+        role="region" aria-label="Map Layer Legend"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-legend-title">📖 Legend</span>
+        <button class="flyout-pane-close" aria-label="Close Legend panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <div id="panel-area-legend-inner"><!-- populated by ui.js --></div>
+        <div id="panel-est-inner"><!-- populated by ui.js --></div>
+      </div>
+    </div>
 
-    <section class="panel-section" id="panel-est">
-      <details>
-        <summary class="panel-title panel-collapsible">Establishment · ring color</summary>
-        <div id="panel-est-inner">
-          <!-- populated by ui.js -->
-        </div>
-      </details>
-    </section>
+    <!-- Pane: Historical Trends ─────────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-trends"
+        role="region" aria-label="Historical Trends"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-trends-title">📈 Historical Trends</span>
+        <button class="flyout-pane-close" aria-label="Close Historical Trends panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <div id="panel-history-inner"><!-- populated by history.js via app.js --></div>
+      </div>
+    </div>
 
   </div>
 

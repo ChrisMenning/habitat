@@ -5,7 +5,8 @@
  * HTML escaping is centralised in `esc()` — never skip it for user/API data.
  */
 
-import { ESTABLISHMENT, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER } from './config.js';
+import { ESTABLISHMENT, LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS,
+         WAYSTATION_LAYER, HNP_LAYER, EBIRD_LAYER, BEE_LAYERS } from './config.js';
 
 // ── Pesticide legend ──────────────────────────────────────────────────────────
 
@@ -183,76 +184,232 @@ export function buildAreaLegend(onToggle = null) {
   const section = document.getElementById('panel-area-legend-inner');
   if (!section) return;
 
+  function addGroupLabel(text) {
+    const h = document.createElement('p');
+    h.className = 'layer-group-label';
+    h.textContent = text;
+    section.appendChild(h);
+  }
+
   /**
    * Creates one legend row as a <button> (when onToggle supplied) or a <div>.
-   * State is stored in the DOM via the `area-legend-row--off` class so that
-   * external callers (e.g. panel checkboxes, alert clicks) can sync the visual
-   * state without needing access to a private state map.
-   * @param {string}  id         — logical layer id
-   * @param {string}  swatchHtml — inner HTML for the colour indicator
-   * @param {string}  labelText  — plain text label
-   * @param {boolean} defaultOn  — initial visibility
+   * `data-layer-id` allows setLayerActive to sync visual state on toggle events.
    */
-  function makeRow(id, swatchHtml, labelText, defaultOn) {
-    const el = document.createElement(onToggle ? 'button' : 'div');
+  function makeRow(id, swatchHtml, labelText, defaultOn, toggleable = true) {
+    const el = document.createElement((onToggle && toggleable) ? 'button' : 'div');
     el.className = `area-legend-row${defaultOn ? '' : ' area-legend-row--off'}`;
     el.dataset.layerId = id;
-    if (onToggle) {
+    if (onToggle && toggleable) {
       el.type  = 'button';
       el.title = `Toggle ${labelText}`;
+      el.setAttribute('aria-label', `Toggle ${labelText} — currently ${defaultOn ? 'on' : 'off'}`);
     }
-
-    const labelSpan = document.createElement('span');
-    labelSpan.textContent = labelText;
 
     const swatchWrap = document.createElement('span');
     swatchWrap.innerHTML = swatchHtml;
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = labelText;
 
     el.appendChild(swatchWrap.firstElementChild);
     el.appendChild(labelSpan);
 
-    if (onToggle) {
+    if (onToggle && toggleable) {
       el.addEventListener('click', () => {
-        // Derive current state from CSS so external updates (checkbox, alert
-        // click) are always in sync — no private state map needed.
         const newVisible = el.classList.contains('area-legend-row--off');
         onToggle(id, newVisible);
+        el.setAttribute('aria-label', `Toggle ${labelText} — currently ${newVisible ? 'on' : 'off'}`);
       });
     }
-
     section.appendChild(el);
   }
 
-  for (const layer of AREA_LAYERS) {
-    makeRow(
-      layer.id,
-      `<div class="area-legend-swatch"
-           style="background:${esc(layer.fillColor)};border-color:${esc(layer.outlineColor)};"
-           aria-hidden="true"></div>`,
-      layer.label,
-      layer.defaultOn,
-    );
-  }
+  // Helper for a simple colored circle swatch
+  const circleSwatch = (color, border = color) =>
+    `<div class="area-legend-circle" style="background:${esc(color)};outline:2px solid ${esc(border)};outline-offset:-1px;" aria-hidden="true"></div>`;
 
-  // Waystation layer (violet circle)
+  // Helper for a semi-transparent area fill swatch
+  const areaSwatch = (fill, border) =>
+    `<div class="area-legend-swatch" style="background:${esc(fill)};border-color:${esc(border)};" aria-hidden="true"></div>`;
+
+  // ── Habitat Sites (toggleable) ────────────────────────────────────────────
+  addGroupLabel('Habitat Sites');
+  // Pollinator Corridor (area polygon)
+  const corridorCfg = AREA_LAYERS.find(l => l.id === 'gbcc-corridor');
+  if (corridorCfg) makeRow(corridorCfg.id, areaSwatch(corridorCfg.fillColor, corridorCfg.outlineColor), corridorCfg.label, corridorCfg.defaultOn);
+  // Monarch Waystations
   makeRow(
     WAYSTATION_LAYER[0].id,
-    `<div class="area-legend-waystation"
-         style="background:#8b5cf6;"
-         aria-hidden="true">&#9670;</div>`,
+    `<div class="area-legend-waystation" style="background:#8b5cf6;" aria-hidden="true">&#9670;</div>`,
     WAYSTATION_LAYER[0].label,
     WAYSTATION_LAYER[0].defaultOn,
   );
-
-  // Hazard layer (red circle)
+  // Homegrown National Park
   makeRow(
-    HAZARD_LAYERS[0].id,
-    `<div class="area-legend-circle"
-         style="background:#ef4444;"
-         aria-hidden="true"></div>`,
-    HAZARD_LAYERS[0].label,
-    HAZARD_LAYERS[0].defaultOn,
+    HNP_LAYER[0].id,
+    circleSwatch('#10b981', '#059669'),
+    HNP_LAYER[0].label,
+    HNP_LAYER[0].defaultOn,
   );
+
+  // ── Conservation Areas (toggleable) ──────────────────────────────────────
+  addGroupLabel('Conservation Areas');
+  for (const layer of AREA_LAYERS.filter(l => l.id !== 'gbcc-corridor')) {
+    makeRow(layer.id, areaSwatch(layer.fillColor, layer.outlineColor), layer.label, layer.defaultOn);
+  }
+
+  // ── Hazards (toggleable) ──────────────────────────────────────────────────
+  addGroupLabel('Hazards');
+  makeRow(HAZARD_LAYERS[0].id, circleSwatch('#ef4444', '#b91c1c'), HAZARD_LAYERS[0].label, HAZARD_LAYERS[0].defaultOn);
+
+  // ── Sightings (info-only, not toggleable via legend) ─────────────────────
+  addGroupLabel('Sightings · iNaturalist');
+  const INAT_COLORS = { pollinators: '#10b981', 'native-plants': '#0891b2', 'other-plants': '#db2777', 'other-wildlife': '#92400e' };
+  for (const layer of LAYERS) {
+    makeRow(layer.id, circleSwatch(INAT_COLORS[layer.id] ?? '#6b7280'), layer.label, layer.defaultOn, false);
+  }
+
+  addGroupLabel('Sightings · GBIF (historical)');
+  const GBIF_COLORS = { 'gbif-pollinators': '#10b981', 'gbif-native-plants': '#0891b2', 'gbif-non-native-plants': '#db2777', 'gbif-wildlife': '#92400e' };
+  for (const layer of GBIF_LAYERS) {
+    makeRow(layer.id, `<div class="area-legend-circle" style="background:${esc(GBIF_COLORS[layer.id] ?? '#6b7280')};opacity:0.5;outline:2px solid ${esc(GBIF_COLORS[layer.id] ?? '#6b7280')};outline-offset:-1px;" aria-hidden="true"></div>`, layer.label, layer.defaultOn, false);
+  }
+
+  addGroupLabel('Sightings · eBird');
+  makeRow(EBIRD_LAYER[0].id, circleSwatch('#64748b', '#475569'), EBIRD_LAYER[0].label, EBIRD_LAYER[0].defaultOn, false);
+
+  addGroupLabel('Bee Distribution (FWS · GBIF)');
+  const BEE_COLORS = { 'bees-records': '#f59e0b', 'bees-imperiled': '#ef4444' };
+  for (const layer of BEE_LAYERS.filter(l => l.id !== 'bees-richness')) {
+    makeRow(layer.id, circleSwatch(BEE_COLORS[layer.id] ?? '#f59e0b'), layer.label, layer.defaultOn, false);
+  }
+}
+
+// ── Activity Bar controller ──────────────────────────────────────────────────
+
+/**
+ * Wires up the icon activity bar: toggle open/close of flyout panes,
+ * keyboard navigation, focus management, and ARIA state.
+ *
+ * Panes use `aria-hidden` + `inert` (not `hidden`) so CSS opacity/transform
+ * transitions play correctly — `[hidden]` is `display:none !important` which
+ * prevents transitions from running.
+ *
+ * WCAG compliance:
+ *   - Each button: `aria-pressed`, `aria-expanded`, `aria-controls`
+ *   - Arrow keys navigate within the bar (roving focus)
+ *   - Escape closes the flyout and returns focus to the triggering button
+ *   - Opened pane receives focus on the close button
+ *   - All panes have `role="region"` + `aria-label`
+ *
+ * @returns {{ openPane(id: string): void, closeAll(): void }}
+ */
+export function initActivityBar() {
+  const bar    = document.getElementById('activity-bar');
+  const flyout = document.getElementById('panel-flyout');
+  if (!bar || !flyout) return { openPane() {}, closeAll() {} };
+
+  const buttons  = [...bar.querySelectorAll('.ab-btn[data-flyout]')];
+  let activePaneId = null;
+
+  function _setButtonState(paneId) {
+    buttons.forEach(btn => {
+      const active = btn.dataset.flyout === paneId;
+      btn.setAttribute('aria-pressed',  String(active));
+      btn.setAttribute('aria-expanded', String(active));
+      btn.classList.toggle('ab-btn--active', active);
+    });
+  }
+
+  function openPane(paneId) {
+    // Close currently open pane instantly (no transition — swapping content)
+    if (activePaneId && activePaneId !== paneId) {
+      const prev = document.getElementById(activePaneId);
+      if (prev) {
+        prev.classList.remove('flyout-pane--visible');
+        prev.setAttribute('aria-hidden', 'true');
+        prev.setAttribute('inert', '');
+      }
+    }
+
+    const pane = document.getElementById(paneId);
+    if (!pane) return;
+
+    // 1. Make accessible & remove clip before transition
+    pane.removeAttribute('aria-hidden');
+    pane.removeAttribute('inert');
+
+    // 2. Double-rAF: browser processes layout change, then CSS transition plays
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        pane.classList.add('flyout-pane--visible');
+      });
+    });
+
+    document.body.classList.add('flyout-open');
+    _setButtonState(paneId);
+    activePaneId = paneId;
+
+    // Focus management: move to close button within the pane
+    const closeBtn = pane.querySelector('.flyout-pane-close');
+    setTimeout(() => closeBtn?.focus(), 60);
+  }
+
+  function closeAll() {
+    if (!activePaneId) return;
+    const prev     = document.getElementById(activePaneId);
+    const prevId   = activePaneId;
+    activePaneId   = null;
+
+    if (prev) {
+      prev.classList.remove('flyout-pane--visible');
+      // Restore inert + aria-hidden after the transition completes
+      const onEnd = () => {
+        prev.setAttribute('aria-hidden', 'true');
+        prev.setAttribute('inert', '');
+        prev.removeEventListener('transitionend', onEnd);
+      };
+      prev.addEventListener('transitionend', onEnd);
+    }
+
+    document.body.classList.remove('flyout-open');
+    _setButtonState(null);
+
+    // Return focus to the bar button that opened this pane
+    const origin = bar.querySelector(`[data-flyout="${prevId}"]`);
+    setTimeout(() => origin?.focus(), 30);
+  }
+
+  // Activity bar button clicks — toggle same pane off, open new pane
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      activePaneId === btn.dataset.flyout ? closeAll() : openPane(btn.dataset.flyout);
+    });
+  });
+
+  // Close buttons inside each pane
+  flyout.querySelectorAll('.flyout-pane-close').forEach(btn => {
+    btn.addEventListener('click', closeAll);
+  });
+
+  // Escape closes the flyout from anywhere
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && activePaneId) closeAll();
+  });
+
+  // Arrow-key roving focus within the activity bar (ARIA toolbar pattern)
+  buttons.forEach((btn, i) => {
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        buttons[(i + 1) % buttons.length].focus();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        buttons[(i - 1 + buttons.length) % buttons.length].focus();
+      }
+    });
+  });
+
+  return { openPane, closeAll };
 }
 
 // ── Status updates ───────────────────────────────────────────────────────────
