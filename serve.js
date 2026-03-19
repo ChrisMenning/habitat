@@ -1680,10 +1680,51 @@ function handleSnapshotFile(filename, res) {
   });
 }
 
+// ── System health endpoint ─────────────────────────────────────────────────────
+// GET /api/health — returns the configured/missing status of all optional API
+// keys so the client can surface actionable missing-key warnings on startup.
+
+function handleHealth(res) {
+  const payload = {
+    keys: {
+      NASS_API_KEY: {
+        present:     !!getNassApiKey(),
+        system:      'USDA NASS QuickStats',
+        description: 'Managed colony counts and crop-acreage data',
+        url:         'https://quickstats.nass.usda.gov/api',
+      },
+      EBIRD_API_KEY: {
+        present:     !!getEbirdApiKey(),
+        system:      'Cornell eBird API',
+        description: 'Bird sighting observations',
+        url:         'https://ebird.org/api/keygen',
+      },
+      NOAA_CDO_TOKEN: {
+        present:     !!getNoaaToken(),
+        system:      'NOAA CDO / NCEI Climate Data',
+        description: 'Live GDD accumulation and current-year temperature data',
+        url:         'https://www.ncdc.noaa.gov/cdo-web/token',
+      },
+    },
+  };
+  res.writeHead(200, {
+    'Content-Type':                'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control':               'no-cache',
+  });
+  res.end(JSON.stringify(payload));
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
   const pathname = url.parse(req.url).pathname;
+
+  // System health — API key status
+  if (pathname === '/api/health') {
+    handleHealth(res);
+    return;
+  }
 
   // Historical snapshot harvest (POST only)
   if (pathname === '/api/harvest') {

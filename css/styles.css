@@ -368,6 +368,39 @@ body {
 }
 #header p  { font-size: 0.78rem; opacity: 0.75; margin-top: 1px; letter-spacing: 0.02em; }
 
+/* ── API key health warning banner ─────────────────────────────────────────── */
+#health-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #431407;
+  border-bottom: 1px solid #9a3412;
+  color: #fed7aa;
+  font-size: 0.82rem;
+  padding: 7px 14px;
+  z-index: 9;
+  flex-shrink: 0;
+}
+.hb-icon { font-size: 1rem; flex-shrink: 0; }
+.hb-msg  { flex: 1; line-height: 1.4; }
+.hb-msg strong { color: #fdba74; }
+.hb-msg code { font-size: 0.75rem; background: rgba(255,255,255,0.12); padding: 1px 5px; border-radius: 3px; }
+.hb-item { white-space: nowrap; }
+.hb-link { color: #fb923c; }
+.hb-link:hover { color: #fdba74; }
+.hb-code { color: #fde68a; }
+.hb-close {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fed7aa;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+.hb-close:hover { background: rgba(255,255,255,0.1); }
+
 #status {
   font-size: 0.78rem;
   background: rgba(52,211,153,0.12);

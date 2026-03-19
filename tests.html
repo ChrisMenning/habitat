@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bay Hive — Unit Tests</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  background: #0a1f10;
+  color: #d1fae5;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+header {
+  background: linear-gradient(135deg, #0a1f10 0%, #0f2d1a 60%, #14532d 100%);
+  border-bottom: 1px solid #1a4d2e;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 1rem; font-weight: 700; color: #6ee7b7; letter-spacing: 0.04em; }
+header p { font-size: 0.78rem; color: #6ee7b7; opacity: 0.7; }
+.hdr-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.btn {
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3);
+  color: #6ee7b7;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: background 0.15s;
+}
+.btn:hover { background: rgba(52,211,153,0.22); }
+.btn:disabled { opacity: 0.45; cursor: wait; }
+#summary-bar {
+  background: #0f2d1a;
+  border-bottom: 1px solid #1a4d2e;
+  padding: 8px 20px;
+  font-size: 12px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.summary-stat { display: flex; align-items: center; gap: 5px; }
+.summary-stat .num { font-size: 18px; font-weight: 700; }
+.num-pass  { color: #34d399; }
+.num-fail  { color: #f87171; }
+.num-skip  { color: #94a3b8; }
+.num-warn  { color: #fbbf24; }
+.num-total { color: #6ee7b7; }
+#summary-elapsed { margin-left: auto; color: #94a3b8; font-size: 11px; }
+#main { flex: 1; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.group-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(52,211,153,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.group-header {
+  background: rgba(52,211,153,0.07);
+  padding: 9px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(52,211,153,0.1);
+}
+.group-tally { margin-left: auto; font-size: 11px; color: #94a3b8; font-weight: 400; }
+.test-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  align-items: start;
+  padding: 6px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 8px;
+}
+.test-row:last-child { border-bottom: none; }
+.test-status { font-size: 13px; padding-top: 1px; }
+.test-name { color: #e2e8f0; font-size: 12px; line-height: 1.4; }
+.test-error {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: #fca5a5;
+  background: rgba(239,68,68,0.08);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'Consolas', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 2px;
+}
+.test-time { font-size: 10px; color: #64748b; white-space: nowrap; }
+.test-optional { font-size: 10px; color: #94a3b8; white-space: nowrap; padding-top: 2px; }
+.badge-pass  { background: #065f46; color: #6ee7b7;  }
+.badge-fail  { background: #7f1d1d; color: #fca5a5;  }
+.badge-warn  { background: #78350f; color: #fcd34d;  }
+.badge-skip  { background: #1e293b; color: #94a3b8;  }
+.badge-run   { background: #1e3a5f; color: #93c5fd;  }
+.badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+/* hidden map container for rendering tests */
+#test-map-container {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 300px;
+  height: 200px;
+  pointer-events: none;
+  visibility: hidden;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🧪 Bay Hive — Unit Tests</h1>
+    <p>API health, proxy endpoints, external connectivity, map rendering &amp; module logic</p>
+  </div>
+  <div class="hdr-actions">
+    <a href="/" class="btn" style="text-decoration:none">← App</a>
+    <button id="btn-run-all" class="btn">▶ Run All Tests</button>
+  </div>
+</header>
+
+<div id="summary-bar">
+  <div class="summary-stat"><span class="num num-pass" id="s-pass">—</span><span>Pass</span></div>
+  <div class="summary-stat"><span class="num num-warn" id="s-warn">—</span><span>Warn (optional)</span></div>
+  <div class="summary-stat"><span class="num num-fail" id="s-fail">—</span><span>Fail</span></div>
+  <div class="summary-stat"><span class="num num-skip" id="s-skip">—</span><span>Skipped</span></div>
+  <div class="summary-stat"><span class="num num-total" id="s-total">—</span><span>Total</span></div>
+  <span id="summary-elapsed"></span>
+</div>
+
+<div id="main"></div>
+<div id="test-map-container"><div id="test-map" style="width:300px;height:200px"></div></div>
+
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script type="module">
+// ─────────────────────────────────────────────────────────────────────────────
+// Imports — only pure modules (no DOM side-effects, no app.js)
+// ─────────────────────────────────────────────────────────────────────────────
+import { CENTER, RADIUS_KM, WI_PLACE_ID, LAYERS, GBIF_LAYERS } from '/js/config.js';
+import { getEstKey, classifyObs }    from '/js/classify.js';
+import { nestingTier }               from '/js/nesting.js';
+import { computeAlerts }             from '/js/alerts.js';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test runner core
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** @type {Array<{id:string, group:string, name:string, optional:boolean,
+ *                fn:()=>Promise<void>, status:'pending'|'pass'|'fail'|'warn'|'skip',
+ *                error:string|null, ms:number|null}>} */
+const TESTS = [];
+let _runnerStartMs = 0;
+
+function def(group, name, fn, optional = false) {
+  TESTS.push({ id: `t${TESTS.length}`, group, name, optional, fn, status: 'pending', error: null, ms: null });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test definitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── 🔑 API Configuration ─────────────────────────────────────────────────────
+let _healthData = null;
+def('🔑 API Configuration', 'Health endpoint returns 200', async () => {
+  const r = await fetch('/api/health', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  _healthData = await r.json();
+  if (!_healthData?.keys) throw new Error('Missing keys object in response');
+});
+def('🔑 API Configuration', 'NASS_API_KEY configured (QuickStats + colony data)', async () => {
+  if (!_healthData) throw new Error('Health endpoint not available');
+  if (!_healthData.keys.NASS_API_KEY?.present)
+    throw new Error('NASS_API_KEY not configured — register free at https://quickstats.nass.usda.gov/api, then add to api-keys.txt');
+}, true);
+def('🔑 API Configuration', 'EBIRD_API_KEY configured (bird sightings)', async () => {
+  if (!_healthData) throw new Error('Health endpoint not available');
+  if (!_healthData.keys.EBIRD_API_KEY?.present)
+    throw new Error('EBIRD_API_KEY not configured — register free at https://ebird.org/api/keygen, then add to api-keys.txt');
+}, true);
+def('🔑 API Configuration', 'NOAA_CDO_TOKEN configured (live GDD / climate data)', async () => {
+  if (!_healthData) throw new Error('Health endpoint not available');
+  if (!_healthData.keys.NOAA_CDO_TOKEN?.present)
+    throw new Error('NOAA_CDO_TOKEN not configured — register free at https://www.ncdc.noaa.gov/cdo-web/token, then add to api-keys.txt');
+}, true);
+
+// ── 🔌 Server Proxy Endpoints ─────────────────────────────────────────────────
+def('🔌 Server Proxy Endpoints', 'GET /api/hnp-plantings → GeoJSON FeatureCollection', async () => {
+  const r = await fetch('/api/hnp-plantings');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.type !== 'FeatureCollection') throw new Error(`Expected FeatureCollection, got: ${d.type ?? JSON.stringify(d).slice(0,80)}`);
+  if (!Array.isArray(d.features)) throw new Error('features is not an array');
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/cdl-stats → returns rows array', async () => {
+  const r = await fetch('/api/cdl-stats');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!d) throw new Error('null response');
+  if (!Array.isArray(d.rows)) throw new Error(`rows not an array; keys: ${Object.keys(d).join(', ')}`);
+  if (d.rows.length === 0) throw new Error('rows array is empty — CDL API may be down');
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/cdl-fringe → GeoJSON FeatureCollection', async () => {
+  const r = await fetch('/api/cdl-fringe');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!d) throw new Error('null response from CDL fringe endpoint');
+  if (d.type !== 'FeatureCollection') throw new Error(`Expected FeatureCollection, got: ${d.type}`);
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/quickstats → JSON with "available" field', async () => {
+  const r = await fetch('/api/quickstats');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (typeof d.available === 'undefined') throw new Error('Response missing "available" field');
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/ebird → array or {available:false}', async () => {
+  const r = await fetch('/api/ebird?back=1');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d) && d.available !== false)
+    throw new Error(`Unexpected response shape: ${JSON.stringify(d).slice(0, 100)}`);
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/noaa/ghcnd → JSON data or {available:false}', async () => {
+  const year = new Date().getFullYear();
+  const r = await fetch(`/api/noaa/ghcnd?startDate=${year}-01-01&endDate=${year}-03-01`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d) && d.available !== false)
+    throw new Error(`Unexpected response shape: ${JSON.stringify(d).slice(0, 100)}`);
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/snapshots → {files:[]} index', async () => {
+  const r = await fetch('/api/snapshots');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d.files)) throw new Error('Response missing "files" array');
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting → scores for 1 site', async () => {
+  const sites = JSON.stringify([{ id: 'test', lng: -88.0133, lat: 44.5133 }]);
+  const r = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(sites)}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d)) throw new Error(`Expected array, got: ${typeof d}`);
+  if (d.length !== 1) throw new Error(`Expected 1 result, got ${d.length}`);
+  if (typeof d[0].score !== 'number') throw new Error(`Result missing numeric score`);
+});
+def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting rejects batch > 200 sites (400)', async () => {
+  const sites = JSON.stringify(Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, lng: -88, lat: 44.5 })));
+  const r = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(sites)}`);
+  if (r.status !== 400) throw new Error(`Expected HTTP 400 for oversized batch, got ${r.status}`);
+});
+
+// ── 🌐 External API Connectivity ──────────────────────────────────────────────
+def('🌐 External API Connectivity', 'iNaturalist API reachable (1 observation)', async () => {
+  const r = await fetch(`https://api.inaturalist.org/v1/observations?lat=44.5133&lng=-88.0133&radius=1&per_page=1&has[]=geo`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (typeof d.total_results !== 'number') throw new Error('Missing total_results');
+});
+def('🌐 External API Connectivity', 'GBIF API reachable (1 occurrence)', async () => {
+  const r = await fetch('https://api.gbif.org/v1/occurrence/search?hasCoordinate=true&limit=1&decimalLatitude=44.3,44.7&decimalLongitude=-88.3,-87.8');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (typeof d.count !== 'number' && typeof d.offset !== 'number') throw new Error('Unexpected GBIF response shape');
+});
+def('🌐 External API Connectivity', 'GBCC Pollinator Corridor ArcGIS reachable', async () => {
+  const base = 'https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services/PollinatorCorridor_gdb/FeatureServer/1/query';
+  const r = await fetch(`${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=geojson`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`ArcGIS error: ${d.error.message}`);
+  if (d.type !== 'FeatureCollection') throw new Error(`Expected FeatureCollection, got ${d.type}`);
+});
+def('🌐 External API Connectivity', 'PAD-US ArcGIS protected areas reachable', async () => {
+  const base = 'https://services.arcgis.com/v01gqwM5QqNysAAi/arcgis/rest/services/Public_Access/FeatureServer/0/query';
+  const r = await fetch(`${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=geojson`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`ArcGIS error: ${d.error.message}`);
+});
+def('🌐 External API Connectivity', 'WI DNR State Natural Areas MapServer reachable', async () => {
+  const base = 'https://dnrmaps.wi.gov/arcgis/rest/services/ER_Biotics/ER_Biotics_WGS84_Managed_Lands/MapServer/1/query';
+  const r = await fetch(`${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=geojson`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`ArcGIS error: ${d.error.message}`);
+});
+def('🌐 External API Connectivity', 'WI DNR PFAS hazard sites MapServer reachable', async () => {
+  const base = 'https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_PFAS_SITES_AND_DATA/MapServer/0/query';
+  const r = await fetch(`${base}?where=1%3D1&outFields=*&resultRecordCount=1&f=geojson`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(`ArcGIS error: ${d.error.message}`);
+});
+def('🌐 External API Connectivity', 'NOAA NCEI climate normals API reachable (direct, CORS-open)', async () => {
+  const r = await fetch('https://www.ncei.noaa.gov/access/services/data/v1?dataset=normals-daily-1991-2020&stations=USW00014898&startDate=2010-01-01&endDate=2010-01-02&format=json&units=standard&dataTypes=dly-tavg-normal');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d)) throw new Error('Expected array response');
+});
+def('🌐 External API Connectivity', 'OpenFreeMap tile style reachable', async () => {
+  const r = await fetch('https://tiles.openfreemap.org/styles/liberty', { method: 'HEAD' });
+  if (!r.ok) throw new Error(`HTTP ${r.status} — map base style unavailable`);
+});
+def('🌐 External API Connectivity', 'USDA CropScape CDL WMS reachable', async () => {
+  const r = await fetch('https://nassgeodata.gmu.edu/arcgis/services/CDLService/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities', { method: 'HEAD' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+});
+def('🌐 External API Connectivity', 'HNP plantings API reachable (via /api/hnp-plantings proxy)', async () => {
+  const r = await fetch('/api/hnp-plantings');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.type !== 'FeatureCollection') throw new Error('Expected FeatureCollection');
+  // Require at least one feature - confirms upstream is live
+  if (d.features.length === 0) throw new Error('HNP returned 0 plantings — upstream may be down');
+});
+
+// ── 🗺️ Map Rendering ──────────────────────────────────────────────────────────
+let _testMap = null;
+def('🗺️ Map Rendering', 'MapLibre GL JS library loaded', async () => {
+  if (typeof maplibregl === 'undefined') throw new Error('maplibregl is not defined — CDN script failed to load');
+  if (!maplibregl.Map) throw new Error('maplibregl.Map is not a constructor');
+});
+def('🗺️ Map Rendering', 'Map instance initializes without throw', async () => {
+  if (typeof maplibregl === 'undefined') throw new Error('maplibregl not loaded');
+  const container = document.getElementById('test-map');
+  container.style.visibility = 'visible';
+  container.parentElement.style.visibility = 'visible';
+  _testMap = new maplibregl.Map({
+    container: 'test-map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [-88.0133, 44.5133],
+    zoom: 11,
+    preserveDrawingBuffer: true,
+    attributionControl: false,
+    logoPosition: 'bottom-left',
+  });
+  if (!(_testMap instanceof maplibregl.Map)) throw new Error('Map constructor returned non-Map object');
+});
+def('🗺️ Map Rendering', 'Map "load" event fires within 30 s', async () => {
+  if (!_testMap) throw new Error('Map not initialized (prior test failed)');
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timed out after 30 s — style or tile server unreachable')), 30000);
+    _testMap.once('load', () => { clearTimeout(timeout); resolve(); });
+    if (_testMap.isStyleLoaded()) { clearTimeout(timeout); resolve(); }
+  });
+});
+def('🗺️ Map Rendering', 'SVG icon files served correctly', async () => {
+  const icons = ['hummingbird', 'butterfly-with-detailed-wings', 'park', 'biohazard', 'butterfly', 'flower', 'flower-tulip', 'crow-solid-full', 'deer'];
+  const results = await Promise.all(icons.map(async name => {
+    const r = await fetch(`/svg/${name}.svg`);
+    if (!r.ok) return `${name}: HTTP ${r.status}`;
+    const text = await r.text();
+    if (!text.includes('<svg')) return `${name}: not an SVG file`;
+    return null;
+  }));
+  const failures = results.filter(Boolean);
+  if (failures.length) throw new Error(failures.join('; '));
+});
+def('🗺️ Map Rendering', 'GeoJSON source can be added and updated', async () => {
+  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  const id = '_test-source';
+  if (_testMap.getSource(id)) _testMap.removeSource(id);
+  _testMap.addSource(id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  const src = _testMap.getSource(id);
+  if (!src) throw new Error('getSource returned null after addSource');
+  src.setData({ type: 'FeatureCollection', features: [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [-88.0133, 44.5133] }, properties: {} }
+  ]});
+});
+def('🗺️ Map Rendering', 'Circle layer can be added to map', async () => {
+  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  const lid = '_test-layer';
+  if (_testMap.getLayer(lid)) _testMap.removeLayer(lid);
+  _testMap.addLayer({ id: lid, type: 'circle', source: '_test-source',
+    paint: { 'circle-radius': 4, 'circle-color': '#34d399' }
+  });
+  if (!_testMap.getLayer(lid)) throw new Error('Layer not found after addLayer');
+});
+def('🗺️ Map Rendering', 'Layer visibility can be toggled', async () => {
+  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  const lid = '_test-layer';
+  if (!_testMap.getLayer(lid)) throw new Error('Layer not present (prior test may have failed)');
+  _testMap.setLayoutProperty(lid, 'visibility', 'none');
+  const vis1 = _testMap.getLayoutProperty(lid, 'visibility');
+  if (vis1 !== 'none') throw new Error(`Expected "none", got "${vis1}"`);
+  _testMap.setLayoutProperty(lid, 'visibility', 'visible');
+  const vis2 = _testMap.getLayoutProperty(lid, 'visibility');
+  if (vis2 !== 'visible') throw new Error(`Expected "visible", got "${vis2}"`);
+});
+def('🗺️ Map Rendering', 'Map canvas can be exported as data URL', async () => {
+  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  const canvas = _testMap.getCanvas();
+  if (!canvas) throw new Error('getCanvas() returned null');
+  const dataUrl = canvas.toDataURL('image/png');
+  if (!dataUrl.startsWith('data:image/png;base64,')) throw new Error(`Unexpected data URL prefix: ${dataUrl.slice(0, 30)}`);
+});
+
+// ── 🧮 Module Logic — pure functions ─────────────────────────────────────────
+def('🧮 Module Logic', 'config CENTER is valid [lng, lat]', async () => {
+  if (!Array.isArray(CENTER) || CENTER.length !== 2) throw new Error(`CENTER not a 2-element array: ${JSON.stringify(CENTER)}`);
+  const [lng, lat] = CENTER;
+  if (lng < -180 || lng > 180) throw new Error(`lng out of range: ${lng}`);
+  if (lat < -90  || lat > 90)  throw new Error(`lat out of range: ${lat}`);
+});
+def('🧮 Module Logic', 'config RADIUS_KM is a positive number', async () => {
+  if (typeof RADIUS_KM !== 'number' || RADIUS_KM <= 0)
+    throw new Error(`RADIUS_KM is ${RADIUS_KM}`);
+});
+def('🧮 Module Logic', 'config WI_PLACE_ID is a positive integer', async () => {
+  if (!Number.isInteger(WI_PLACE_ID) || WI_PLACE_ID <= 0)
+    throw new Error(`WI_PLACE_ID is ${WI_PLACE_ID}`);
+});
+def('🧮 Module Logic', 'config LAYERS has exactly 4 entries with required fields', async () => {
+  if (!Array.isArray(LAYERS) || LAYERS.length !== 4)
+    throw new Error(`Expected 4 LAYERS, got ${LAYERS?.length}`);
+  for (const l of LAYERS) {
+    if (!l.id || !l.label) throw new Error(`Layer missing id/label: ${JSON.stringify(l)}`);
+  }
+});
+def('🧮 Module Logic', 'config GBIF_LAYERS is non-empty', async () => {
+  if (!Array.isArray(GBIF_LAYERS) || GBIF_LAYERS.length === 0)
+    throw new Error('GBIF_LAYERS is empty or not an array');
+});
+def('🧮 Module Logic', 'classify getEstKey returns "native" for native obs', async () => {
+  const obs = { taxon: { establishment_means: 'native' } };
+  const result = getEstKey(obs);
+  if (result !== 'native') throw new Error(`Expected "native", got "${result}"`);
+});
+def('🧮 Module Logic', 'classify getEstKey returns "unknown" for blank obs', async () => {
+  const result = getEstKey({ taxon: null });
+  if (result !== 'unknown') throw new Error(`Expected "unknown", got "${result}"`);
+});
+def('🧮 Module Logic', 'classify getEstKey normalizes "naturalised" spelling', async () => {
+  const obs = { taxon: { establishment_means: 'naturalized' } };
+  const result = getEstKey(obs);
+  if (result !== 'naturalised') throw new Error(`Expected "naturalised", got "${result}"`);
+});
+def('🧮 Module Logic', 'classify classifyObs returns "pollinators" for bee observation', async () => {
+  const obs = {
+    taxon: { iconic_taxon_name: 'Insecta', preferred_common_name: 'Bumble Bee', establishment_means: null },
+    quality_grade: 'research', obscured: false,
+    location: '44.5,-88.0', place_guess: 'Green Bay',
+  };
+  const result = classifyObs(obs);
+  if (result !== 'pollinators') throw new Error(`Expected "pollinators", got "${result}"`);
+});
+def('🧮 Module Logic', 'classify classifyObs returns "native-plants" for native plant', async () => {
+  const obs = {
+    taxon: { iconic_taxon_name: 'Plantae', preferred_common_name: 'Coneflower', establishment_means: 'native' },
+    quality_grade: 'research', obscured: false,
+  };
+  const result = classifyObs(obs);
+  if (result !== 'native-plants') throw new Error(`Expected "native-plants", got "${result}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(0) → low', async () => {
+  const { tier } = nestingTier(0);
+  if (tier !== 'low') throw new Error(`Expected "low", got "${tier}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(33) → low boundary', async () => {
+  const { tier } = nestingTier(33);
+  if (tier !== 'low') throw new Error(`Expected "low", got "${tier}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(34) → moderate', async () => {
+  const { tier } = nestingTier(34);
+  if (tier !== 'moderate') throw new Error(`Expected "moderate", got "${tier}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(66) → moderate boundary', async () => {
+  const { tier } = nestingTier(66);
+  if (tier !== 'moderate') throw new Error(`Expected "moderate", got "${tier}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(67) → good', async () => {
+  const { tier } = nestingTier(67);
+  if (tier !== 'good') throw new Error(`Expected "good", got "${tier}"`);
+});
+def('🧮 Module Logic', 'nesting nestingTier(100) → good', async () => {
+  const { tier } = nestingTier(100);
+  if (tier !== 'good') throw new Error(`Expected "good", got "${tier}"`);
+});
+def('🧮 Module Logic', 'alerts computeAlerts returns array with empty inputs', async () => {
+  const result = computeAlerts({
+    corridorFeatures: [], waystationFeatures: [], pfasFeatures: [],
+    pollinatorSightings: [], hnpFeatures: [], cdlStats: null,
+    quickStats: null, climateData: null, pesticideCounties: [],
+    parcelFeatures: [], nestingScores: new Map(),
+  });
+  if (!Array.isArray(result)) throw new Error(`Expected array, got ${typeof result}`);
+});
+
+// ── 💾 Browser Storage ────────────────────────────────────────────────────────
+def('💾 Browser Storage', 'IndexedDB is available', async () => {
+  if (typeof indexedDB === 'undefined') throw new Error('indexedDB not available in this browser');
+});
+def('💾 Browser Storage', 'Cache API is available', async () => {
+  if (typeof caches === 'undefined') throw new Error('Cache API (caches) not available in this browser');
+});
+def('💾 Browser Storage', 'sessionStorage round-trip works', async () => {
+  sessionStorage.setItem('_test_key', 'test_val_123');
+  const v = sessionStorage.getItem('_test_key');
+  sessionStorage.removeItem('_test_key');
+  if (v !== 'test_val_123') throw new Error(`Round-trip failed: got "${v}"`);
+});
+def('💾 Browser Storage', 'localStorage round-trip works', async () => {
+  localStorage.setItem('_test_key', 'test_val_456');
+  const v = localStorage.getItem('_test_key');
+  localStorage.removeItem('_test_key');
+  if (v !== 'test_val_456') throw new Error(`Round-trip failed: got "${v}"`);
+});
+def('💾 Browser Storage', 'IndexedDB can open database', async () => {
+  await new Promise((resolve, reject) => {
+    const req = indexedDB.open('_bayhive_test_db', 1);
+    req.onsuccess = e => {
+      e.target.result.close();
+      indexedDB.deleteDatabase('_bayhive_test_db');
+      resolve();
+    };
+    req.onerror = () => reject(new Error('Failed to open IndexedDB: ' + req.error));
+    req.onupgradeneeded = () => {};
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UI rendering
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GROUPS = [...new Set(TESTS.map(t => t.group))];
+const groupEls  = {};  // group name → card DOM element
+const testEls  = {};   // test id → row DOM element
+
+function icon(status) {
+  return { pass: '✅', fail: '❌', warn: '⚠️', skip: '⏭️', pending: '⬜' }[status] ?? '⬜';
+}
+function badge(status) {
+  const map = { pass: ['PASS','pass'], fail: ['FAIL','fail'], warn: ['WARN','warn'], skip: ['SKIP','skip'], pending: ['...','skip'] };
+  const [label, cls] = map[status] ?? ['...','skip'];
+  return `<span class="badge badge-${cls}">${label}</span>`;
+}
+
+function buildUI() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  for (const group of GROUPS) {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    const header = document.createElement('div');
+    header.className = 'group-header';
+    header.innerHTML = `<span>${group}</span><span class="group-tally" id="tally-${CSS.escape(group)}"></span>`;
+    card.appendChild(header);
+    const tests = TESTS.filter(t => t.group === group);
+    for (const t of tests) {
+      const row = document.createElement('div');
+      row.className = 'test-row';
+      row.id = `row-${t.id}`;
+      row.innerHTML =
+        `<div class="test-status" id="st-${t.id}">${icon('pending')}</div>` +
+        `<div class="test-name">${escHtml(t.name)}</div>` +
+        `<div class="test-optional">${t.optional ? '<span class="badge badge-skip">OPT</span>' : ''}</div>` +
+        `<div class="test-time" id="ms-${t.id}"></div>`;
+      card.appendChild(row);
+      testEls[t.id] = row;
+    }
+    main.appendChild(card);
+    groupEls[group] = card;
+  }
+  updateSummary();
+}
+
+function updateRow(t) {
+  const stEl = document.getElementById(`st-${t.id}`);
+  const msEl = document.getElementById(`ms-${t.id}`);
+  if (stEl) stEl.innerHTML = badge(t.status);
+  if (msEl && t.ms !== null) msEl.textContent = `${t.ms} ms`;
+
+  // Remove old error row if present
+  const oldErr = document.getElementById(`err-${t.id}`);
+  if (oldErr) oldErr.remove();
+
+  if ((t.status === 'fail' || t.status === 'warn') && t.error) {
+    const errDiv = document.createElement('div');
+    errDiv.className = 'test-error';
+    errDiv.id = `err-${t.id}`;
+    errDiv.textContent = t.error;
+    testEls[t.id]?.after(errDiv);
+  }
+  updateGroupTally(t.group);
+  updateSummary();
+}
+
+function updateGroupTally(group) {
+  const el = document.getElementById(`tally-${CSS.escape(group)}`);
+  if (!el) return;
+  const tests = TESTS.filter(t => t.group === group);
+  const pass = tests.filter(t => t.status === 'pass').length;
+  const fail = tests.filter(t => t.status === 'fail').length;
+  const warn = tests.filter(t => t.status === 'warn').length;
+  const total = tests.length;
+  el.textContent = `${pass + warn}/${total}${fail ? ` · ${fail} fail` : ''}`;
+}
+
+function updateSummary() {
+  const pass  = TESTS.filter(t => t.status === 'pass').length;
+  const fail  = TESTS.filter(t => t.status === 'fail').length;
+  const warn  = TESTS.filter(t => t.status === 'warn').length;
+  const skip  = TESTS.filter(t => t.status === 'skip').length;
+  const total = TESTS.length;
+  document.getElementById('s-pass').textContent  = pass;
+  document.getElementById('s-fail').textContent  = fail;
+  document.getElementById('s-warn').textContent  = warn;
+  document.getElementById('s-skip').textContent  = skip;
+  document.getElementById('s-total').textContent = total;
+  const elapsed = _runnerStartMs ? `${((Date.now() - _runnerStartMs) / 1000).toFixed(1)} s` : '';
+  document.getElementById('summary-elapsed').textContent = elapsed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Runner
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runTests(tests) {
+  const btn = document.getElementById('btn-run-all');
+  btn.disabled = true;
+  _runnerStartMs = Date.now();
+
+  // Reset
+  for (const t of tests) { t.status = 'pending'; t.error = null; t.ms = null; }
+  buildUI();
+
+  for (const t of tests) {
+    // Mark as running
+    const stEl = document.getElementById(`st-${t.id}`);
+    if (stEl) stEl.innerHTML = `<span class="badge badge-run">RUN</span>`;
+
+    const start = performance.now();
+    try {
+      await t.fn();
+      t.status = 'pass';
+    } catch (err) {
+      t.error  = err?.message ?? String(err);
+      t.status = t.optional ? 'warn' : 'fail';
+    }
+    t.ms = Math.round(performance.now() - start);
+    updateRow(t);
+    updateSummary();
+
+    // Yield to the UI between tests
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  btn.disabled = false;
+  document.getElementById('summary-elapsed').textContent =
+    `Finished in ${((Date.now() - _runnerStartMs) / 1000).toFixed(1)} s`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bootstrap
+// ─────────────────────────────────────────────────────────────────────────────
+
+buildUI();
+document.getElementById('btn-run-all').addEventListener('click', () => runTests(TESTS));
+</script>
+</body>
+</html>
