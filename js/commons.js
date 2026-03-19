@@ -1,22 +1,32 @@
 /**
  * commons.js — Wikimedia Commons geotagged photography integration.
  *
- * Two-step approach (generator=geosearch is unreliable for files on Commons):
- *   Step 1 — list=geosearch → returns file page IDs near a coordinate.
- *   Step 2 — prop=imageinfo|categories|coordinates on those page IDs
- *             → fetches image URLs, license, and category membership.
+ * Strategy: generator=search with pollinator keywords → filter by proximity
+ * to the app center.  This avoids the generator=geosearch bug that silently
+ * returns no pages for namespace 6 (files) even when matching photos exist.
  *
- * Topic filter: keep only images whose title or category membership matches
- * pollinator / native-plant keywords (CAT_KEYWORDS).  Images without a
- * license or thumbnail are also discarded.
+ * Two properties are fetched together in a single call:
+ *   prop=imageinfo    — image URLs, license, EXIF metadata
+ *   prop=coordinates  — {{Location}} template coordinates on the file page
+ *
+ * Coordinates are extracted from (in priority order):
+ *   1. prop=coordinates  ({{Location}} template — most reliable)
+ *   2. extmetadata GPSLatitude / GPSLongitude  (EXIF GPS)
+ *
+ * Images with no extractable coordinates, no license, or no thumbnail
+ * are silently discarded.
  *
  * API endpoint:
  *   https://commons.wikimedia.org/w/api.php  (CORS open, origin=*)
  */
 
-// ── Topic keyword filter ──────────────────────────────────────────────────────
+// ── Search query ──────────────────────────────────────────────────────────────
 
-// Kept as a named export for any external references.
+// OR-separated keyword terms — matches the working query the user validated.
+const SEARCH_QUERY = 'bee|bees|butterfly|butterflies|moth|pollinator|honeybee|bumblebee';
+
+// ── Exported whitelist (kept for any external references) ─────────────────────
+
 export const RELEVANCE_WHITELIST = [
   'insect', 'bee', 'butterfly', 'moth', 'hoverfly', 'wasp', 'pollinator',
   'flora', 'plant', 'flower', 'prairie', 'wetland', 'habitat', 'wildlife',
@@ -24,12 +34,6 @@ export const RELEVANCE_WHITELIST = [
   'lepidoptera', 'hymenoptera', 'diptera', 'dragonfly', 'damselfly',
   'native', 'monarch', 'milkweed', 'clover', 'wildflower', 'meadow', 'garden',
 ];
-
-// Applied against file titles and category names.
-const CAT_KEYWORDS = new RegExp(
-  '\\b(' + RELEVANCE_WHITELIST.join('|') + ')\\b',
-  'i'
-);
 
 // ── Per-image filtering ───────────────────────────────────────────────────────
 
@@ -46,15 +50,37 @@ export function isRelevant(page) {
   return true;
 }
 
+// ── Coordinate extraction ─────────────────────────────────────────────────────
+
 /**
- * Returns true when the file title or any of its Wikipedia categories matches
- * the pollinator / native-plant keyword set.
- * @param {object} page — raw page object (must have .title and .categories)
- * @returns {boolean}
+ * Extracts lat/lng from a raw page object.
+ * Tries prop=coordinates ({{Location}} template) first, then EXIF GPS tags.
+ *
+ * @param {object} page
+ * @returns {{lat:number, lng:number}|null}
  */
-function _isTopicRelevant(page) {
-  if (CAT_KEYWORDS.test(page.title ?? '')) return true;
-  return (page.categories ?? []).some(c => CAT_KEYWORDS.test(c.title ?? ''));
+function _extractCoords(page) {
+  const coord = page.coordinates?.[0];
+  if (coord?.lat != null && coord?.lon != null) {
+    return { lat: +coord.lat, lng: +coord.lon };
+  }
+  const ext = page.imageinfo?.[0]?.extmetadata ?? {};
+  const lat  = parseFloat(ext.GPSLatitude?.value);
+  const lng  = parseFloat(ext.GPSLongitude?.value);
+  if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  return null;
+}
+
+// ── Distance ──────────────────────────────────────────────────────────────────
+
+function _haversineKm(lat1, lng1, lat2, lng2) {
+  const R    = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a    = Math.sin(dLat / 2) ** 2
+             + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+             * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
@@ -62,82 +88,70 @@ function _isTopicRelevant(page) {
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
 /**
- * Step 1: list=geosearch — returns up to `limit` file page IDs near the coord.
- * This API is reliable for namespace 6 (files), unlike generator=geosearch.
+ * Searches Commons by pollinator keywords and paginates until targetCount
+ * candidate pages have been collected or the API is exhausted.
  *
- * @param {number} lat
- * @param {number} lng
- * @param {number} radiusM  metres (capped at 10 000 by the API)
- * @param {number} limit
- * @returns {Promise<Array<{pageid:number, lat:number, lon:number}>>}
+ * Each page object includes imageinfo (URL, extmetadata) and coordinates.
+ *
+ * @param {number} targetCount
+ * @returns {Promise<object[]>}
  */
-async function _geoSearch(lat, lng, radiusM, limit) {
-  const params = new URLSearchParams({
-    action:      'query',
-    list:        'geosearch',
-    gscoord:     `${lat}|${lng}`,
-    gsradius:    String(Math.min(radiusM, 10000)),
-    gsnamespace: '6',
-    gslimit:     String(Math.min(limit, 500)),
-    format:      'json',
-    origin:      '*',
-  });
-  const resp = await fetch(`${COMMONS_API}?${params}`);
-  if (!resp.ok) return [];
-  const data = await resp.json();
-  return data?.query?.geosearch ?? [];
-}
+async function _searchPollinatorFiles(targetCount) {
+  const pages = [];
+  let continueOffset = 0;
 
-/**
- * Step 2: fetch imageinfo + categories + coordinates for a list of page IDs
- * (batched in chunks of 50 — the API maximum per request).
- *
- * @param {number[]} pageIds
- * @returns {Promise<object[]>}  raw page objects
- */
-async function _fetchPageDetails(pageIds) {
-  if (!pageIds.length) return [];
-  const results = [];
-  for (let i = 0; i < pageIds.length; i += 50) {
-    const chunk = pageIds.slice(i, i + 50);
+  while (pages.length < targetCount) {
     const params = new URLSearchParams({
-      action:     'query',
-      pageids:    chunk.join('|'),
-      prop:       'imageinfo|categories|coordinates',
-      iiprop:     'url|extmetadata|dimensions',
-      iiurlwidth: '400',
-      cllimit:    'max',
-      format:     'json',
-      origin:     '*',
+      action:       'query',
+      generator:    'search',
+      gsrsearch:    SEARCH_QUERY,
+      gsrnamespace: '6',
+      gsrlimit:     '500',
+      gsroffset:    String(continueOffset),
+      prop:         'imageinfo|coordinates',
+      iiprop:       'url|extmetadata',
+      iiurlwidth:   '400',
+      format:       'json',
+      origin:       '*',
     });
+
     const resp = await fetch(`${COMMONS_API}?${params}`);
-    if (!resp.ok) continue;
-    const data = await resp.json();
-    results.push(...Object.values(data?.query?.pages ?? {}));
+    if (!resp.ok) break;
+    const data  = await resp.json();
+    const batch = Object.values(data?.query?.pages ?? {});
+    pages.push(...batch);
+
+    const nextOffset = data?.continue?.gsroffset;
+    if (nextOffset == null || pages.length >= targetCount) break;
+    continueOffset = nextOffset;
   }
-  return results;
+
+  return pages;
 }
 
 /**
- * Fetches geotagged images near a [lng, lat] coordinate within radiusM metres.
- * Applies the license + topic relevance filter and returns up to maxResults images.
+ * Fetches geotagged pollinator images near a [lng, lat] coordinate within
+ * radiusM metres.  Images without coordinates, a license, or a thumbnail
+ * are discarded.
  *
  * @param {[number,number]} coord    [lng, lat]
- * @param {number}          radiusM  metres (max 10000)
+ * @param {number}          radiusM  metres
  * @param {number}          [maxResults=20]
  * @returns {Promise<CommonsImage[]>}
  */
 export async function fetchCommonsNear(coord, radiusM, maxResults = 20) {
   const [lng, lat] = coord;
-  // Request more candidates than needed so filtering still yields enough results.
-  const geoLimit = Math.min(maxResults * 4, 200);
+  const radiusKm   = radiusM / 1000;
+  // Fetch enough candidates that filtering still yields maxResults.
+  const targetCount = Math.min(maxResults * 12, 1500);
   try {
-    const geoHits = await _geoSearch(lat, lng, radiusM, geoLimit);
-    if (!geoHits.length) return [];
-    const pageIds = geoHits.map(r => r.pageid).filter(Boolean);
-    const pages   = await _fetchPageDetails(pageIds);
-    return pages
-      .filter(p => isRelevant(p) && _isTopicRelevant(p))
+    const candidates = await _searchPollinatorFiles(targetCount);
+    return candidates
+      .filter(p => {
+        const c = _extractCoords(p);
+        return c !== null && _haversineKm(lat, lng, c.lat, c.lng) <= radiusKm;
+      })
+      .filter(isRelevant)
       .slice(0, maxResults)
       .map(_normalise);
   } catch {
@@ -146,16 +160,14 @@ export async function fetchCommonsNear(coord, radiusM, maxResults = 20) {
 }
 
 /**
- * Fetches geotagged images for the full app radius (15 km) for the map layer.
- * Uses a larger radius and higher limit; returns coordinates for marker placement.
+ * Fetches Commons pollinator photos for the full app area.
+ * Uses the app's 15 km analysis radius.
  *
  * @param {[number,number]} center  [lng, lat] of the app center
  * @returns {Promise<CommonsImage[]>}
  */
 export async function fetchCommonsForApp(center) {
-  // gsradius max is 10000 m; the app radius is 15 km so we use 10 km here
-  // to stay within the API limit and focus on the most relevant area.
-  return fetchCommonsNear(center, 10000, 100);
+  return fetchCommonsNear(center, 15000, 100);
 }
 
 // ── Normalisation ─────────────────────────────────────────────────────────────
@@ -177,21 +189,21 @@ export async function fetchCommonsForApp(center) {
  */
 
 function _normalise(page) {
-  const ii  = page.imageinfo?.[0] ?? {};
-  const ext = ii.extmetadata ?? {};
-  // Strip HTML tags from description / artist (Commons often embeds markup)
+  const ii       = page.imageinfo?.[0] ?? {};
+  const ext      = ii.extmetadata ?? {};
+  const coords   = _extractCoords(page);
   const stripHtml = s => String(s ?? '').replace(/<[^>]*>/g, '').trim();
   return {
     pageId:      page.pageid,
     title:       (page.title ?? '').replace(/^File:/, ''),
-    thumburl:    ii.thumburl   ?? '',
-    thumbwidth:  ii.thumbwidth ?? 400,
+    thumburl:    ii.thumburl    ?? '',
+    thumbwidth:  ii.thumbwidth  ?? 400,
     thumbheight: ii.thumbheight ?? 300,
     descurl:     ii.descriptionurl ?? '',
     description: stripHtml(ext.ImageDescription?.value) || (page.title ?? '').replace(/^File:/, ''),
     artist:      stripHtml(ext.Artist?.value)            || 'Unknown',
     license:     stripHtml(ext.LicenseShortName?.value)  || '',
-    lat:         page.coordinates?.[0]?.lat ?? 0,
-    lng:         page.coordinates?.[0]?.lon ?? 0,
+    lat:         coords?.lat ?? 0,
+    lng:         coords?.lng ?? 0,
   };
 }

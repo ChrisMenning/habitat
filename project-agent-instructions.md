@@ -173,6 +173,7 @@ panel, modal, or interactive control you introduce.
 6. **Do not rewrite `serve.js`'s PNG filter logic** unless explicitly asked. It is bespoke and has no tests — rewriting it will break NLCD tile rendering.
 7. **All data fetches go through `cache.js`.** Do not add direct `fetch()` calls to area layer data outside of the cache wrapper.
 8. **NASS API key is optional.** Code that uses it must gracefully degrade if the key is absent.
+9. There is a specific bug that you have been failing to resolve and wasting tokens. Until you are explicitly told otherwise, do not try to troubleshoot the occurences of "Expected value to be of type number, but found null instead" from the console.
 
 ---
 
