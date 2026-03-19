@@ -71,6 +71,7 @@ import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
          setSightings as setDrawerSightings,
          setHabitatSites as setDrawerHabitatSites,
          setNestingScores as setDrawerNestingScores,
+         setCanopyScores as setDrawerCanopyScores,
          setParcelFeatures as setDrawerParcelFeatures,
          setCommonsImages as setDrawerCommonsImages }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
@@ -81,7 +82,7 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
-import { fetchNestingScores, enrichCentroidsWithNesting } from './nesting.js';
+import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores } from './nesting.js';
 import { fetchParcelsForBbox, classifyOwnership }         from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
@@ -243,6 +244,7 @@ const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 // Nesting score state — populated async after corridor data loads
 let _nestingScores    = new Map();   // site name → {score, counts, total}
 let _nestingLoaded    = false;        // true once first fetch completes
+let _canopyScores     = new Map();   // site name → canopyPct (0–100)
 let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
 let _alertFocusHandler = null;        // module-level so async callbacks can re-render alerts
 
@@ -327,7 +329,7 @@ const _refreshParcelViewport = _debounce(async () => {
     setDrawerParcelFeatures(feats);
     if (_lastAlertArgs) {
       _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
-      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
+      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
       if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
       // Sync ribbon and export snapshot so all counts agree
       document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
@@ -598,7 +600,7 @@ async function loadObservations() {
         syncNestingBadgeVisibility();
         // Re-render alerts to include the poor-nesting-habitat alert
         if (_lastAlertArgs) {
-          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores });
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           // Sync ribbon and export snapshot so all counts agree
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
@@ -607,6 +609,20 @@ async function loadObservations() {
           setExportData({ alerts: updatedAlerts });
         }
       }).catch(() => { /* nesting scores unavailable — silent degradation */ });
+
+      // Async: fetch WI DNR tree canopy coverage scores after corridor data loads
+      fetchCanopyScores(_corridorCentroids.features).then(scores => {
+        _canopyScores = scores;
+        setDrawerCanopyScores(scores);
+        if (_lastAlertArgs) {
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores });
+          renderAlerts(updatedAlerts, _alertFocusHandler);
+          document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+          document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+          _updateAlertBadge(updatedAlerts.length);
+          setExportData({ alerts: updatedAlerts });
+        }
+      }).catch(() => { /* canopy scores unavailable — silent degradation */ });
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -751,7 +767,7 @@ async function loadObservations() {
       pesticideCounties,
       parcelFeatures:      _parcelFeatures,
     };
-    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
+    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
     _alertFocusHandler = alert => {
       if (!alert.coords?.length) return;
       // Ensure all layers relevant to this alert are visible before zooming.

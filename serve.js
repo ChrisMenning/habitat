@@ -623,6 +623,139 @@ async function proxyNlcdNesting(req, res) {
   }
 }
 
+// ── WI DNR Urban Tree Canopy coverage batch ──────────────────────────────────
+// Accepts /api/canopy-check?sites=JSON_ARRAY where each element is {id,lng,lat}.
+// For each site fetches the 2022 WI DNR Urban Tree Canopy ImageServer via
+// exportImage, applies a deterministic 2-class colormap rendering rule, decodes
+// the PNG32 pixels, and returns canopy coverage as a 0–100 percentage.
+//
+// Colormap (ArcGIS Colormap raster function):
+//   value 0  (non-tree) → rgb(100, 70, 20)  — brownish
+//   value 1  (tree)     → rgb(0, 180, 0)    — bright green
+//   value 255 (noData)  → transparent (masked by noData=255)
+// This makes pixel classification deterministic regardless of server styling.
+
+const CANOPY_HOST         = 'dnrmaps.wi.gov';
+const CANOPY_PATH_BASE    = '/arcgis_image/rest/services/FR_URBAN_FORESTRY/FR_Urban_Tree_Canopy_Raster_2022/ImageServer/exportImage';
+const CANOPY_RADIUS_M     = 150;
+const CANOPY_TILE_SIZE    = 64;
+const CANOPY_YEAR         = 2022;
+const CANOPY_TTL          = 24 * 60 * 60 * 1000; // 24 h
+const CANOPY_RENDERING_RULE = JSON.stringify({
+  rasterFunction: 'Colormap',
+  rasterFunctionArguments: { Colormap: [[0, 100, 70, 20], [1, 0, 180, 0]] },
+});
+
+const _canopyCache    = new Map(); // bbox key → { treeCount, total }
+const _canopyCacheAge = new Map(); // bbox key → timestamp
+
+/**
+ * Fetch the tree canopy raster for a ~150m radius around a point and count
+ * tree vs. non-tree pixels.
+ * @returns {Promise<{ treeCount: number, total: number }>}
+ */
+async function _getCanopyPixels(lng, lat) {
+  const dLng    = CANOPY_RADIUS_M / (111320 * Math.cos(lat * Math.PI / 180));
+  const dLat    = CANOPY_RADIUS_M / 111320;
+  const bboxStr = `${(lng - dLng).toFixed(6)},${(lat - dLat).toFixed(6)},${(lng + dLng).toFixed(6)},${(lat + dLat).toFixed(6)}`;
+  const now = Date.now();
+  if (_canopyCache.has(bboxStr) && now - _canopyCacheAge.get(bboxStr) < CANOPY_TTL) {
+    return _canopyCache.get(bboxStr);
+  }
+
+  const qPath = CANOPY_PATH_BASE
+    + '?bbox=' + bboxStr
+    + '&bboxSR=4326&size=' + CANOPY_TILE_SIZE + ',' + CANOPY_TILE_SIZE
+    + '&imageSR=4326&format=png32&noData=255&noDataInterpretation=esriNoDataMatchAny'
+    + '&renderingRule=' + encodeURIComponent(CANOPY_RENDERING_RULE)
+    + '&f=image';
+
+  let buf;
+  try { buf = await httpsGetBuf(CANOPY_HOST, qPath); }
+  catch { return { treeCount: 0, total: 0 }; }
+
+  // Parse PNG32 (colorType=6, RGBA)
+  let offset = 8, ihdr = null;
+  const idatBufs = [];
+  while (offset < buf.length - 4) {
+    const len  = buf.readUInt32BE(offset);
+    const type = buf.slice(offset + 4, offset + 8).toString('ascii');
+    const data = buf.slice(offset + 8, offset + 8 + len);
+    offset += 12 + len;
+    if      (type === 'IHDR') ihdr = { width: data.readUInt32BE(0), height: data.readUInt32BE(4), colorType: data[9] };
+    else if (type === 'IDAT') idatBufs.push(data);
+  }
+  if (!ihdr || ihdr.colorType !== 6 || idatBufs.length === 0) return { treeCount: 0, total: 0 };
+
+  let inflated;
+  try { inflated = zlib.inflateSync(Buffer.concat(idatBufs)); } catch { return { treeCount: 0, total: 0 }; }
+
+  const pixels = decodePng(inflated, ihdr.width, ihdr.height, 4 /* RGBA */);
+  let treeCount = 0, total = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] === 0) continue; // transparent = noData/out-of-bounds
+    total++;
+    // Tree pixel: R≈0, G≈180, B≈0 (±15 tolerance for any server-side AA variation)
+    const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+    if (r <= 15 && g >= 165 && g <= 195 && b <= 15) treeCount++;
+  }
+
+  const result = { treeCount, total };
+  _canopyCache.set(bboxStr, result);
+  _canopyCacheAge.set(bboxStr, now);
+  return result;
+}
+
+/** Compute canopy coverage percentages for a batch of {id, lng, lat} sites. */
+async function _computeCanopyBatch(sites) {
+  const settled = await Promise.allSettled(sites.map(s => _getCanopyPixels(s.lng, s.lat)));
+  return sites.map((s, i) => {
+    const r = settled[i];
+    if (r.status !== 'fulfilled' || !r.value.total) {
+      return { id: s.id, canopyPct: null, year: CANOPY_YEAR };
+    }
+    return {
+      id:        s.id,
+      canopyPct: Math.round(r.value.treeCount / r.value.total * 100),
+      year:      CANOPY_YEAR,
+    };
+  });
+}
+
+async function proxyCanopyCheck(req, res) {
+  const parsed = url.parse(req.url, true);
+  let sites;
+  try {
+    const raw = parsed.query.sites;
+    if (!raw) throw new Error('missing sites');
+    sites = JSON.parse(decodeURIComponent(raw));
+    if (!Array.isArray(sites) || sites.some(s => typeof s.lng !== 'number' || typeof s.lat !== 'number')) {
+      throw new Error('invalid sites array');
+    }
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: e.message }));
+    return;
+  }
+  if (sites.length > 50) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'batch too large (max 50 sites)' }));
+    return;
+  }
+  try {
+    const results = await _computeCanopyBatch(sites);
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=86400',
+    });
+    res.end(JSON.stringify(results));
+  } catch (err) {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
 // ── Brown County parcel ownership proxy ──────────────────────────────────────
 // Brown County, WI publishes parcel data through their ArcGIS REST Feature
 // Service.  The server does not send CORS headers so requests must be proxied.
@@ -1846,6 +1979,12 @@ const server = http.createServer((req, res) => {
   // Batch: NLCD nesting suitability scores for a set of corridor sites
   if (pathname === '/api/nlcd-nesting') {
     proxyNlcdNesting(req, res);
+    return;
+  }
+
+  // Batch: WI DNR Urban Tree Canopy coverage % for a set of corridor sites
+  if (pathname === '/api/canopy-check') {
+    proxyCanopyCheck(req, res);
     return;
   }
 

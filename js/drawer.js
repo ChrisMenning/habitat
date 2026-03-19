@@ -29,6 +29,9 @@ let _habitatSites = [];
 /** Nesting scores keyed by site name — updated asynchronously after NLCD fetch. */
 let _nestingScores = new Map();
 
+/** Tree canopy coverage percentages keyed by site name — updated asynchronously. */
+let _canopyScores = new Map();
+
 /** Parcel features — updated when parcel layer is first enabled. */
 let _parcelFeatures = [];
 
@@ -36,6 +39,7 @@ let _parcelFeatures = [];
 let _commonsImages = [];
 
 export function setNestingScores(scores)    { _nestingScores  = scores   ?? new Map(); }
+export function setCanopyScores(scores)     { _canopyScores   = scores   ?? new Map(); }
 export function setParcelFeatures(features) { _parcelFeatures = features ?? []; }
 export function setCommonsImages(images)    { _commonsImages  = images   ?? []; }
 
@@ -500,7 +504,28 @@ export function openDrawer(feature) {
         </div>
       </div>`;
   })();
-
+  // ── Tree canopy coverage (WI DNR 2022 survey) ────────────────────────────────
+  const canopyHtml = (() => {
+    if (src !== 'gbcc-corridor') return '';
+    const key = p.name || '';
+    const pct = _canopyScores.get(key);
+    if (typeof pct !== 'number') return '';
+    const level   = pct > 55 ? 'high' : pct > 30 ? 'moderate' : 'low';
+    const color   = pct > 55 ? '#3b6b3b' : pct > 30 ? '#6b8c3b' : '#9ca3af';
+    const levelLbl = pct > 55 ? 'High — may suppress open-meadow plants'
+                   : pct > 30 ? 'Moderate' : 'Low';
+    return `
+      <div class="drawer-section-label">Tree canopy (WI DNR UTC 2022, 150 m radius)</div>
+      <div class="drawer-nesting-row"
+           role="img"
+           aria-label="Tree canopy coverage: ${pct}% — ${levelLbl}.">
+        <div class="drawer-nesting-score" style="background:${color};">${pct}%</div>
+        <div class="drawer-nesting-detail">
+          <span class="drawer-nesting-label" style="color:${color};">${esc(levelLbl)}</span>
+          <span class="drawer-nesting-desc">Based on 1 m NAIP imagery. High canopy cover (&gt;55%) may warrant selective thinning to improve sun exposure for pollinator plants.</span>
+        </div>
+      </div>`;
+  })();
   const nearbyParcelsHtml = _buildNearbyParcelsSection(coord);
   const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
 
@@ -513,6 +538,7 @@ export function openDrawer(feature) {
       ${approxHtml}
       ${metaHtml}
       ${nestingHtml}
+      ${canopyHtml}
       ${nearbyParcelsHtml}
       ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>

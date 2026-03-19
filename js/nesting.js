@@ -95,6 +95,40 @@ export async function fetchNestingScores(centroidFeatures) {
 }
 
 /**
+ * Fetches tree canopy coverage percentages for a set of corridor site centroid features.
+ *
+ * The server queries the 2022 WI DNR Urban Tree Canopy ImageServer and counts
+ * tree vs. non-tree pixels within ~150 m of each site centroid.
+ *
+ * @param {GeoJSON.Feature[]} centroidFeatures  — corridor Point features
+ * @returns {Promise<Map<string, number>>}
+ *   Map keyed by `feature.properties.name ?? "site-{i}"`, value is canopyPct (0–100).
+ *   Sites where pixel data was unavailable are omitted from the map.
+ */
+export async function fetchCanopyScores(centroidFeatures) {
+  if (!centroidFeatures?.length) return new Map();
+
+  const sites = centroidFeatures.map((f, i) => ({
+    id:  String(f.properties?.name ?? `site-${i}`),
+    lng: f.geometry.coordinates[0],
+    lat: f.geometry.coordinates[1],
+  }));
+
+  try {
+    const res = await fetch(`/api/canopy-check?sites=${encodeURIComponent(JSON.stringify(sites))}`);
+    if (!res.ok) return new Map();
+    const data = await res.json();
+    const map = new Map();
+    for (const item of data) {
+      if (typeof item.canopyPct === 'number') map.set(item.id, item.canopyPct);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+/**
  * Enriches a GeoJSON FeatureCollection of corridor centroids with nesting score
  * properties so MapLibre symbol layers can read them via ['get', 'nesting_score'].
  *

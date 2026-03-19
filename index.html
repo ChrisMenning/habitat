@@ -416,22 +416,37 @@
       <h3><i class="ph ph-lightning" aria-hidden="true"></i> Alerts Panel <span class="modal-key">right side</span></h3>
       <p>The intelligence alerts panel shows automatically computed warnings and opportunities derived from the loaded data. Click any alert to fly the map to the relevant site(s) and highlight them. Alert levels:</p>
       <ul>
-        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> — requires attention (PFAS near habitat, high mismatch)</li>
-        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> Info</span> — connectivity gap, unsupported sites</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> — clusters with no habitat nearby, isolated sites</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> — requires attention (PFAS near habitat, high mismatch, pesticide pressure, public land gap)</li>
+        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> Info</span> — connectivity gap, unsupported sites, weak nodes</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> — clusters with no habitat nearby, isolated sites, poor nesting, shaded habitat</li>
         <li><span class="modal-badge modal-badge--pos"><i class="ph ph-check-circle" aria-hidden="true"></i> Positive</span> — connected corridor pairs</li>
         <li><span class="modal-badge modal-badge--bal"><i class="ph ph-scales" aria-hidden="true"></i> Mismatch</span> — crop demand vs. habitat supply</li>
       </ul>
-      <p>The ⚡ count in the intel bar pulses when alerts are present. Click it to scroll to the alerts panel.</p>
-      <p>Two alerts relate to the new overlays:</p>
+      <p>The lightning bolt count in the intel bar pulses when alerts are present. A badge on the Alerts activity bar button also shows the current count. Click either to open the Alerts panel.</p>
+      <p>Selected alerts explained:</p>
       <ul>
         <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> <strong>High Pesticide Pressure</strong> — fires when a corridor site or waystation falls in a Critical-band county (top quartile pesticide intensity). Includes affected site names and county context.</li>
         <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> <strong>Poor Nesting Habitat</strong> — fires when any corridor site scores below 25 out of 100. Suggests bare-soil patches, unmowed edges, or shrub/grassland additions near those sites.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-tree" aria-hidden="true"></i> Opportunity</span> <strong>Shaded Habitat</strong> — fires when a corridor site has &gt;55% tree canopy coverage within 150 m (WI DNR UTC 2022 data). High canopy closure may suppress the sun-loving wildflowers that corridor plantings depend on. Suggests canopy thinning or selective edge management.</li>
       </ul>
 
       <h3><i class="ph ph-binoculars" aria-hidden="true"></i> Sightings &amp; Date Range</h3>
-      <p>iNaturalist and GBIF observations are filtered by the From/To date inputs. Change the dates and click <strong>↺ Load Observations</strong> (or wait for the debounce after typing). The <strong>timeline scrubber</strong> at the bottom of the page provides a quick year-range filter without re-fetching from the network.</p>
+      <p>iNaturalist and GBIF observations are filtered by the From/To date inputs. Change the dates and click <strong>&#x21ba; Load Observations</strong> (or wait for the debounce after typing). The <strong>timeline scrubber</strong> at the bottom of the page provides a quick year-range filter without re-fetching from the network; it also controls the active Tree Canopy survey year.</p>
       <p>Filter chips under the date inputs let you narrow observations to: verified research grade, near a habitat site, native species, or non-native/invasive species.</p>
+      <p>Bee Records (FWS dataset) and Bee Imperiled species are found in the <strong>Sightings</strong> panel. Species Richness heatmap is in the <strong>Analysis</strong> panel.</p>
+
+      <h3><i class="ph ph-chart-bar" aria-hidden="true"></i> Intel Bar &amp; Clickable Stats</h3>
+      <p>The strip at the top of the map shows six live stats. Five of them are clickable and open a focused info drawer:</p>
+      <ul>
+        <li><strong>Corridor</strong> — total corridor polygon area in acres; click to see a breakdown by layer.</li>
+        <li><strong>Habitat Nodes</strong> — total active habitat sites (corridor centroids + waystations + HNP yards); click for a node count breakdown.</li>
+        <li><strong>Pollinators</strong> — combined iNat + GBIF pollinator sighting count; click for a source breakdown.</li>
+        <li><strong>eBird</strong> — eBird sightings count; click for the species list.</li>
+        <li><strong>Native Species</strong> — unique native plant species count; click for the species list.</li>
+      </ul>
+
+      <h3><i class="ph ph-trend-up" aria-hidden="true"></i> Trends Pane</h3>
+      <p>The Trends pane shows year-over-year charts for iNaturalist sightings and GBIF records once at least two harvested snapshot years are available. To populate: use the <strong>POST /api/harvest</strong> endpoint with <code>{ source, year }</code> (sources: <code>inat</code>, <code>gbif</code>, <code>noaa</code>, <code>nass</code>, <code>cdl</code>). Snapshots are stored as JSON files in the <code>./snapshots/</code> directory on the server.</p>
 
       <h3><i class="ph ph-database" aria-hidden="true"></i> Caching</h3>
       <p>All data is cached in your browser's IndexedDB. Area layers (corridor, waystations, land cover) are cached for 24 hours. Observation data is cached by date range for 1 hour. The intel bar shows <em>Cached</em> when the current load was served from cache and <em>Live</em> when a real network fetch occurred.</p>
@@ -540,19 +555,31 @@
       <p><strong>Source:</strong> <a href="https://quickstats.nass.usda.gov/api" target="_blank">USDA NASS QuickStats API</a> (requires free API key)</p>
       <p>County-level agricultural census data providing Wisconsin managed honey bee colony counts and Brown County crop area harvested by species. When a NASS API key is configured (via <code>nass-key.txt</code> or <code>NASS_API_KEY</code> environment variable), this data enriches the Pollinator Mismatch alert with specific colony figures and Census-verified crop acreage, making the alert more actionable.</p>
 
+      <h4>&#x1f4f8; Wikimedia Commons Photos</h4>
+      <p><strong>Source:</strong> <a href="https://commons.wikimedia.org/w/api.php" target="_blank">Wikimedia Commons API</a></p>
+      <p>Georeferenced pollinator and habitat photos sourced via keyword search (bee, bees, butterfly, moth, pollinator, etc.) with client-side proximity filtering to the 15 km analysis radius. Photos appear as camera marker icons and open in a lightbox with attribution, license, and a link to the original Commons page.</p>
+
+      <h4>&#x1f333; WI DNR Urban Tree Canopy</h4>
+      <p><strong>Source:</strong> <a href="https://dnrmaps.wi.gov/" target="_blank">Wisconsin DNR Urban Forestry ArcGIS ImageServer</a></p>
+      <p>1-meter resolution tree canopy classification derived from NAIP aerial imagery for three survey years: 2013, 2020, and 2022. Each pixel is classified as tree canopy or non-canopy. Displayed as a raster overlay in the Land Cover &amp; Cropland panel; the active year tracks the timeline scrubber. Canopy coverage % (within 150 m of each corridor site centroid) is also computed server-side via <code>/api/canopy-check</code> and shown in the site detail drawer. Note: WI DNR advises against direct change-detection comparisons between survey years due to methodology differences.</p>
+
       <h3>How the Intelligence Alerts Work</h3>
       <p>The alerts engine (<code>alerts.js</code>) runs entirely client-side against data already in memory — no additional network requests. Alerts are recalculated every time new data loads. Each alert type uses a specific spatial algorithm:</p>
       <ul>
         <li><strong>PFAS Near Habitat</strong> — haversine distance check, 1 km radius from each PFAS site to all corridor sites and waystations</li>
         <li><strong>Unsupported Sites</strong> — for each habitat site, checks whether any pollinator sighting exists within 500 m</li>
         <li><strong>Opportunity Zones</strong> — grid-buckets sightings at ~1 km resolution, flags buckets with ≥5 sightings and no habitat site within 800 m</li>
+        <li><strong>Declining Public Zone</strong> — for each opportunity zone showing a sighting decline (&gt;30% drop, prior year vs. current year) that also has a City or County parcel within 800 m; escalates to a Warning alert</li>
+        <li><strong>Public Land Gap</strong> — City/County parcels ≥0.5 ac within opportunity zones with no habitat program site within 500 m; flagged as Warning (actionable without private negotiation)</li>
         <li><strong>Connected Pairs</strong> — finds habitat site pairs within 300 m of each other (ideal corridor stepping-stone distance)</li>
         <li><strong>Isolated Habitat</strong> — flags sites with no other habitat within 2 km (habitat islands that pollinators can't reach from the broader network)</li>
-        <li><strong>Connectivity Gap</strong> — finds the widest inter-site gap among corridor sites that are still within 8 km, flags if &gt;2.5 km (exceeds most native bee foraging range)</li>
+        <li><strong>Weak Nodes</strong> — corridor sites whose nearest corridor neighbour is 700 m–2 km away (beyond comfortable solitary bee foraging range, not yet fully isolated)</li>
+        <li><strong>Connectivity Gap</strong> — finds the widest edge in the Minimum Spanning Tree over all corridor sites; flags if &gt;2.5 km (exceeds most native bee foraging range)</li>
         <li><strong>Quadrant Coverage</strong> — divides the map area into four quadrants around the centroid of all sites; flags any quadrant with no habitat</li>
         <li><strong>Pollinator Mismatch</strong> — compares bee-dependent crop acreage % against estimated habitat coverage based on site count and assumed coverage per site</li>
         <li><strong>High Pesticide Pressure</strong> — flags corridor sites and waystations in counties with Critical-band pesticide intensity (band 4 of 4)</li>
-        <li><strong>Poor Nesting Habitat</strong> — fires for corridor sites scoring below 25/100 on the NLCD-derived nesting suitability index</li>
+        <li><strong>Poor Nesting Habitat</strong> — fires for corridor sites scoring below 25/100 on the NLCD-derived nesting suitability index (300 m radius, classes 31/52/71)</li>
+        <li><strong>Shaded Habitat</strong> — fires for corridor sites with &gt;55% tree canopy coverage within 150 m (WI DNR UTC 2022). High canopy closure can suppress the sun-dependent pollinator wildflowers that NE Wisconsin corridor sites are designed to support.</li>
       </ul>
 
       <h4>🧪 Pesticide Pressure</h4>

@@ -8,15 +8,17 @@ A browser-based public-data intelligence tool for pollinator habitat in the Gree
 
 ## Features
 
-- **Activity bar + slide-out panels** — Icon strip opens labeled content panes: Habitat Sites, Sightings, Analysis, Conservation & Hazards, Landcover & Cropland, Legend, and Trends
-- **Intelligence alerts** — eight automated spatial alerts including PFAS proximity, connectivity gaps, opportunity zones, and pollinator–crop mismatch
-- **Multi-source sightings** — iNaturalist (up to 2,000 obs), GBIF records (up to 600), eBird, and Wikimedia Commons observations, filterable by research grade, native species, proximity to habitat
-- **Bee distribution analysis** — FWS Bee Distribution Tool dataset (all 6 bee families), species richness heatmap, imperiled species layer (NatureServe G1–G3, IUCN VU+)
+- **Activity bar + slide-out panels** — Icon strip opens labeled content panes: Habitat Sites, Sightings, Analysis, Conservation & Hazards, Landcover & Cropland, Legend, Trends, and Alerts
+- **Intelligence alerts** — fourteen automated spatial alerts covering PFAS proximity, pesticide pressure, connectivity gaps, shaded habitat, poor nesting conditions, opportunity zones, and pollinator–crop mismatch
+- **Multi-source sightings** — iNaturalist (up to 2,000 obs), GBIF records (up to 600), eBird, and Wikimedia Commons photos, filterable by research grade, native species, proximity to habitat
+- **Bee distribution analysis** — FWS Bee Distribution Tool dataset (all 6 bee families), species richness heatmap in the Analysis pane, imperiled species layer (NatureServe G1–G3, IUCN VU+)
 - **Conservation layers** — USGS PAD-US v3.0, WI DNR State Natural Areas, DNR Managed Lands, GBCC Pollinator Corridor, Habitat Treatments
-- **Land cover & cropland** — NLCD 2021 (16 toggleable classes), USDA cropland data layer with bee-crop fringe heatmap
+- **Land cover & cropland** — NLCD 2021 (16 toggleable classes), USDA cropland data layer with bee-crop fringe heatmap, WI DNR Urban Tree Canopy (3 survey years: 2013/2020/2022, timeline-linked)
 - **Hazard overlay** — WI DNR PFAS contamination sites with 1 km proximity alerts to habitat
-- **Site detail drawer** — click any feature for full metadata, coordinates, and data provenance
-- **Date range scrubber** — filter observations to any date window, with a year-range timeline control
+- **Site detail drawer** — click any feature for full metadata, coordinates, nesting suitability score, tree canopy %, and data provenance
+- **Clickable intel bar** — five stats (Corridor area, Habitat nodes, Pollinators, eBird, Native species) open info drawers; Alerts stat opens the alerts panel
+- **Date range scrubber** — filter observations to any date window, with a year-range timeline control that also syncs the Tree Canopy survey year
+- **Trends pane** — year-over-year charts once ≥2 snapshot years have been harvested via `POST /api/harvest`
 - **Export** — plain-text intelligence report of current map state
 - **IndexedDB caching** — area layers cached 24 hours; observation data cached 1 hour; cache/live status shown in the intel bar
 - **WCAG 2.2 AA** — full keyboard navigation, roving tabindex, `aria-live` regions, sufficient contrast throughout
@@ -40,6 +42,8 @@ A browser-based public-data intelligence tool for pollinator habitat in the Gree
 | PFAS Sites | WI DNR PFAS MapServer |
 | Land Cover | NLCD 2021 via MRLC GeoServer WMS (PNG proxy) |
 | Cropland | USDA NASS CropScape WMS |
+| Tree Canopy | WI DNR Urban Tree Canopy ImageServer (2013 / 2020 / 2022, 1 m NAIP imagery) |
+| Wikimedia Commons Photos | Wikimedia Commons API (keyword search, proximity-filtered) |
 | Crop statistics | USDA NASS QuickStats API *(optional)* |
 | Bird sightings | Cornell eBird API *(optional)* |
 | Climate data | NOAA CDO / NCEI *(optional)* |
@@ -146,18 +150,24 @@ habitat/
 
 ## Intelligence Alerts
 
-The alert engine runs entirely client-side against data already loaded in memory. Eight alert types are evaluated on every data load:
+The alert engine runs entirely client-side against data already loaded in memory. Fourteen alert types are evaluated on every data load:
 
 | Alert | Logic |
 |---|---|
 | PFAS Near Habitat | Any PFAS site within 1 km of a corridor or waystation site (Haversine) |
-| Unsupported Sites | Any pollinator sighting within 500 m of a habitat site with no existing record |
+| Unsupported Sites | Corridor sites with no pollinator sighting within 500 m |
 | Opportunity Zones | ~1 km grid cell with ≥5 sightings and no habitat within 800 m |
+| Declining Public Zone | Opportunity zone with a declining sighting trend ⬇️ + publicly owned land nearby |
+| Public Land Gap | City/County parcel ≥0.5 ac within an opportunity zone and no habitat within 500 m |
 | Connected Pairs | Habitat site pairs within 300 m (corridor stepping-stone distance) |
 | Isolated Habitat | Habitat site with no other habitat within 2 km |
-| Connectivity Gap | Widest gap among corridor sites within 8 km; flagged if >2.5 km |
+| Weak Nodes | Corridor sites whose nearest neighbour is 700 m–2 km away |
+| Connectivity Gap | Widest MST edge among corridor sites; flagged if >2.5 km |
 | Quadrant Coverage | 4 quadrants around map centroid; flagged if any quadrant has no habitat |
 | Pollinator Mismatch | Bee-dependent crop acreage % vs. estimated habitat coverage |
+| High Pesticide Pressure | Corridor sites/waystations in Critical-band pesticide counties (top quartile) |
+| Poor Nesting Habitat | Corridor sites scoring below 25/100 on the NLCD nesting suitability index |
+| Shaded Habitat | Corridor sites with >55% tree canopy coverage within 150 m (WI DNR UTC 2022) |
 
 ---
 

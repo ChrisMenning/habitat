@@ -92,6 +92,7 @@ export function computeAlerts({
   climateData        = null,
   pesticideCounties  = [],
   nestingScores      = new Map(),
+  canopyScores       = new Map(),
   parcelFeatures     = [],
 }) {
   const alerts = [];
@@ -567,6 +568,33 @@ export function computeAlerts({
         key:    'poor-nesting-habitat',
         text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index — little bare ground, shrubland, or grassland detected within 300 m. Adding bare-soil patches, sand berms, or letting edges go unmowed would significantly expand nesting resources: ${names.join(', ')}${extra}.`,
         coords: poorSites.map(centroid),
+        layers: ['gbcc-corridor'],
+      });
+    }
+  }
+
+  // ── Alert: Shaded Habitat ──────────────────────────────────────────────────
+  // Fires when a corridor site has >55% tree canopy coverage within a ~150 m
+  // radius. High canopy closure suppresses sun-dependent pollinator wildflowers,
+  // which is a concern for open-meadow corridor planting goals.
+  // Threshold: 55% — open pollinator meadow is recommended at <40% canopy;
+  // 55% provides a meaningful warning margin above that target.
+  if (canopyScores.size > 0) {
+    const CANOPY_THRESHOLD = 55;
+    const shadedSites = corridorFeatures.filter(f => {
+      const key = f.properties?.name ?? '';
+      const pct = canopyScores.get(key);
+      return typeof pct === 'number' && pct > CANOPY_THRESHOLD;
+    });
+    if (shadedSites.length > 0) {
+      const names = shadedSites.map(f => f.properties?.name || 'Corridor site').slice(0, 3);
+      const extra = shadedSites.length > 3 ? ` +${shadedSites.length - 3} more` : '';
+      alerts.push({
+        level:  'opportunity',
+        icon:   '<i class="ph ph-tree"></i>',
+        key:    'shaded-habitat',
+        text:   `Shaded Habitat: ${shadedSites.length} corridor site${shadedSites.length > 1 ? 's have' : ' has'} >55% tree canopy coverage within 150 m — shading may suppress sun-loving pollinator plants. Consider canopy thinning or selective edge management near: ${names.join(', ')}${extra}.`,
+        coords: shadedSites.map(centroid),
         layers: ['gbcc-corridor'],
       });
     }
