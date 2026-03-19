@@ -725,7 +725,7 @@ function _fetchParcelTile(xi, yi) {
     const bbox = `${w},${s},${e},${n}`;
 
     const params = new URLSearchParams({
-      where:             '1=1',
+      where:             'PublicOwner IS NOT NULL',
       geometry:          bbox,
       geometryType:      'esriGeometryEnvelope',
       inSR:              '4326',
@@ -756,24 +756,6 @@ function _fetchParcelTile(xi, yi) {
             geojson = JSON.parse(rawBody);
             if (geojson.error) { reject(new Error(`ArcGIS ${geojson.error.code}: ${geojson.error.message}`)); return; }
           } catch (err) { reject(err); return; }
-
-          // Step 2: fetch owner names from layer 26 and stamp onto features
-          const parcelIds = (geojson.features ?? []).map(f => f.properties?.PARCELID).filter(Boolean);
-          let ownerMap = new Map();
-          try { ownerMap = await _fetchOwnerNames(parcelIds); }
-          catch (err) { console.warn('[parcel-tile] owner names fetch failed:', err.message); }
-
-          if (ownerMap.size) {
-            geojson = {
-              ...geojson,
-              features: geojson.features.map(f => {
-                const pid  = f.properties?.PARCELID;
-                const name = pid ? (ownerMap.get(pid) ?? '') : '';
-                if (!name) return f;
-                return { ...f, properties: { ...f.properties, OwnerName: name } };
-              }),
-            };
-          }
 
           const body = JSON.stringify(geojson);
           _parcelTileCache.set(key, { body, age: Date.now() });

@@ -1508,7 +1508,7 @@ export function setNestingBadgeVisibility(visible) {
 //   parcel-outline — line layer visible from zoom 12 so users get a structural cue
 //                    before fills appear
 //   parcel-label   — owner text centered on each parcel (zoom ≥ 15)
-//                    public parcels: municipality name; private: owner name from layer-26 join
+//                    label = municipality name title-cased (public parcels only)
 
 import { OWNERSHIP_META } from './parcels.js';
 
@@ -1628,19 +1628,16 @@ export function setParcelFeatures(geojson, classifyFn) {
     features: geojson.features.map(f => {
       const cls   = classifyFn(f.properties ?? {});
       const meta  = OWNERSHIP_META[cls];
-      // Public parcels: label = municipality title-cased
-      // Private parcels: label = owner name from layer 26 join (OwnerName field)
+      // Label = municipality title-cased (all loaded parcels are public)
       const muni  = String(f.properties?.Municipality ?? '').trim();
-      const label = cls !== 'private'
-        ? (muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '')
-        : (f.properties?.OwnerName ?? '');
+      const label = muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
       return {
         ...f,
         properties: {
           ...(f.properties ?? {}),
           own_class:      cls,
           own_label:      label,
-          own_text_color: cls === 'private' ? '#1e293b' : (meta?.textColor ?? '#fff'),
+          own_text_color: meta?.textColor ?? '#fff',
         },
       };
     }),
