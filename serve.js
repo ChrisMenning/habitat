@@ -595,86 +595,254 @@ async function proxyNlcdNesting(req, res) {
 const PARCEL_BASE_URL =
   'https://gis.browncountywi.gov/arcgis/rest/services/ParcelAndAddressFeatures/FeatureServer/23/query';
 
-// Viewport-bbox cache: keyed by rounded bbox string, TTL 24 h.
-// This replaces the single county-wide cache — each viewport bbox is cached
-// separately because the county GIS server times out for large areas.
-const _parcelBboxCache    = new Map(); // bboxKey → {body, age}
-const PARCEL_TTL_MS       = 24 * 60 * 60 * 1000;
+// ── Parcel tile grid ──────────────────────────────────────────────────────────
+// Brown County is tiled into a fixed 0.02° × 0.02° grid aligned to these
+// origin coordinates.  Both the server warmer and the browser client use the
+// same grid so every browser request is a guaranteed cache hit after warmup.
+//
+// Grid extents:  lng -88.20 → -87.80  (20 columns)
+//                lat  44.40 →  44.70  (15 rows)
+// Total tiles: 300
+// Warmup time: 300 × 2.5 s ≈ 12.5 min (runs silently in the background)
 
-/** Round bbox components to 2 decimal places for cache keying. */
-function _roundBbox(bbox) {
-  return bbox.split(',').map(v => Math.round(parseFloat(v) * 100) / 100).join(',');
+const PARCEL_TILE_DEG  = 0.02;
+const PARCEL_TILE_COLS = 20;                    // columns (lng axis)
+const PARCEL_TILE_ROWS = 15;                    // rows    (lat axis)
+const PARCEL_TILE_ORIG_LNG = -88.20;
+const PARCEL_TILE_ORIG_LAT =  44.40;
+const PARCEL_TILE_TTL_MS   = 24 * 60 * 60 * 1000;
+
+// Cache: key = "xi,yi" (integer tile indices)
+const _parcelTileCache = new Map(); // key → { body: string, age: number }
+
+/** Return the [west, south, east, north] bbox for grid tile (xi, yi). */
+function _tileBbox(xi, yi) {
+  const w = +(PARCEL_TILE_ORIG_LNG + xi * PARCEL_TILE_DEG).toFixed(6);
+  const s = +(PARCEL_TILE_ORIG_LAT + yi * PARCEL_TILE_DEG).toFixed(6);
+  const e = +(w + PARCEL_TILE_DEG).toFixed(6);
+  const n = +(s + PARCEL_TILE_DEG).toFixed(6);
+  return [w, s, e, n];
 }
 
-function proxyParcels(reqUrl, res) {
-  const qs      = url.parse(reqUrl, true).query;
-  const rawBbox = qs.bbox || '-88.07,44.47,-87.89,44.57';
-  const bbox    = _roundBbox(rawBbox);
-  const cacheKey = bbox;
+// Layer 26 (GCS_Parcel) is a non-spatial table with owner name fields.
+// Join key: layer 23 PARCELID = layer 26 ParcelNumber.
+// Confidential=1 records are excluded (privacy protection).
+const PARCEL_OWNER_BASE_URL = 'https://gis.browncountywi.gov/arcgis/rest/services/ParcelAndAddressFeatures/FeatureServer/26/query';
 
-  const now = Date.now();
-  const cached = _parcelBboxCache.get(cacheKey);
-  if (cached && now - cached.age < PARCEL_TTL_MS) {
-    res.writeHead(200, {
-      'Content-Type':                'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control':               'public, max-age=86400',
+/**
+ * Build a display-ready owner name from a layer-26 attributes object.
+ * Names are stored ALL-CAPS; we convert to title case.
+ * Corporate / LLC names are typically stored entirely in LastName1.
+ */
+function _buildOwnerName(attrs) {
+  const tc = s => String(s || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const last  = tc(attrs.LastName1  || '');
+  const first = tc(attrs.FirstName1 || '');
+  const mid   = tc(attrs.MiddleName1|| '');
+  if (!last) return '';
+  if (first) return `${last}, ${first}${mid ? ' ' + mid : ''}`;
+  return last; // corporate / trust name stored entirely in LastName1
+}
+
+/**
+ * POST to layer 26 for the given PARCELID list and return a Map of
+ * ParcelNumber → display owner name.  Records with Confidential=1 are omitted.
+ */
+function _fetchOwnerNames(parcelIds) {
+  return new Promise((resolve, reject) => {
+    if (!parcelIds.length) { resolve(new Map()); return; }
+    // SQL IN clause — single-quote each id, escape any embedded single quotes
+    const escaped = parcelIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
+    const body = new URLSearchParams({
+      where:             `ParcelNumber IN (${escaped}) AND (Confidential IS NULL OR Confidential = 0)`,
+      outFields:         'ParcelNumber,LastName1,FirstName1,MiddleName1',
+      returnGeometry:    'false',
+      f:                 'json',
+      resultRecordCount: '2000',
+    }).toString();
+
+    const parsed = new URL(PARCEL_OWNER_BASE_URL);
+    const req = https.request(
+      { method: 'POST', hostname: parsed.hostname, path: parsed.pathname,
+        timeout: 20000,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                   'Content-Length': Buffer.byteLength(body),
+                   'User-Agent': 'habitat-map/1.0' } },
+      upstream => {
+        const chunks = [];
+        upstream.on('data', c => chunks.push(c));
+        upstream.on('end', () => {
+          try {
+            const j    = JSON.parse(Buffer.concat(chunks).toString());
+            const map  = new Map();
+            for (const rec of j.features ?? []) {
+              const pn   = rec.attributes?.ParcelNumber;
+              const name = _buildOwnerName(rec.attributes ?? {});
+              if (pn && name) map.set(pn, name);
+            }
+            resolve(map);
+          } catch (err) { reject(err); }
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); reject(new Error('owner names timeout')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+/**
+ * Fetch a single grid tile from the county GIS server.
+ * Two-step: geometry + classification from layer 23, owner names from layer 26.
+ * Result is stored in _parcelTileCache keyed by "xi,yi".
+ */
+function _fetchParcelTile(xi, yi) {
+  return new Promise((resolve, reject) => {
+    const key = `${xi},${yi}`;
+    const now = Date.now();
+    const hit = _parcelTileCache.get(key);
+    if (hit && now - hit.age < PARCEL_TILE_TTL_MS) { resolve(hit.body); return; }
+
+    const [w, s, e, n] = _tileBbox(xi, yi);
+    const bbox = `${w},${s},${e},${n}`;
+
+    const params = new URLSearchParams({
+      where:             '1=1',
+      geometry:          bbox,
+      geometryType:      'esriGeometryEnvelope',
+      inSR:              '4326',
+      spatialRel:        'esriSpatialRelIntersects',
+      returnGeometry:    'true',
+      outSR:             '4326',
+      outFields:         'PARCELID,PublicOwner,Municipality,MapAreaTxt',
+      f:                 'geojson',
+      resultRecordCount: '2000',
     });
-    res.end(cached.body);
+
+    const fullUrl = `${PARCEL_BASE_URL}?${params.toString()}`;
+    const parsed  = new URL(fullUrl);
+
+    const req = https.get(
+      { hostname: parsed.hostname, path: parsed.pathname + parsed.search,
+        timeout: 25000, headers: { 'User-Agent': 'habitat-map/1.0' } },
+      upstream => {
+        const chunks = [];
+        upstream.on('data', c => chunks.push(c));
+        upstream.on('end', async () => {
+          if (upstream.statusCode !== 200) {
+            reject(new Error(`Parcel upstream HTTP ${upstream.statusCode}`)); return;
+          }
+          const rawBody = Buffer.concat(chunks).toString('utf8');
+          let geojson;
+          try {
+            geojson = JSON.parse(rawBody);
+            if (geojson.error) { reject(new Error(`ArcGIS ${geojson.error.code}: ${geojson.error.message}`)); return; }
+          } catch (err) { reject(err); return; }
+
+          // Step 2: fetch owner names from layer 26 and stamp onto features
+          const parcelIds = (geojson.features ?? []).map(f => f.properties?.PARCELID).filter(Boolean);
+          let ownerMap = new Map();
+          try { ownerMap = await _fetchOwnerNames(parcelIds); }
+          catch (err) { console.warn('[parcel-tile] owner names fetch failed:', err.message); }
+
+          if (ownerMap.size) {
+            geojson = {
+              ...geojson,
+              features: geojson.features.map(f => {
+                const pid  = f.properties?.PARCELID;
+                const name = pid ? (ownerMap.get(pid) ?? '') : '';
+                if (!name) return f;
+                return { ...f, properties: { ...f.properties, OwnerName: name } };
+              }),
+            };
+          }
+
+          const body = JSON.stringify(geojson);
+          _parcelTileCache.set(key, { body, age: Date.now() });
+          resolve(body);
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.on('error', reject);
+  });
+}
+
+/** Handle GET /api/parcel-tile?xi=N&yi=N */
+function proxyParcelTile(reqUrl, res) {
+  const qs = url.parse(reqUrl, true).query;
+  const xi = parseInt(qs.xi, 10);
+  const yi = parseInt(qs.yi, 10);
+
+  if (!Number.isFinite(xi) || !Number.isFinite(yi) ||
+      xi < 0 || xi >= PARCEL_TILE_COLS || yi < 0 || yi >= PARCEL_TILE_ROWS) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'tile index out of range' }));
     return;
   }
 
-  const params = new URLSearchParams({
-    where:             '1=1',
-    geometry:          bbox,
-    geometryType:      'esriGeometryEnvelope',
-    inSR:              '4326',
-    spatialRel:        'esriSpatialRelIntersects',
-    returnGeometry:    'true',
-    outSR:             '4326',
-    // Only the 4 fields needed for classification + display
-    outFields:         'PARCELID,PublicOwner,Municipality,MapAreaTxt',
-    f:                 'geojson',
-    resultRecordCount: '2000',
-  });
-
-  const fullUrl = `${PARCEL_BASE_URL}?${params.toString()}`;
-  const parsed  = new URL(fullUrl);
-
-  https.get(
-    { hostname: parsed.hostname, path: parsed.pathname + parsed.search, timeout: 25000,
-      headers: { 'User-Agent': 'habitat-map/1.0' } },
-    upstream => {
-      const chunks = [];
-      upstream.on('data', c => chunks.push(c));
-      upstream.on('end', () => {
-        if (upstream.statusCode !== 200) {
-          res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({ error: `Parcel upstream HTTP ${upstream.statusCode}` }));
-          return;
-        }
-        const body = Buffer.concat(chunks).toString('utf8');
-        try {
-          const j = JSON.parse(body);
-          if (j.error) {
-            res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: `ArcGIS error ${j.error.code}: ${j.error.message}` }));
-            return;
-          }
-        } catch { /* pass through non-JSON */ }
-        _parcelBboxCache.set(cacheKey, { body, age: Date.now() });
-        res.writeHead(200, {
-          'Content-Type':                'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control':               'public, max-age=86400',
-        });
-        res.end(body);
+  _fetchParcelTile(xi, yi)
+    .then(body => {
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'public, max-age=86400',
       });
+      res.end(body);
+    })
+    .catch(err => {
+      res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: err.message }));
+    });
+}
+
+/**
+ * Background cache warmer.  Iterates every grid tile in county-scan order
+ * (row-by-row, roughly south→north) with a 2.5 s pause between tiles so
+ * the county GIS server is not flooded.  Already-cached tiles are skipped.
+ * Runs entirely in the background — errors are logged but do not crash.
+ */
+async function _warmParcelCache() {
+  const total = PARCEL_TILE_COLS * PARCEL_TILE_ROWS;
+  let warmed = 0;
+  let skipped = 0;
+  console.log(`[parcel-warm] starting — ${total} tiles, ~${Math.round(total * 2.5 / 60)} min`);
+
+  for (let yi = 0; yi < PARCEL_TILE_ROWS; yi++) {
+    for (let xi = 0; xi < PARCEL_TILE_COLS; xi++) {
+      const key = `${xi},${yi}`;
+      if (_parcelTileCache.has(key)) { skipped++; continue; }
+
+      await new Promise(r => setTimeout(r, 2500));
+
+      try {
+        await _fetchParcelTile(xi, yi);
+        warmed++;
+        if (warmed % 20 === 0) {
+          console.log(`[parcel-warm] ${warmed + skipped}/${total} (${warmed} fetched)`);
+        }
+      } catch (err) {
+        console.warn(`[parcel-warm] tile ${xi},${yi} failed: ${err.message}`);
+      }
     }
-  ).on('error', err => {
-    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify({ error: err.message }));
-  });
+  }
+  console.log(`[parcel-warm] complete — ${warmed} fetched, ${skipped} from cache`);
+}
+
+// Legacy bbox-based endpoint kept for any direct callers.
+// For new code, prefer /api/parcel-tile?xi=N&yi=N
+function proxyParcels(reqUrl, res) {
+  const qs = url.parse(reqUrl, true).query;
+  const [rawW, rawS, rawE, rawN] = (qs.bbox || '-88.07,44.47,-87.89,44.57').split(',').map(Number);
+  // Find the grid tile whose centre is closest to the bbox centre and serve it.
+  const cx  = (rawW + rawE) / 2;
+  const cy  = (rawS + rawN) / 2;
+  const xi  = Math.max(0, Math.min(PARCEL_TILE_COLS - 1,
+    Math.floor((cx - PARCEL_TILE_ORIG_LNG) / PARCEL_TILE_DEG)));
+  const yi  = Math.max(0, Math.min(PARCEL_TILE_ROWS - 1,
+    Math.floor((cy - PARCEL_TILE_ORIG_LAT) / PARCEL_TILE_DEG)));
+  proxyParcelTile(`?xi=${xi}&yi=${yi}`, res);
 }
 
 function proxyNlcdTile(code, z, x, y, res) {
@@ -1210,6 +1378,10 @@ const server = http.createServer((req, res) => {
   }
 
   // Brown County parcel ownership data (GIS portal doesn't send CORS headers)
+  if (pathname === '/api/parcel-tile') {
+    proxyParcelTile(req.url, res);
+    return;
+  }
   if (pathname === '/api/parcels') {
     proxyParcels(req.url, res);
     return;
@@ -1249,4 +1421,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
+  // Pre-warm the parcel tile cache in the background.
+  // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
+  setTimeout(_warmParcelCache, 5000);
 });

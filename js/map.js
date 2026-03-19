@@ -1502,11 +1502,14 @@ export function setNestingBadgeVisibility(visible) {
 
 // ── Parcel ownership layer ────────────────────────────────────────────────────
 //
-// Two sub-layers share the `parcels` GeoJSON source:
+// Three sub-layers share the `parcels` GeoJSON source:
 //   parcel-fill    — zoom-interpolated fill opacity (0 at z13 → 0.45 at z15)
 //                    color driven by ownership class via MapLibre match expression
 //   parcel-outline — line layer visible from zoom 12 so users get a structural cue
 //                    before fills appear
+//   parcel-label   — municipality / owner text centered on each public parcel
+//                    shown from zoom 15; private parcels carry own_label = '' so
+//                    the text-field expression produces nothing for them
 
 import { OWNERSHIP_META } from './parcels.js';
 
@@ -1574,6 +1577,38 @@ export function registerParcelLayer(visible) {
       ],
     },
   }, 'parcel-outline');  // insert below outline so outline stays crisp
+
+  // Labels — centered in each public parcel; private parcels have own_label=''
+  _map.addLayer({
+    id:      'parcel-label',
+    type:    'symbol',
+    source:  'parcels',
+    minzoom: 15,
+    layout: {
+      visibility:             vis,
+      'text-field':           ['get', 'own_label'],
+      'text-font':            ['Noto Sans Regular'],
+      'text-size':            [
+        'interpolate', ['linear'], ['zoom'],
+        15, 10,
+        17, 13,
+      ],
+      'text-max-width':       8,
+      'text-anchor':          'center',
+      'text-allow-overlap':   false,
+      'text-ignore-placement':false,
+    },
+    paint: {
+      'text-color':            ['get', 'own_text_color'],
+      'text-halo-color':       'rgba(255,255,255,0.85)',
+      'text-halo-width':       1.5,
+      'text-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        15, 0,
+        16, 1,
+      ],
+    },
+  });
 }
 
 /**
@@ -1586,16 +1621,29 @@ export function registerParcelLayer(visible) {
 export function setParcelFeatures(geojson, classifyFn) {
   const src = _map.getSource('parcels');
   if (!src) return;
-  // Stamp own_class onto each feature so the MapLibre expression can read it
+  // Stamp own_class and own_label onto each feature so paint/layout
+  // expressions can read them without touching the source data.
   const stamped = {
     ...geojson,
-    features: geojson.features.map(f => ({
-      ...f,
-      properties: {
-        ...(f.properties ?? {}),
-        own_class: classifyFn(f.properties ?? {}),
-      },
-    })),
+    features: geojson.features.map(f => {
+      const cls   = classifyFn(f.properties ?? {});
+      const meta  = OWNERSHIP_META[cls];
+      // Public parcels: label = municipality title-cased
+      // Private parcels: label = owner name from layer 26 join (OwnerName field)
+      const muni  = String(f.properties?.Municipality ?? '').trim();
+      const label = cls !== 'private'
+        ? (muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '')
+        : (f.properties?.OwnerName ?? '');
+      return {
+        ...f,
+        properties: {
+          ...(f.properties ?? {}),
+          own_class:      cls,
+          own_label:      label,
+          own_text_color: cls === 'private' ? '#1e293b' : (meta?.textColor ?? '#fff'),
+        },
+      };
+    }),
   };
   src.setData(stamped);
 }
@@ -1606,7 +1654,7 @@ export function setParcelFeatures(geojson, classifyFn) {
  */
 export function setParcelLayerVisibility(visible) {
   const vis = visible ? 'visible' : 'none';
-  for (const id of ['parcel-fill', 'parcel-outline']) {
+  for (const id of ['parcel-fill', 'parcel-outline', 'parcel-label']) {
     if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
   }
 }

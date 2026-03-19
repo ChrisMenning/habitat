@@ -93,7 +93,7 @@ export function normaliseParcelProps(props) {
   else if (pubOwner === 'State')     owner = 'State of Wisconsin';
   else if (pubOwner === 'Municipal') owner = muniTC || 'Municipality';
   else if (pubOwner === 'Other')     owner = 'Public (Other)';
-  // private: owner stays '—'
+  else if (props.OwnerName)          owner = props.OwnerName; // private: from layer 26 join
 
   return {
     owner,
@@ -105,12 +105,38 @@ export function normaliseParcelProps(props) {
 
 // ── Fetch state ───────────────────────────────────────────────────────────────
 
-// Viewport-gated fetching: the county ArcGIS server times out for county-wide
-// requests. Instead we fetch only the bbox currently visible on screen, which
-// at zoom ≥ 13 is typically 200–600 features and responds in 1–3 s.
+// ── Grid-tile fetch ───────────────────────────────────────────────────────────
+// The server exposes /api/parcel-tile?xi=N&yi=N on a fixed 0.02° × 0.02° grid.
+// Using a fixed grid means:
+//  • Multiple viewports map to the same tile URLs → server cache is always hit
+//  • The server warmer pre-fetches all 300 tiles at startup → fast after ~12 min
 //
-// Features are accumulated in _features across viewport changes (keyed by
-// PARCELID to avoid storing duplicates when the user pans slightly).
+// Grid parameters MUST match serve.js constants.
+const _TILE_DEG      = 0.02;
+const _TILE_COLS     = 20;
+const _TILE_ROWS     = 15;
+const _TILE_ORIG_LNG = -88.20;
+const _TILE_ORIG_LAT =  44.40;
+
+/**
+ * Return all grid tile {xi, yi} objects that overlap a WGS-84 bounding box.
+ * @param {[number,number,number,number]} bbox [west, south, east, north]
+ * @returns {{xi:number, yi:number}[]}
+ */
+function _bboxToTiles([west, south, east, north]) {
+  const xi0 = Math.max(0, Math.floor((west  - _TILE_ORIG_LNG) / _TILE_DEG));
+  const yi0 = Math.max(0, Math.floor((south - _TILE_ORIG_LAT) / _TILE_DEG));
+  const xi1 = Math.min(_TILE_COLS - 1, Math.floor((east  - _TILE_ORIG_LNG) / _TILE_DEG));
+  const yi1 = Math.min(_TILE_ROWS - 1, Math.floor((north - _TILE_ORIG_LAT) / _TILE_DEG));
+  const tiles = [];
+  for (let xi = xi0; xi <= xi1; xi++)
+    for (let yi = yi0; yi <= yi1; yi++)
+      tiles.push({ xi, yi });
+  return tiles;
+}
+
+/** Track which tiles have already been fetched this session to avoid re-fetching. */
+const _fetchedTiles = new Set(); // "xi,yi"
 
 /** @type {'idle'|'loading'|'ready'|'error'} */
 let _state    = 'idle';
@@ -131,28 +157,31 @@ export function getParcelFeatures() { return _features; }
 
 /**
  * Fetch parcel features for the given WGS-84 bounding box.
- * New features are merged into the in-memory store (deduped by PARCELID).
- * Returns the full accumulated feature array.
+ * Decomposes the bbox into grid tiles, fetches any not yet in memory,
+ * merges results (deduped by PARCELID), and returns the full feature array.
  *
  * @param {[number,number,number,number]} bbox  [minLng, minLat, maxLng, maxLat]
  * @returns {Promise<GeoJSON.Feature[]>}
  */
 export async function fetchParcelsForBbox(bbox) {
+  const tiles = _bboxToTiles(bbox).filter(({ xi, yi }) => !_fetchedTiles.has(`${xi},${yi}`));
+  if (tiles.length === 0) return _features; // all tiles already loaded
+
   _state = 'loading';
   try {
-    const bboxStr = bbox.map(v => v.toFixed(6)).join(',');
-    const resp = await fetch(`/api/parcels?bbox=${encodeURIComponent(bboxStr)}`);
-    if (!resp.ok) throw new Error(`/api/parcels returned HTTP ${resp.status}`);
-    const geojson = await resp.json();
-    if (geojson.error) throw new Error(geojson.error);
-    let added = 0;
-    for (const f of geojson.features ?? []) {
-      const pid = f.properties?.PARCELID;
-      if (pid && _seenIds.has(pid)) continue;
-      if (pid) _seenIds.add(pid);
-      _features.push(f);
-      added++;
-    }
+    await Promise.all(tiles.map(async ({ xi, yi }) => {
+      const resp = await fetch(`/api/parcel-tile?xi=${xi}&yi=${yi}`);
+      if (!resp.ok) throw new Error(`/api/parcel-tile returned HTTP ${resp.status}`);
+      const geojson = await resp.json();
+      if (geojson.error) throw new Error(geojson.error);
+      for (const f of geojson.features ?? []) {
+        const pid = f.properties?.PARCELID;
+        if (pid && _seenIds.has(pid)) continue;
+        if (pid) _seenIds.add(pid);
+        _features.push(f);
+      }
+      _fetchedTiles.add(`${xi},${yi}`);
+    }));
     _state = 'ready';
     return _features;
   } catch (err) {
@@ -162,8 +191,7 @@ export async function fetchParcelsForBbox(bbox) {
 }
 
 /**
- * Convenience wrapper: fetch parcels using a legacy no-bbox call (uses the
- * server default bbox). Kept for callers that don't yet pass a bbox.
+ * Convenience wrapper that covers the default Green Bay viewport.
  * @returns {Promise<GeoJSON.Feature[]>}
  */
 export async function fetchParcels() {
