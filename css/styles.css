@@ -646,10 +646,6 @@ details > summary:focus-visible {
   border-radius: 3px;
 }
 
-#panel-dates-inner {
-  margin-top: 8px;
-}
-
 #panel-layers {
   margin-top: 10px;
 }
@@ -771,25 +767,6 @@ details > summary:focus-visible {
 }
 
 .date-input:focus { border-color: #34d399; box-shadow: 0 0 0 2px rgba(52,211,153,0.2); }
-
-.reload-btn {
-  width: 100%;
-  padding: 7px;
-  background: linear-gradient(135deg, #065f46, #059669);
-  color: #d1fae5;
-  border: 1px solid rgba(52,211,153,0.3);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
-  text-transform: uppercase;
-}
-
-.reload-btn:hover         { background: linear-gradient(135deg, #047857, #10b981); box-shadow: 0 0 10px rgba(16,185,129,0.35); }
-.reload-btn:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
-.reload-btn:disabled      { background: #1e3a22; color: #374151; cursor: not-allowed; }
 
 /* ── Establishment legend ──────────────────────────────────────────────────── */
 .est-row {

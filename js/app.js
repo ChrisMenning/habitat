@@ -1137,8 +1137,6 @@ map.on('load', async () => {
     });
   });
 
-  document.getElementById('btn-reload').addEventListener('click', loadObservations);
-
   // Export button
   document.getElementById('btn-export').addEventListener('click', exportReport);
   document.getElementById('btn-export-png')?.addEventListener('click', exportMapPng);
