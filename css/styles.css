@@ -612,88 +612,29 @@ body {
 .flyout-pane-body::-webkit-scrollbar       { width: 4px; }
 .flyout-pane-body::-webkit-scrollbar-thumb { background: rgba(52,211,153,0.3); border-radius: 2px; }
 
-/* ── Alerts panel — separate floating element (beside layer panel) ─────────── */
-#alerts-panel {
-  position: absolute;
-  top: 12px;
-  left: 68px;
-  width: 270px;
-  max-height: calc(100% - 24px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(245,158,11,0.15);
-  z-index: 5;
-  background: #0d1810;
-  /* Amber top accent */
-  border-top: 2px solid #f59e0b;
-  animation: hud-in 0.4s 0.1s ease both;
-  transition: left 0.22s cubic-bezier(0.4,0,0.2,1);
-}
-/* Shift alerts panel right when a flyout pane is open */
-body.flyout-open #alerts-panel {
-  left: 316px; /* 68px flyout-start + 240px pane + 8px gap */
-}
-
-#alerts-panel-header {
+/* ── Alerts flyout pane — amber accent overrides ──────────────────────────── */
+#pane-alerts .flyout-pane-header {
   background: #110e06;
-  color: #fef3c7;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 7px 7px 0 0;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(245,158,11,0.2);
+  border-bottom-color: rgba(245,158,11,0.2);
+}
+#pane-alerts .flyout-pane-title  { color: #fde68a; }
+#pane-alerts .flyout-pane-close:hover {
+  background: rgba(245,158,11,0.15);
+  color: #f59e0b;
+  border-color: #f59e0b;
 }
 
-.alerts-panel-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: #fde68a;
-  flex: 1;
-}
+/* Amber active/hover state on the alerts bar button */
+#ab-btn-alerts         { color: #fde68a; }
+#ab-btn-alerts:hover   { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.25); color: #fef3c7; }
+#ab-btn-alerts.ab-btn--active { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.4); color: #f59e0b; }
+#ab-btn-alerts.ab-btn--active::before { background: #f59e0b; }
 
-/* Collapse/expand toggle for the alerts panel */
-.alerts-panel-toggle {
-  background: none;
-  border: none;
-  color: #fde68a;
-  font-size: 10px;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
-  line-height: 1;
-  transition: background 0.12s;
-  flex-shrink: 0;
-}
-.alerts-panel-toggle:hover         { background: rgba(255,255,255,0.12); }
-.alerts-panel-toggle:focus-visible { outline: 2px solid #fde68a; outline-offset: 1px; }
-.alerts-panel-toggle[aria-expanded="false"] { transform: rotate(-90deg); }
+#panel-alerts { padding: 4px 0 6px; }
 
-/* When collapsed via JS: hide body */
-#alerts-panel.alerts-panel--collapsed #alerts-panel-body { display: none; }
-
-#alerts-panel-body {
-  transition: none;
-}
-
-#panel-alerts {
-  padding: 8px 12px 10px;
-}
-
-/* Keep the badge readable on the dark header */
-#alerts-panel .alerts-badge {
-  background: rgba(245,158,11,0.18);
-  color: #fde68a;
-}
-#alerts-panel .alerts-badge--warn {
-  background: rgba(245,158,11,0.3);
-  color: #fbbf24;
-  animation: pulse-warn 2.5s ease-in-out infinite;
-}
+/* Badge inside the alerts pane header */
+#pane-alerts .alerts-badge      { background: rgba(245,158,11,0.18); color: #fde68a; }
+#pane-alerts .alerts-badge--warn { background: rgba(245,158,11,0.3); color: #fbbf24; animation: pulse-warn 2.5s ease-in-out infinite; }
 
 details > summary:focus-visible {
   outline: 2px solid #34d399;

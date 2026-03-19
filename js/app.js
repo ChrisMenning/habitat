@@ -1,4 +1,4 @@
-﻿/**
+/**
  * app.js — Application entry point and orchestrator.
  *
  * Wires together the map, iNaturalist API, and UI modules.
@@ -1115,7 +1115,7 @@ map.on('load', async () => {
   buildAreaLegend(setLayerActive);
 
   // Initialise the activity bar (opens/closes flyout panes)
-  initActivityBar();
+  const activityBar = initActivityBar();
 
   // Permalink — restore state from URL hash, then init sync
   const _permalinkState = parsePermalink();
@@ -1221,28 +1221,8 @@ map.on('load', async () => {
     if (!hits.length) clearAlertHighlight();
   });
 
-  // Alerts panel collapse/expand toggle
-  const alertsToggleBtn = document.getElementById('alerts-panel-toggle');
-  if (alertsToggleBtn) {
-    alertsToggleBtn.addEventListener('click', () => {
-      const panel    = document.getElementById('alerts-panel');
-      const expanded = alertsToggleBtn.getAttribute('aria-expanded') === 'true';
-      panel.classList.toggle('alerts-panel--collapsed', expanded);
-      alertsToggleBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-      alertsToggleBtn.textContent = expanded ? 'â–¶' : 'â–¼';
-    });
-  }
-
-  // Intel-bar alerts stat â†’ expand and scroll the alerts panel into view
-  const openAlertsPanel = () => {
-    const panel = document.getElementById('alerts-panel');
-    if (panel) {
-      panel.classList.remove('alerts-panel--collapsed');
-      const toggle = document.getElementById('alerts-panel-toggle');
-      if (toggle) { toggle.textContent = 'â–¼'; toggle.setAttribute('aria-expanded', 'true'); }
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  };
+  // Intel-bar alerts stat → open the alerts flyout pane
+  const openAlertsPanel = () => activityBar.openPane('pane-alerts');
   document.getElementById('intel-alerts').addEventListener('click', openAlertsPanel);
   document.getElementById('intel-alerts').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAlertsPanel(); }

@@ -764,14 +764,6 @@ export function renderAlerts(alerts, onFocus = null) {
     return;
   }
 
-  // Auto-expand the alerts panel so the user sees them immediately
-  const alertsPanel = document.getElementById('alerts-panel');
-  if (alertsPanel) {
-    alertsPanel.classList.remove('alerts-panel--collapsed');
-    const toggle = document.getElementById('alerts-panel-toggle');
-    if (toggle) { toggle.textContent = '▼'; toggle.setAttribute('aria-expanded', 'true'); }
-  }
-
   for (const alert of alerts) {
     const hasGeo = alert.coords?.length > 0;
     const clickable = onFocus && hasGeo;

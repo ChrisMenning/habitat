@@ -149,6 +149,16 @@
       <span class="ab-label">Trends</span>
     </button>
 
+    <button class="ab-btn" id="ab-btn-alerts"
+        data-flyout="pane-alerts"
+        aria-pressed="false"
+        aria-controls="pane-alerts"
+        aria-expanded="false"
+        title="Intelligence Alerts">
+      <span class="ab-icon" aria-hidden="true">⚡</span>
+      <span class="ab-label">Alerts</span>
+    </button>
+
     <div class="ab-spacer" role="separator" aria-hidden="true"></div>
 
     <button id="btn-layers-all-off" class="ab-btn ab-btn--danger"
@@ -286,23 +296,24 @@
       </div>
     </div>
 
-  </div>
+    <!-- Pane: Intelligence Alerts ─────────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-alerts"
+        role="region" aria-label="Intelligence Alerts"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-alerts-title">⚡ Intelligence Alerts</span>
+        <span id="alerts-header-count" class="alerts-badge"></span>
+        <button class="flyout-pane-close" aria-label="Close Intelligence Alerts panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <section id="panel-alerts">
+          <div id="alerts-list" aria-live="polite">
+            <!-- populated by alerts.js -->
+          </div>
+        </section>
+      </div>
+    </div>
 
-  <!-- ── Alerts panel (separate, beside layer panel) ───────────────────── -->
-  <div id="alerts-panel" role="complementary" aria-label="Intelligence Alerts">
-    <div id="alerts-panel-header">
-      <span class="alerts-panel-title">⚡ Alerts</span>
-      <span id="alerts-header-count" class="alerts-badge"></span>
-      <button id="alerts-panel-toggle" class="alerts-panel-toggle" aria-expanded="true" aria-label="Toggle alerts panel">▼</button>
-    </div>
-    <div id="alerts-panel-body">
-      <!-- ── Keep section wrapper so existing JS selectors still work ── -->
-      <section id="panel-alerts">
-        <div id="alerts-list" aria-live="polite">
-          <!-- populated by alerts.js -->
-        </div>
-      </section>
-    </div>
   </div>
 </div>
 
