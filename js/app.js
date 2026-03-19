@@ -1103,7 +1103,7 @@ map.on('load', async () => {
     handleOpacity,
   );
 
-  // ── Analysis — Bee Records / Species Richness / Imperiled (pane-analysis) ───
+  // ── Sightings — Bee Records / Imperiled Species (pane-sightings) ───────────
   buildLayerPanel(
     [
       { groupLabel: 'FWS Bee Distribution Tool 🐝', layers: BEE_LAYERS },
