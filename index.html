@@ -391,71 +391,164 @@
     </div>
     <div class="modal-body">
 
-      <h3><i class="ph ph-map-trifold" aria-hidden="true"></i> Navigating the Map</h3>
-      <p>Pan and zoom normally. The map is centered on Green Bay, WI with a 15 km analysis radius. Click any point or polygon to open a popup with details. Click empty map space to dismiss highlights.</p>
+      <h3><i class="ph ph-rocket-launch" aria-hidden="true"></i> Quick Start</h3>
+      <p>Bay Hive opens with corridor sites, waystations, protected areas, and the pesticide/crop heatmaps already visible. To see live pollinator observations, click <strong><i class="ph ph-arrow-clockwise" aria-hidden="true"></i> Load Observations</strong> in the left panel — this fetches iNaturalist and GBIF sightings for the 15 km Green Bay analysis area. Alerts on the right update automatically after each load.</p>
+      <p>Three high-value first steps: <strong>(1)</strong> Click Load Observations. <strong>(2)</strong> Open the Alerts panel to see what the data is surfacing. <strong>(3)</strong> Click any amber corridor site polygon on the map to open its full dossier — including nesting score, tree canopy coverage, nearby sightings, and network connectivity context.</p>
+      <p>eBird sightings, NOAA climate data, and NASS crop statistics require free API keys in <code>api-keys.txt</code>. The app works completely without them — those specific layers simply won't populate.</p>
 
-      <h3><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Layer Controls Panel <span class="modal-key">left side</span></h3>
-      <p>Toggle any layer on or off using the sliders. The <strong>All off</strong> button at the top clears every layer at once. Layers are organized into four collapsible sections:</p>
+      <h3><i class="ph ph-stack" aria-hidden="true"></i> What Loads Automatically vs. On Demand</h3>
+      <p>These load in the background when the page opens:</p>
       <ul>
-        <li><strong>Habitat Programs</strong> — active pollinator investment sites (NE WI Pollinator Corridor, Monarch Waystations, Homegrown National Park yards). Turn these on first — they are the core of the map.</li>
-        <li><strong>Conservation Areas &amp; Hazards</strong> — background land protection context (USGS PAD-US protected areas, WI DNR State Natural Areas, DNR Managed Lands) plus PFAS chemical contamination sites.</li>
-        <li><strong>Land Cover &amp; Cropland</strong> — raster overlays from NLCD 2021 and USDA NASS CDL 2023. The 🐝 Bee-Crop Field Fringe heatmap is on by default and shows agricultural pressure zones. Individual NLCD class layers let you isolate specific land cover types. The CDL full-color raster shows every crop species.</li>
-        <li><strong>🔭 Sightings</strong> — iNaturalist and GBIF biodiversity observation points filtered by date range.</li>
+        <li><strong>NE WI Pollinator Corridor, Waystations, HNP yards</strong> — area layers, 24 h browser cache</li>
+        <li><strong>Conservation areas</strong> — USGS PAD-US, WI DNR State Natural Areas, DNR Managed Lands</li>
+        <li><strong>Pesticide Pressure choropleth</strong> — on by default</li>
+        <li><strong>Bee-Crop Field Fringe heatmap</strong> — on by default</li>
+        <li><strong>Nesting suitability scores</strong> — fetched async immediately after corridor GeoJSON loads; appear as badge circles on corridor markers once any NLCD layer is toggled on</li>
+        <li><strong>Tree canopy coverage %</strong> — fetched async after corridor data; used in the site drawer and Shaded Habitat alert even if the visual raster overlay is off</li>
+      </ul>
+      <p>These require a click or toggle:</p>
+      <ul>
+        <li><strong>iNaturalist, GBIF, eBird observations</strong> — click <strong>Load Observations</strong></li>
+        <li><strong>Tree Canopy raster overlay</strong> — toggle in Land Cover &amp; Cropland panel</li>
+        <li><strong>Wikimedia Commons photos</strong> — enable Commons toggle in Conservation &amp; Hazards</li>
+        <li><strong>Parcel ownership data</strong> — enable Parcels toggle, then zoom to level 13 or higher</li>
+      </ul>
+
+      <h3><i class="ph ph-leaf" aria-hidden="true"></i> Habitat Programs Layer</h3>
+      <ul>
+        <li><strong>NE WI Pollinator Corridor (GBCC)</strong> — amber filled polygons with circular site markers. Formal restoration plantings managed by the Green Bay Conservation Corps on public parks, rights-of-way, and institutional properties. Click any marker to open the full site dossier.</li>
+        <li><strong>Monarch Watch Waystations</strong> — violet circles. 56 privately certified habitat sites; Monarch Watch certification requires a minimum milkweed and nectar planting.</li>
+        <li><strong>Homegrown National Park yards</strong> — teal triangles. Self-reported native plant yards from Doug Tallamy's HNP initiative. No inspection required — homeowner commitments to plant native species that support local food webs.</li>
+        <li><strong>GBCC Habitat Treatments</strong> — teal polygon outlines. Sites where GBCC has performed invasive removal, prescribed burns, or replanting — the active restoration footprint separate from established corridor plantings.</li>
+      </ul>
+      <p><strong>Site marker outer ring:</strong> Encodes establishment status from source data — green = native/established planting, orange = introduced or early-stage, gray = status not recorded. This is a data attribute, not a quality rating assigned by Bay Hive.</p>
+      <p><strong>Nesting suitability badge:</strong> A small colored circle on each corridor marker shows a 0–100 score (see Site Detail Drawer for formula). Appears when any NLCD layer is active.</p>
+
+      <h3><i class="ph ph-shield" aria-hidden="true"></i> Conservation Areas &amp; Hazards</h3>
+      <ul>
+        <li><strong>USGS PAD-US Protected Areas</strong> — all federally, state, locally, and NGO-managed protected lands. Click a polygon for managing entity, designation type, public access level, and GAP conservation status (1 = strictly protected → 4 = no formal protection).</li>
+        <li><strong>WI DNR State Natural Areas</strong> — sites preserved for outstanding natural communities; many contain rare plants and high-quality native habitat.</li>
+        <li><strong>WI DNR Managed Lands</strong> — wildlife areas, state forests, and parks managed for broader conservation and recreation.</li>
+        <li><strong>WI DNR PFAS Contamination Sites</strong> — red warning markers at PFAS detection sites in surface water and fish tissue. The PFAS Near Habitat alert fires for any site within 1 km of a corridor or waystation. Click a marker for the site name and detection context.</li>
+        <li><strong>Pesticide Pressure choropleth</strong> — county-level intensity based on crop mix and neonicotinoid seed treatment patterns. Four bands: Low, Moderate, High, Critical. On by default. The High Pesticide Pressure alert fires when corridor sites or waystations fall in a Critical-band county.</li>
+        <li><strong>Parcel ownership</strong> — Brown County parcel data (visible at zoom ≥ 13). Enables the Public Land Gap alert, which identifies publicly owned unimproved parcels near opportunity zones as actionable outreach targets.</li>
+      </ul>
+
+      <h3><i class="ph ph-binoculars" aria-hidden="true"></i> Sightings Panel</h3>
+      <ul>
+        <li><strong>Pollinators</strong> — bees, butterflies, moths, hoverflies; includes hummingbirds (ruby-throated hummingbirds pollinate native trumpet vine and cardinal flower)</li>
+        <li><strong>Native Plants</strong> — flowering plants and host plants with native status confirmed against Wisconsin's regional iNaturalist checklist</li>
+        <li><strong>Other Plants</strong> — introduced and invasive plant species; useful for spotting competition zones at corridor restoration sites</li>
+        <li><strong>Other Wildlife</strong> — non-pollinator fauna</li>
+        <li><strong>Bee Records</strong> — FWS Bee Distribution Tool dataset; museum specimens and research records across all 6 bee families</li>
+        <li><strong>Bee Imperiled</strong> — species rated G1–G3 by NatureServe or VU+ by IUCN</li>
+      </ul>
+      <p>The <strong>outer ring</strong> on iNaturalist dots: <span style="color:#4ade80;">●</span> green = native confirmed, <span style="color:#f97316;">●</span> orange = introduced/invasive, <span style="color:#9ca3af;">●</span> gray = unresolved.</p>
+      <p><strong>Date range:</strong> Use From/To inputs to filter by observation date. The debounce auto-re-fetches after a brief pause. The <strong>timeline scrubber</strong> at the bottom filters without re-fetching and also controls the active Tree Canopy survey year.</p>
+      <p><strong>Filter chips:</strong> Narrow loaded observations without re-fetching — <em>Research grade only</em>, <em>Near a habitat site</em> (within 300 m), <em>Native species only</em>, or <em>Non-native/invasive only</em>.</p>
+      <p>Bee Records and Bee Imperiled are in the Sightings panel. Species Richness heatmap is in the Analysis panel.</p>
+
+      <h3><i class="ph ph-map-trifold" aria-hidden="true"></i> Land Cover &amp; Cropland</h3>
+      <ul>
+        <li><strong>NLCD 2021</strong> — 16 individually toggleable land cover classes at 30-meter resolution. Isolate a single class (e.g., Grassland/Herbaceous class 71) to see how much is present near corridor sites — useful context for interpreting low nesting scores.</li>
+        <li><strong>CDL 2023</strong> — USDA full-color crop type raster at 30-meter resolution. Source data for the Pollinator Mismatch alert.</li>
+        <li><strong>Tree Canopy</strong> — WI DNR Urban Tree Canopy raster at 1-meter resolution, 3 survey years: 2013, 2020, 2022. Active year tracks the timeline end-year (nearest ≤ selected year). Toggle on/off here. Canopy % per corridor site is computed independently and appears in the site drawer and Shaded Habitat alert even when this visual overlay is off.</li>
       </ul>
 
       <h3><i class="ph ph-magnifying-glass-plus" aria-hidden="true"></i> Analysis Overlays</h3>
-      <p>Several computed layers supplement the raw data:</p>
       <ul>
-        <li><strong>🐝 Bee-Crop Field Fringe</strong> — amber heatmap of NLCD agricultural pixels (Cultivated Crops + Pasture/Hay) near the corridor. Warmer = higher bee-pollination demand from nearby fields. Helps identify which corridor sites sit closest to fields that need pollination services.</li>
-        <li><strong>🔆 Corridor Proximity Bands</strong> — green glow between corridor nodes within 300 m of each other, highlighting already-connected habitat pairs.</li>
-        <li><strong>🌡 Pollinator Access Traffic</strong> — amber/orange heatmap combining corridor sites, waystations, and HNP yards into a composite density surface. Shows where pollinator access is densest across the region.</li>
-        <li><strong>🧪 Pesticide Pressure</strong> — county-level choropleth (pale yellow → deep red) showing agricultural pesticide application intensity. On by default. Four bands from Low to Critical based on crop type and known pesticide-use patterns. Found in the Conservation Areas &amp; Hazards panel.</li>
-        <li><strong>🪨 Nesting Habitat Badge</strong> — small circular badge on each corridor site marker showing a 0–100 nesting suitability score. Computed from NLCD classes 31 (Barren), 52 (Shrub/Scrub), and 71 (Grassland/Herbaceous) within 300 m of the site. Gray = Low (0–33), Tan = Moderate (34–66), Dark brown = Good (67–100). Badges appear automatically once any NLCD layer is toggled on.</li>
+        <li><strong>Bee-Crop Field Fringe</strong> — amber heatmap of NLCD agricultural pixels (Pasture/Hay + Cultivated Crops) near the corridor. Warmer = higher crop pollination demand. On by default.</li>
+        <li><strong>Corridor Proximity Bands</strong> — soft green glow between corridor nodes within 300 m of each other. 300 m is the practical stepping-stone threshold — pairs within this distance form a continuous habitat network rather than isolated islands.</li>
+        <li><strong>Pollinator Access Traffic</strong> — amber/orange density heatmap of all active habitat sites. Gaps in the heatmap indicate underserved areas.</li>
+        <li><strong>Nesting Habitat Badges</strong> — 0–100 score circles on corridor markers. See Site Detail Drawer for the full formula. Appear when any NLCD layer is active.</li>
+        <li><strong>Species Richness</strong> — bee species richness density surface from the FWS Bee Distribution dataset. Shows where taxonomic diversity is highest, independent of raw counts.</li>
       </ul>
 
-      <h3><i class="ph ph-lightning" aria-hidden="true"></i> Alerts Panel <span class="modal-key">right side</span></h3>
-      <p>The intelligence alerts panel shows automatically computed warnings and opportunities derived from the loaded data. Click any alert to fly the map to the relevant site(s) and highlight them. Alert levels:</p>
+      <h3><i class="ph ph-chart-bar" aria-hidden="true"></i> Intel Bar — Situational Summary</h3>
+      <p>Six live stats updated after each observation load. Five are clickable and open a focused info drawer:</p>
       <ul>
-        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> — requires attention (PFAS near habitat, high mismatch, pesticide pressure, public land gap)</li>
-        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> Info</span> — connectivity gap, unsupported sites, weak nodes</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> — clusters with no habitat nearby, isolated sites, poor nesting, shaded habitat</li>
-        <li><span class="modal-badge modal-badge--pos"><i class="ph ph-check-circle" aria-hidden="true"></i> Positive</span> — connected corridor pairs</li>
-        <li><span class="modal-badge modal-badge--bal"><i class="ph ph-scales" aria-hidden="true"></i> Mismatch</span> — crop demand vs. habitat supply</li>
+        <li><strong>Corridor area</strong> — total GBCC corridor polygon area in acres. Click for a per-site breakdown.</li>
+        <li><strong>Habitat nodes</strong> — total active sites (corridor + waystations + HNP yards). Click for a count by type. The primary network density metric.</li>
+        <li><strong>Pollinators sighted</strong> — combined iNat + GBIF pollinator count for the current date range. Click for source breakdown and top species.</li>
+        <li><strong>Season / GDD</strong> — current Growing Degree Days vs. 1991–2020 normal with deviation %. Click to open the full Climate Ribbon chart.</li>
+        <li><strong>eBird sightings</strong> — eBird observation count (requires API key). Click for species list.</li>
+        <li><strong>Native species</strong> — unique native plant species observed across iNat + GBIF native plant layers, deduplicated by scientific name. Click for the list.</li>
+        <li><strong>Alerts</strong> — active alert count. Pulses when present. A badge on the Alerts activity bar button also shows this count.</li>
       </ul>
-      <p>The lightning bolt count in the intel bar pulses when alerts are present. A badge on the Alerts activity bar button also shows the current count. Click either to open the Alerts panel.</p>
-      <p>Selected alerts explained:</p>
+      <p><em>Interpretation tip:</em> If Native species is low while Pollinators sighted is high, pollinators may be relying heavily on non-native plants. Enable the Other Plants layer and check for invasive species density near corridor sites — introduced plants can draw pollinators away from the native-species habitat corridor plantings are designed to support.</p>
+
+      <h3><i class="ph ph-lightning" aria-hidden="true"></i> Alerts Panel — All 14 Alerts Explained</h3>
+      <p>All alerts are computed client-side from data already loaded in memory — no extra fetches. Click any alert to fly the map to the affected area.</p>
       <ul>
-        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> <strong>High Pesticide Pressure</strong> — fires when a corridor site or waystation falls in a Critical-band county (top quartile pesticide intensity). Includes affected site names and county context.</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> <strong>Poor Nesting Habitat</strong> — fires when any corridor site scores below 25 out of 100. Suggests bare-soil patches, unmowed edges, or shrub/grassland additions near those sites.</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-tree" aria-hidden="true"></i> Opportunity</span> <strong>Shaded Habitat</strong> — fires when a corridor site has &gt;55% tree canopy coverage within 150 m (WI DNR UTC 2022 data). High canopy closure may suppress the sun-loving wildflowers that corridor plantings depend on. Suggests canopy thinning or selective edge management.</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>PFAS Near Habitat</strong> — a PFAS contamination site is within 1 km of a corridor site or waystation. Names both the contaminant site and the affected habitat. <em>Action:</em> inform site managers; inspect nearby surface water sources.</li>
+        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Unsupported Sites</strong> — corridor sites with no pollinator sightings within 500 m. May indicate under-surveying. <em>Action:</em> schedule an iNaturalist bioblitz at those sites to establish baseline records.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Opportunity Zones</strong> — ≥5 pollinator sightings in a ~1 km cell with no habitat program site within 800 m. Where pollinators are active but infrastructure isn't. <em>Action:</em> propose a new corridor site, waystation, or HNP yard there.</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>Declining Public Zone</strong> — an opportunity zone with &gt;30% year-over-year sighting decline AND a City or County parcel within 800 m. Highest-priority target: documented decline + public ownership = a strong data-backed pitch to Parks.</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>Public Land Gap</strong> — a City or County parcel ≥0.5 acres inside an opportunity zone with no habitat within 500 m. Zoom to 13+ and enable Parcels to get the address and owner for a specific outreach pitch.</li>
+        <li><span class="modal-badge modal-badge--pos"><i class="ph ph-check-circle" aria-hidden="true"></i></span> <strong>Connected Pairs</strong> — corridor site pairs within 300 m. Confirmed stepping-stone connections; more pairs = more resilient corridor.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Isolated Habitat</strong> — a corridor site with no other corridor site within 2 km. Most native bees can't reliably bridge &gt;2 km. <em>Action:</em> identify a new planting ≤2 km away to reconnect it.</li>
+        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Weak Nodes</strong> — nearest corridor neighbor is 700 m–2 km away. Within foraging range but near the limit. <em>Action:</em> a midpoint planting upgrades these from stressed to solid.</li>
+        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Connectivity Gap</strong> — longest edge in the Minimum Spanning Tree of all corridor sites exceeds 2.5 km. The true network bottleneck. <em>Action:</em> bridging that MST gap is the single highest-leverage new planting location.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Regional Gap</strong> — one or more geographic quadrants has no habitat sites. <em>Action:</em> even one HNP registration in that quadrant begins coverage.</li>
+        <li><span class="modal-badge modal-badge--bal"><i class="ph ph-scales" aria-hidden="true"></i></span> <strong>Pollinator Mismatch</strong> — bee-dependent crop acreage is high relative to estimated habitat coverage. The economic leverage case for new sites — corridor additions near these fields improve crop yields.</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>High Pesticide Pressure</strong> — corridor sites or waystations in a Critical-band county. <em>Action:</em> prioritize pesticide-tolerant nurse species in plantings; avoid recommending nearby water sources.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Poor Nesting Habitat</strong> — corridor sites below 25/100 on the NLCD nesting index (little bare ground, shrubland, or grassland within 300 m). <em>Action:</em> add bare-soil patches, sand berms, or let mowed edges revert to grassland.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-tree" aria-hidden="true"></i></span> <strong>Shaded Habitat</strong> — corridor sites with &gt;55% tree canopy within 150 m (WI DNR UTC 2022). Heavy shading suppresses sun-loving corridor plants (prairie clover, coneflower, goldenrod all need full sun). <em>Action:</em> discuss selective canopy thinning with the site manager.</li>
       </ul>
 
-      <h3><i class="ph ph-binoculars" aria-hidden="true"></i> Sightings &amp; Date Range</h3>
-      <p>iNaturalist and GBIF observations are filtered by the From/To date inputs. Change the dates and click <strong>&#x21ba; Load Observations</strong> (or wait for the debounce after typing). The <strong>timeline scrubber</strong> at the bottom of the page provides a quick year-range filter without re-fetching from the network; it also controls the active Tree Canopy survey year.</p>
-      <p>Filter chips under the date inputs let you narrow observations to: verified research grade, near a habitat site, native species, or non-native/invasive species.</p>
-      <p>Bee Records (FWS dataset) and Bee Imperiled species are found in the <strong>Sightings</strong> panel. Species Richness heatmap is in the <strong>Analysis</strong> panel.</p>
-
-      <h3><i class="ph ph-chart-bar" aria-hidden="true"></i> Intel Bar &amp; Clickable Stats</h3>
-      <p>The strip at the top of the map shows six live stats. Five of them are clickable and open a focused info drawer:</p>
+      <h3><i class="ph ph-sidebar-simple" aria-hidden="true"></i> Site Detail Drawer</h3>
+      <p>Click any feature on the map to open the drawer. For corridor sites it shows:</p>
       <ul>
-        <li><strong>Corridor</strong> — total corridor polygon area in acres; click to see a breakdown by layer.</li>
-        <li><strong>Habitat Nodes</strong> — total active habitat sites (corridor centroids + waystations + HNP yards); click for a node count breakdown.</li>
-        <li><strong>Pollinators</strong> — combined iNat + GBIF pollinator sighting count; click for a source breakdown.</li>
-        <li><strong>eBird</strong> — eBird sightings count; click for the species list.</li>
-        <li><strong>Native Species</strong> — unique native plant species count; click for the species list.</li>
+        <li><strong>Coordinates and area</strong> — WGS84 decimal degrees and polygon area in acres.</li>
+        <li><strong>Nesting suitability score</strong> — 0–100 score from NLCD 2021 within 300 m. Click <i class="ph ph-question" aria-hidden="true"></i> next to the section label for the full formula. Gray ≤ 33 = Low (alert fires below 25), Tan 34–66 = Moderate, Dark brown ≥ 67 = Good.</li>
+        <li><strong>Tree canopy coverage</strong> — % of the ~150 m radius covered by tree canopy (WI DNR UTC 2022). Click <i class="ph ph-question" aria-hidden="true"></i> for the pixel-counting methodology. Values above 55% trigger the Shaded Habitat alert.</li>
+        <li><strong>Corridor connectivity</strong> — nearest corridor neighbor distances: strong (≤300 m), acceptable (≤700 m), weak (≤2 km), or isolated (&gt;2 km).</li>
+        <li><strong>Nearby parcel ownership</strong> — Brown County parcel data near the site (when Parcels layer is enabled at zoom ≥ 13). Shows owner, acreage, and address.</li>
+        <li><strong>Sighting activity</strong> — pollinator observation counts within 750 m with a monthly histogram.</li>
+        <li><strong>Nearby sites</strong> — other habitat program sites within 2 km with distances.</li>
+        <li><strong>Wikimedia Commons photos</strong> — nearby community photos when the Commons layer is enabled.</li>
       </ul>
 
       <h3><i class="ph ph-trend-up" aria-hidden="true"></i> Trends Pane</h3>
-      <p>The Trends pane shows year-over-year charts for iNaturalist sightings and GBIF records once at least two harvested snapshot years are available. To populate: use the <strong>POST /api/harvest</strong> endpoint with <code>{ source, year }</code> (sources: <code>inat</code>, <code>gbif</code>, <code>noaa</code>, <code>nass</code>, <code>cdl</code>). Snapshots are stored as JSON files in the <code>./snapshots/</code> directory on the server.</p>
+      <p>Year-over-year charts appear once ≥2 harvested snapshot years exist. To populate: POST to <code>/api/harvest</code> with <code>{ "source": "inat", "year": 2024 }</code>. Valid sources: <code>inat</code>, <code>gbif</code>, <code>noaa</code>, <code>nass</code>, <code>cdl</code>. Snapshots write to <code>./snapshots/</code> on the server.</p>
 
-      <h3><i class="ph ph-database" aria-hidden="true"></i> Caching</h3>
-      <p>All data is cached in your browser's IndexedDB. Area layers (corridor, waystations, land cover) are cached for 24 hours. Observation data is cached by date range for 1 hour. The intel bar shows <em>Cached</em> when the current load was served from cache and <em>Live</em> when a real network fetch occurred.</p>
+      <h3><i class="ph ph-database" aria-hidden="true"></i> Caching &amp; Export</h3>
+      <p>Area layers cached 24 h in IndexedDB; observations cached 1 h per date range. Intel bar shows <em>Cached</em> vs. <em>Live</em>. To force a re-fetch, change the date range or clear IndexedDB in browser DevTools → Application → Storage.</p>
+      <p>The <strong>Export</strong> button generates a plain-text intelligence report of the current map state — useful for briefing collaborators or documenting a site assessment.</p>
 
-      <h3><i class="ph ph-file-text" aria-hidden="true"></i> Export</h3>
-      <p>The Export button generates a plain-text intelligence report summarizing corridor coverage, waystation count, sighting totals, active alerts, and the current map view state. Useful for sharing a snapshot with collaborators.</p>
+      <hr class="modal-hr">
 
-      <h3><i class="ph ph-book-open" aria-hidden="true"></i> Map Layer Legend</h3>
-      <p>The <strong>Map Layer Legend</strong> section in the left panel shows color swatches for every polygon area layer. Click a swatch row to toggle that layer on/off directly from the legend. The <strong>Establishment · ring color</strong> section explains the colored outer ring on iNaturalist sighting dots (green = native, red = introduced/invasive, gray = unknown).</p>
+      <h3><i class="ph ph-path" aria-hidden="true"></i> Use Case: Finding the Right Location for a New Planting</h3>
+      <p>You're advising the GBCC on where the corridor would benefit most from a new active restoration site.</p>
+      <ol>
+        <li>Load Observations with a broad date range (e.g., 2018–2025) to maximize sighting density data.</li>
+        <li>Open Alerts. Look for <span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity Zone</span> alerts — where pollinators are active but habitat infrastructure is absent.</li>
+        <li>Check for <span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Public Land Gap</span> alerts. These flag specific City or County parcels inside opportunity zones — public ownership means outreach to Parks &amp; Recreation rather than private negotiation.</li>
+        <li>Look for a <span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> Connectivity Gap</span> alert. A new planting midway between two distant corridor sites that also overlaps an opportunity zone maximizes return on every restoration dollar.</li>
+        <li>Click an alert to fly the map there. Enable Parcels layer and zoom to 13+. Click a public parcel polygon to get the owner name, acreage, and site address for a specific outreach pitch.</li>
+      </ol>
+      <p><em>Example:</em> The northeast quadrant shows a Regional Gap (no habitat sites), an Opportunity Zone with 9 bumblebee sightings, and a 0.8-acre City of Green Bay parks parcel on a road right-of-way 400 m from the opportunity cluster. Specific pitch: this parcel has documented native bee activity, no current habitat program, and sits in a service gap. A corridor planting here closes the regional gap, bridges a connectivity weakness, and brings infrastructure to where pollinators already are.</p>
+
+      <h3><i class="ph ph-magnifying-glass" aria-hidden="true"></i> Use Case: Diagnosing an Underperforming Corridor Site</h3>
+      <p>A corridor site is showing an Unsupported Sites alert — no pollinator observations within 500 m despite several years of available data.</p>
+      <ol>
+        <li>Click the alert to fly to the site, or click the amber corridor polygon directly.</li>
+        <li>In the site drawer, check the <strong>Nesting suitability score</strong>. Low (below 34) means little bare ground or grassland — ground-nesting bees have nowhere to establish nests near the site.</li>
+        <li>Check <strong>Tree canopy coverage</strong>. Above 55% means the site is heavily shaded — prairie clover, coneflower, black-eyed Susan, and goldenrod all require full sun (6+ hours). A shaded site will have poor establishment regardless of planting quality.</li>
+        <li>Look at the <strong>Connectivity</strong> section. If the nearest corridor neighbor is &gt;2 km, colonization pressure from nearby nesting populations is low — the site may simply need more time and nearby habitat to build bee populations.</li>
+        <li>Enable NLCD Developed High and Developed Medium to check whether dense impervious surface surrounds the site, affecting both foraging patterns and microclimate.</li>
+      </ol>
+      <p><em>Example:</em> A NWTC corridor site scores 18/100 nesting (Low), 67% canopy (High — Shaded Habitat alert active), and nearest corridor neighbor is 1.9 km (Weak Node). Three compounding problems. Recommendation: work with NWTC facilities to selectively thin canopy around the planting boundary; add a bare-soil patch with fine gravel at the sunniest corner; propose a second corridor registration at the NWTC athletics complex 1.2 km west to shorten the gap to a solid 700 m.</p>
+
+      <h3><i class="ph ph-thermometer" aria-hidden="true"></i> Use Case: Reading the Season Before a Site Visit</h3>
+      <p>You're coordinating a volunteer maintenance day and want to know whether planting season is running ahead, behind, or on schedule.</p>
+      <ol>
+        <li>Check the <strong>Season / GDD</strong> stat in the intel bar. A negative deviation (e.g., "–22%") means heat unit accumulation is behind the 30-year average — bloom timing and bee emergence are running late.</li>
+        <li>Click the Season stat to open the <strong>Climate Ribbon</strong>. The solid gold line is current-year GDD; the dashed line is the 1991–2020 normal. Shaded amber regions are fall frost probability windows.</li>
+        <li>Check for a <span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Fall Frost Risk</span> alert. If today is within 14 days of the P50 first frost date, annual plantings are approaching end-of-season and late interventions may not justify the effort.</li>
+        <li>If GDD is well below normal (May–September), a <span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> GDD Below Normal</span> alert shows with the deficit %. Use this to set volunteer expectations: later blooms, lower early-bee abundance, and delayed warm-season grass establishment.</li>
+      </ol>
+      <p><em>Example:</em> May 16, intel bar shows season is 22% below normal GDD — equivalent to early May in a normal year. Decision: delay transplanting warm-season annuals (anise hyssop, black-eyed Susan starts) by 2 weeks. Schedule iNaturalist bioblitz counts for early June rather than mid-May to align with peak early-bee emergence under this year's delayed conditions.</p>
 
     </div>
   </div>

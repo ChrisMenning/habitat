@@ -40,6 +40,53 @@ let _commonsImages = [];
 
 export function setNestingScores(scores)    { _nestingScores  = scores   ?? new Map(); }
 export function setCanopyScores(scores)     { _canopyScores   = scores   ?? new Map(); }
+
+// ── Score help popup events ───────────────────────────────────────────────────
+// Wired once (guarded by flag) to the drawer body element; handles all
+// .score-help-btn clicks via delegation so they survive innerHTML replacement.
+
+let _shpEventsWired = false;
+
+function _wireScoreHelpEvents(drawerBody) {
+  if (_shpEventsWired) return;
+  _shpEventsWired = true;
+
+  drawerBody.addEventListener('click', e => {
+    const btn = e.target.closest('.score-help-btn');
+    if (btn) {
+      e.stopPropagation();
+      const targetId = btn.dataset.helpTarget;
+      const popup    = targetId ? document.getElementById(targetId) : null;
+      if (!popup) return;
+      const wasOpen = !popup.hidden;
+      // Close all open popups first
+      drawerBody.querySelectorAll('.score-help-popup').forEach(p => {
+        p.hidden = true;
+        p.parentElement?.querySelector('.score-help-btn')?.setAttribute('aria-expanded', 'false');
+      });
+      if (!wasOpen) {
+        popup.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
+    // Click outside any popup — close all
+    if (!e.target.closest('.score-help-wrap')) {
+      drawerBody.querySelectorAll('.score-help-popup:not([hidden])').forEach(p => {
+        p.hidden = true;
+        p.parentElement?.querySelector('.score-help-btn')?.setAttribute('aria-expanded', 'false');
+      });
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    drawerBody.querySelectorAll('.score-help-popup:not([hidden])').forEach(p => {
+      p.hidden = true;
+      p.parentElement?.querySelector('.score-help-btn')?.setAttribute('aria-expanded', 'false');
+    });
+  });
+}
 export function setParcelFeatures(features) { _parcelFeatures = features ?? []; }
 export function setCommonsImages(images)    { _commonsImages  = images   ?? []; }
 
@@ -307,6 +354,9 @@ export function openDrawer(feature) {
   const body   = document.getElementById('site-drawer-body');
   if (!drawer || !body) return;
 
+  // Wire score-help popup toggle events once
+  _wireScoreHelpEvents(body);
+
   const p    = feature.properties;
   const coord = featureCentroid(feature);
 
@@ -493,7 +543,24 @@ export function openDrawer(feature) {
     const desc  = nestingDescription(info.score, info.counts ?? {});
     const ariaL = `Nesting suitability: ${info.score} out of 100 — ${label}. ${desc}`;
     return `
-      <div class="drawer-section-label">Nesting suitability (NLCD 300 m radius)</div>
+      <div class="drawer-section-label">
+        Nesting suitability (NLCD 300 m radius)
+        <div class="score-help-wrap">
+          <button class="score-help-btn" type="button"
+                  aria-label="How is the nesting score calculated?"
+                  aria-expanded="false"
+                  data-help-target="shp-nesting">
+            <i class="ph ph-question" aria-hidden="true"></i>
+          </button>
+          <div class="score-help-popup" id="shp-nesting" hidden>
+            <strong>Nesting Suitability Score (0–100)</strong>
+            <p>Counts pixels of three NLCD 2021 land cover classes within 300 m of the site centroid. Each class carries a weight based on its value as ground-nesting bee substrate.</p>
+            <div class="shp-formula">score = min(100, (B×3 + S×2 + G×3) / (total×3) × 500)<br>B = Barren (class 31, weight 3)<br>S = Shrub/Scrub (class 52, weight 2)<br>G = Grassland/Herbaceous (class 71, weight 3)</div>
+            <p>20% weighted coverage → 100 points. Tiers: 0–33 Low (gray), 34–66 Moderate (tan), 67–100 Good (dark brown). The Poor Nesting Habitat alert fires when score &lt; 25.</p>
+            <p class="shp-source">Source: MRLC / USGS NLCD 2021 · Fetched via /api/nlcd-nesting at tile zoom 13 (≈14 m/px) · 24 h server cache</p>
+          </div>
+        </div>
+      </div>
       <div class="drawer-nesting-row"
            role="img"
            aria-label="${esc(ariaL)}">
@@ -515,7 +582,24 @@ export function openDrawer(feature) {
     const levelLbl = pct > 55 ? 'High — may suppress open-meadow plants'
                    : pct > 30 ? 'Moderate' : 'Low';
     return `
-      <div class="drawer-section-label">Tree canopy (WI DNR UTC 2022, 150 m radius)</div>
+      <div class="drawer-section-label">
+        Tree canopy (WI DNR UTC 2022, 150 m radius)
+        <div class="score-help-wrap">
+          <button class="score-help-btn" type="button"
+                  aria-label="How is tree canopy coverage calculated?"
+                  aria-expanded="false"
+                  data-help-target="shp-canopy">
+            <i class="ph ph-question" aria-hidden="true"></i>
+          </button>
+          <div class="score-help-popup" id="shp-canopy" hidden>
+            <strong>Tree Canopy Coverage (%)</strong>
+            <p>Counts tree-classified pixels within ~150 m of the site centroid from the WI DNR 2022 Urban Tree Canopy raster (1 m resolution, derived from NAIP aerial imagery).</p>
+            <div class="shp-formula">canopy % = treePixels / validPixels × 100<br>Tree pixel: RGBA where R≤15, G=165–195, B≤15<br>(colormap: tree → rgb(0,180,0), non-tree → rgb(100,70,20))</div>
+            <p>Tiers: ≤30% Low (gray), 31–55% Moderate (green), &gt;55% High (dark green). The Shaded Habitat alert fires above 55%. WI DNR advises against directly comparing survey years.</p>
+            <p class="shp-source">Source: WI DNR Urban Forestry · FR_Urban_Tree_Canopy_Raster_2022 ImageServer · 64×64 px exportImage · 24 h server cache</p>
+          </div>
+        </div>
+      </div>
       <div class="drawer-nesting-row"
            role="img"
            aria-label="Tree canopy coverage: ${pct}% — ${levelLbl}.">
