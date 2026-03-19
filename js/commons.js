@@ -45,10 +45,7 @@ export function isRelevant(img) {
   // Reject no-thumbnail images
   if (!ii.thumburl) return false;
 
-  const cats  = ii.extmetadata?.Categories?.value      ?? '';
-  const desc  = ii.extmetadata?.ImageDescription?.value ?? '';
-  const title = img.title ?? '';
-  return _WL_REGEX.test(cats) || _WL_REGEX.test(desc) || _WL_REGEX.test(title);
+  return true;
 }
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
