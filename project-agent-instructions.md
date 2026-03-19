@@ -153,7 +153,16 @@ Alert types and their spatial logic:
 | `#timeline` | Year-range scrubber (bottom of page) |
 
 ---
+## Guidelines
+All UI must conform to WCAG 2.2 AA at minimum. Before touching any
+component: verify color contrast ratios (≥4.5:1 for normal text, ≥3:1 for
+large text and UI components), ensure all interactive elements are keyboard
+focusable with visible focus indicators, provide aria-label / role /
+aria-live attributes where dynamic content changes, and do not rely on color
+alone to convey information. Run through the WCAG 2.2 checklist for any new
+panel, modal, or interactive control you introduce.
 
+---
 ## Hard Constraints — Do Not Violate
 
 1. **No build step.** No webpack, vite, rollup, parcel, or any bundler. Ever.
@@ -161,7 +170,7 @@ Alert types and their spatial logic:
 3. **No framework.** No React, Vue, Svelte, etc. Vanilla ES modules only.
 4. **MapLibre GL is loaded from CDN** (`unpkg.com`) as a global script before the module entry point. It is available as `maplibregl` on `window`. Do not import it as an ES module.
 5. **No tracking, no analytics, no external JS beyond MapLibre.**
-6.  `serve.js`'s PNG filter logic is bespoke and has no tests — rewriting it will break NLCD tile rendering. In fact, I think this was already previously broken. Once it is working perfectly never change it again.
+6. **Do not rewrite `serve.js`'s PNG filter logic** unless explicitly asked. It is bespoke and has no tests — rewriting it will break NLCD tile rendering.
 7. **All data fetches go through `cache.js`.** Do not add direct `fetch()` calls to area layer data outside of the cache wrapper.
 8. **NASS API key is optional.** Code that uses it must gracefully degrade if the key is absent.
 

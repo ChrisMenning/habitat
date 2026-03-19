@@ -100,7 +100,7 @@ export function exportReport() {
   }).join('');
 
   const filterStr = activeFilters.length ? activeFilters.join(', ') : 'None';
-  const dateRange = (dateFrom || dateTo) ? `${dateFrom || '(all)'} to ${dateTo || '(all)'}` : 'All dates';
+  const dateRange = 'All dates (timeline filtered)';
 
   const mapSnapshot = (() => {
     try {

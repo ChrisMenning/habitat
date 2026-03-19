@@ -46,14 +46,6 @@ export function applyPermalinkState(state, map) {
   if (state.center && isFinite(state.zoom)) {
     map.jumpTo({ center: state.center, zoom: state.zoom });
   }
-  if (state.dateFrom) {
-    const el = document.getElementById('date-from');
-    if (el) el.value = state.dateFrom;
-  }
-  if (state.dateTo) {
-    const el = document.getElementById('date-to');
-    if (el) el.value = state.dateTo;
-  }
 }
 
 /**
@@ -69,9 +61,7 @@ function _buildUrl(map, startYear, endYear) {
   const z   = map.getZoom().toFixed(2);
   const lon = c.lng.toFixed(5);
   const lat = c.lat.toFixed(5);
-  const df  = document.getElementById('date-from')?.value ?? '';
-  const dt  = document.getElementById('date-to')?.value   ?? '';
-  const hash = `z=${z}&c=${lon},${lat}&d=${df},${dt}&y=${startYear},${endYear}`;
+  const hash = `z=${z}&c=${lon},${lat}&y=${startYear},${endYear}`;
   return `${window.location.origin}${window.location.pathname}#${hash}`;
 }
 

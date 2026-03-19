@@ -77,6 +77,7 @@ export function computeMonthHistogram(coord, sightings, radiusKm = 0.5) {
  * @param {GeoJSON.Feature[]} ctx.waystationFeatures
  * @param {GeoJSON.Feature[]} ctx.pfasFeatures
  * @param {GeoJSON.Feature[]} ctx.pollinatorSightings   — iNat pollinators + GBIF pollinators combined
+ * @param {GeoJSON.Feature[]} [ctx.pesticideCounties]   — county features from pesticide.js
  * @returns {Alert[]}
  */
 export function computeAlerts({
@@ -88,6 +89,7 @@ export function computeAlerts({
   cdlStats           = null,
   quickStats         = null,
   climateData        = null,
+  pesticideCounties  = [],
 }) {
   const alerts = [];
 
@@ -432,7 +434,71 @@ export function computeAlerts({
     }
   }
 
+  // ── Alert: High Pesticide Pressure ──────────────────────────────────────────
+  // Fires when a corridor site or waystation falls in a top-quartile (band 4)
+  // county.  Band is resolved by nearest county ring centroid so it works even
+  // when polygon tile delivery is delayed.
+  if (pesticideCounties.length > 0) {
+    const criticalSites = habitatSites.filter(site => {
+      const info = _getPesticideBandForCoord(centroid(site), pesticideCounties);
+      return info?.band === 4;
+    });
+    if (criticalSites.length > 0) {
+      const countyNames = [...new Set(
+        criticalSites
+          .map(s => _getPesticideBandForCoord(centroid(s), pesticideCounties)?.county)
+          .filter(Boolean)
+      )];
+      const siteNames = criticalSites.map(
+        s => s.properties.name || s.properties.registrant || 'Site'
+      ).slice(0, 3);
+      const extra = criticalSites.length > 3 ? ` +${criticalSites.length - 3} more` : '';
+      alerts.push({
+        level:  'warn',
+        icon:   '⚠️',
+        key:    'pesticide-pressure',
+        text:   `High Pesticide Pressure: ${criticalSites.length} habitat site${criticalSites.length > 1 ? 's fall' : ' falls'} in a critical-band county (${countyNames.join(', ')}). Dominant row-crop agriculture drives neonicotinoid seed treatment and intensive herbicide use in this area. Coordinated buffer plantings and reduced spray windows would significantly benefit pollinators at: ${siteNames.join(', ')}${extra}.`,
+        coords: criticalSites.map(centroid),
+        layers: ['gbcc-corridor', 'waystations', 'pesticide'],
+      });
+    }
+  }
+
   return alerts;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Finds the nearest county in pesticideCounties to the given [lng,lat] point
+ * (using squared degree distance from polygon ring centroid) and returns its
+ * properties, or null if no counties are loaded.
+ *
+ * @param {[number,number]}   coord
+ * @param {GeoJSON.Feature[]} counties
+ * @returns {{ band: number, band_label: string, county: string }|null}
+ */
+function _getPesticideBandForCoord(coord, counties) {
+  if (!counties?.length) return null;
+  let best = null, bestDSq = Infinity;
+  for (const f of counties) {
+    const geom = f?.geometry;
+    if (!geom) continue;
+    const ring = geom.type === 'MultiPolygon'
+      ? geom.coordinates[0]?.[0]
+      : geom.coordinates?.[0];
+    if (!ring?.length) continue;
+    const cx = ring.reduce((s, c) => s + c[0], 0) / ring.length;
+    const cy = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+    const dSq = (coord[0] - cx) ** 2 + (coord[1] - cy) ** 2;
+    if (dSq < bestDSq) { bestDSq = dSq; best = f; }
+  }
+  if (!best) return null;
+  return {
+    band:       best.properties.band,
+    band_label: best.properties.band_label,
+    county:     best.properties.name,
+  };
 }
 
 // ── DOM rendering ─────────────────────────────────────────────────────────────

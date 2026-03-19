@@ -1297,3 +1297,108 @@ export function setHeatmapOpacity(sourceId, opacity) {
  * @returns {import('maplibre-gl').Map}
  */
 export function getMap() { return _map; }
+
+// ── Pesticide pressure choropleth ─────────────────────────────────────────────
+
+/**
+ * Registers a county-level pesticide pressure choropleth.
+ *
+ * Two redundant visual channels satisfy WCAG AA non-text contrast:
+ *   • Fill color   — pale yellow (low) → red (critical)
+ *   • Fill opacity — 0.15 (Low) → 0.42 (Critical)  — stepped not continuous
+ * Band 3–4 counties additionally receive a dashed outline (third channel).
+ *
+ * Must be called before polygon area layers so it renders beneath them.
+ *
+ * @param {string}  id      - logical id (typically 'pesticide')
+ * @param {boolean} visible - initial visibility
+ */
+export function registerPesticideLayer(id, visible) {
+  _map.addSource(`pesticide-${id}`, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  // Fill — color + stepped opacity (two independent WCAG visual channels)
+  _map.addLayer({
+    id:     `fill-pesticide-${id}`,
+    type:   'fill',
+    source: `pesticide-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'fill-color': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        1, '#fef9c3',  // pale yellow  — Low
+        2, '#fbbf24',  // amber        — Moderate
+        3, '#f97316',  // orange       — High
+        4, '#dc2626',  // red          — Critical
+        '#cccccc',
+      ],
+      'fill-opacity': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        1, 0.15,
+        2, 0.22,
+        3, 0.32,
+        4, 0.42,
+        0.10,
+      ],
+    },
+  });
+
+  // Solid county outline for all bands
+  _map.addLayer({
+    id:     `outline-pesticide-${id}`,
+    type:   'line',
+    source: `pesticide-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        3, '#c2410c',
+        4, '#991b1b',
+        '#92400e',
+      ],
+      'line-width': 1.0,
+    },
+  });
+
+  // Dashed overlay for band 3–4 only — WCAG redundant visual channel
+  // (line-dasharray cannot be data-driven; a separate layer is the standard pattern)
+  _map.addLayer({
+    id:     `hatch-pesticide-${id}`,
+    type:   'line',
+    source: `pesticide-${id}`,
+    filter: ['>=', ['coalesce', ['get', 'band'], 0], 3],
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color':     '#dc2626',
+      'line-width':      2.0,
+      'line-dasharray': [5, 4],
+      'line-opacity':    0.65,
+    },
+  });
+}
+
+/**
+ * Replaces features in the pesticide choropleth source.
+ *
+ * @param {string}                    id
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setPesticideFeatures(id, geojson) {
+  _map.getSource(`pesticide-${id}`)?.setData(geojson);
+}
+
+/**
+ * Shows or hides the three pesticide choropleth sub-layers.
+ *
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+export function setPesticideLayerVisibility(id, visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const prefix of ['fill-pesticide-', 'outline-pesticide-', 'hatch-pesticide-']) {
+    const lid = `${prefix}${id}`;
+    if (_map.getLayer(lid)) _map.setLayoutProperty(lid, 'visibility', vis);
+  }
+}

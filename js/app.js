@@ -10,7 +10,7 @@
  *   config.js â€” Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants,
@@ -34,6 +34,9 @@ import { initMap, registerLayer, registerAreaLayer,
          setHeatmapVisibility,
          registerCdlFringeHeatmap,
          updateCdlFringeHeatmap,
+         registerPesticideLayer,
+         setPesticideFeatures,
+         setPesticideLayerVisibility,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
@@ -42,8 +45,8 @@ import { initMap, registerLayer, registerAreaLayer,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
          getMap } from './map.js';
-import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
-         setLoading, setStatus, getDefaultDates,
+import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
+         setLoading, setStatus,
          buildPopupHTML, buildAreaPopupHTML }          from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts }                from './alerts.js';
@@ -59,6 +62,7 @@ import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
+import { fetchPesticideCounties }                      from './pesticide.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -116,6 +120,7 @@ const _rasterLayerIds = new Set([
 function areaOrPointVisibility(id, visible) {
   if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
   else if (_rasterLayerIds.has(id))       setRasterLayerVisibility(id, visible);
+  else if (id === 'pesticide')            setPesticideLayerVisibility('pesticide', visible);
   else                                    setLayerVisibility(id, visible);
 }
 
@@ -214,8 +219,8 @@ function refreshConnectivityMesh() {
  * which triggers a fresh network fetch automatically.
  */
 async function loadObservations() {
-  const d1 = document.getElementById('date-from').value || undefined;
-  const d2 = document.getElementById('date-to').value   || undefined;
+  // No date restriction — fetch all available history. The timeline scrubber
+  // handles in-memory filtering by year range after data is loaded.
 
   setLoading(true);
   closePopup();
@@ -226,7 +231,7 @@ async function loadObservations() {
   const AREA_TTL = 24 * 60 * 60 * 1000;  // 24 h â€” area datasets change rarely
 
   // Embed dates in observation cache keys so a date change is a natural miss.
-  const obsKey = `${d1 ?? ''}:${d2 ?? ''}`;
+  const obsKey = 'all';
 
   // Tracks how many sources required a real network fetch this call.
   let networkFetches = 0;
@@ -251,14 +256,14 @@ async function loadObservations() {
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
       corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
-      quickStatsResult, cdlFringeResult, ebirdResult,
+      quickStatsResult, cdlFringeResult, ebirdResult, pesticideResult,
     ] = await Promise.allSettled([
 
       // â”€â”€ Observations (date-keyed, 1 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Caches the fully-processed layer partition so partitionByLayer and
       // observationsToGeoJSON are also skipped on a cache hit.
-      withCache(`obs/inat/${obsKey}`, OBS_TTL, async () => {
-        const { observations, total } = await fetchObservations(d1, d2);
+      withCache(`obs/inat/all`, OBS_TTL, async () => {
+        const { observations, total } = await fetchObservations(undefined, undefined);
         const geojson  = observationsToGeoJSON(observations);
         const byLayer  = partitionByLayer(geojson, LAYERS.map(l => l.id));
         byLayer._total = total;  // stored alongside layer arrays
@@ -267,14 +272,14 @@ async function loadObservations() {
 
       // Caches the final GeoJSON features array â€” resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/${obsKey}`, OBS_TTL, async () => {
-        const { occurrences } = await fetchGbifPollinators(d1, d2);
+      withCache(`obs/gbif-poll/all`, OBS_TTL, async () => {
+        const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
       }),
 
-      withCache(`obs/gbif-plants/${obsKey}`, OBS_TTL, async () => {
-        const { occurrences }       = await fetchGbifPlants(d1, d2);
+      withCache(`obs/gbif-plants/all`, OBS_TTL, async () => {
+        const { occurrences }       = await fetchGbifPlants(undefined, undefined);
         const { native, nonNative } = await partitionPlantOccurrences(occurrences);
         return {
           native:    gbifToGeoJSON(native,    'gbif-native-plants').features,
@@ -294,8 +299,11 @@ async function loadObservations() {
       withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
       withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
 
-      // ── eBird recent bird observations (date-keyed, 1 h TTL) ───
-      withCache(`obs/ebird/${obsKey}`, OBS_TTL, () => fetchEbirdObservations()),
+      // ── eBird recent bird observations (1 h TTL, always last 30 days) ───
+      withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()),
+
+      // ── Pesticide county choropleth (24 h TTL, static county data) ──────────
+      withCache('area/pesticide', AREA_TTL, fetchPesticideCounties),
     ]);
 
     const counts = {};
@@ -494,6 +502,15 @@ async function loadObservations() {
     }).filter(Boolean);
     setHabitatCoords(habitatCoords);
 
+    // Pesticide county choropleth — must be resolved before computeAlerts
+    const pesticideCounties = pesticideResult.status === 'fulfilled' && pesticideResult.value
+      ? pesticideResult.value.features : [];
+    if (pesticideResult.status === 'fulfilled' && pesticideResult.value) {
+      setPesticideFeatures('pesticide', pesticideResult.value);
+    } else if (pesticideResult.status === 'rejected') {
+      console.warn('Pesticide county data unavailable:', pesticideResult.reason);
+    }
+
     // Alerts
     const alerts = computeAlerts({
       corridorFeatures:    corridorFeats,
@@ -504,6 +521,7 @@ async function loadObservations() {
       cdlStats,
       quickStats,
       climateData:         getClimateState(),
+      pesticideCounties,
     });
     renderAlerts(alerts, alert => {
       if (!alert.coords?.length) return;
@@ -576,8 +594,8 @@ async function loadObservations() {
       waystationCount:    _waystationFeats.length,
       inatCount:          inatObs,
       gbifCount,
-      dateFrom:           d1 ?? '',
-      dateTo:             d2 ?? '',
+      dateFrom:           '',
+      dateTo:             '',
       alerts,
       corridorFeatures:   corridorFeats,
       waystationFeatures: waystationFeats,
@@ -610,8 +628,9 @@ map.on('load', async () => {
   // 0b. NLCD per-class raster layers (16 toggleable land-cover types)
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
-  }
-  // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers.
+  }  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
+  registerPesticideLayer('pesticide', PESTICIDE_LAYER.defaultOn);
+  // 0d. Connectivity mesh — registered early so it sits above rasters but below point layers.
   // Visibility matches the corridor layer's defaultOn; no separate toggle.
   registerConnectivityMesh(true);
   registerPollinatorTrafficHeatmap(true);
@@ -674,6 +693,7 @@ map.on('load', async () => {
   function handleOpacity(id, opacity) {
     if (AREA_LAYERS.some(l => l.id === id))    setAreaLayerOpacity(id, opacity);
     else if (_rasterLayerIds.has(id))          setRasterOpacity(id, opacity);
+    else if (id === 'pesticide')               { /* choropleth opacity is fixed by band expressions */ }
     else                                       setPointLayerOpacity(id, opacity);
   }
 
@@ -701,11 +721,13 @@ map.on('load', async () => {
       { groupLabel: 'Habitat Treatments',  layers: conservationLayers.filter(l => l.id === 'gbcc-treatment') },
       { groupLabel: 'Protected Lands',     layers: conservationLayers.filter(l => !l.id.startsWith('gbcc-')) },
       { groupLabel: 'Hazards',             layers: HAZARD_LAYERS      },
+      { groupLabel: 'Chemical Threats',    layers: [PESTICIDE_LAYER]  },
     ],
     setLayerActive,
     document.getElementById('panel-areas-inner'),
     handleOpacity,
   );
+  buildPesticideLegend(document.getElementById('panel-areas-inner'));
 
   // â”€â”€ Land Cover Analysis (NLCD classes + CDL, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Group the 16 NLCD classes by their semantic group property.
@@ -739,10 +761,9 @@ map.on('load', async () => {
   buildEstLegend();
   buildAreaLegend(setLayerActive);
 
-  // Populate date inputs with defaults
-  const { from, to } = getDefaultDates();
-  document.getElementById('date-from').value = from;
-  document.getElementById('date-to').value   = to;
+  // Permalink — restore state from URL hash, then init sync
+  const _permalinkState = parsePermalink();
+  if (_permalinkState) applyPermalinkState(_permalinkState, map);
 
   // Connectivity mesh follows corridor — no standalone toggle needed.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
@@ -773,12 +794,6 @@ map.on('load', async () => {
   });
 
   document.getElementById('btn-reload').addEventListener('click', loadObservations);
-
-  // Auto-reload when dates change (debounced so the request only fires once
-  // the user finishes picking, not on every keystroke)
-  const debouncedLoad = debounce(loadObservations, 600);
-  document.getElementById('date-from').addEventListener('change', debouncedLoad);
-  document.getElementById('date-to').addEventListener('change', debouncedLoad);
 
   // Export button
   document.getElementById('btn-export').addEventListener('click', exportReport);
@@ -831,9 +846,7 @@ map.on('load', async () => {
   }, 2009);
   mountTimelineDrag();
 
-  // Permalink — restore state from URL hash, then init sync
-  const _permalinkState = parsePermalink();
-  if (_permalinkState) applyPermalinkState(_permalinkState, map);
+  // Permalink — init sync (state already restored above)
   initPermalink(
     () => getMap(),
     () => [_timelineStartYear, _timelineEndYear],

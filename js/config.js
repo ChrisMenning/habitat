@@ -303,6 +303,20 @@ export const HAZARD_LAYERS = [
   },
 ];
 
+/**
+ * Pesticide pressure choropleth layer — county-level agricultural chemical
+ * intensity derived from USDA CDL crop-type mix and application rate lookup.
+ *
+ * @type {{ id: string, label: string, emoji: string, description: string, defaultOn: boolean }}
+ */
+export const PESTICIDE_LAYER = {
+  id:          'pesticide',
+  label:       'Pesticide Pressure',
+  emoji:       '🧪',
+  description: 'County-level agricultural pesticide intensity · CDL crop-type proxy · USDA application rate lookup',
+  defaultOn:   true,
+};
+
 // ── Establishment means ──────────────────────────────────────────────────────
 
 /**
