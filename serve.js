@@ -894,6 +894,11 @@ function proxyParcels(reqUrl, res) {
 
 function proxyNlcdTile(code, z, x, y, res) {
 
+  const targetRgb = NLCD_COLORS[code];
+  if (!targetRgb) {
+    res.writeHead(400); res.end(`Unknown NLCD code: ${code}`); return;
+  }
+
   const bbox = tileToBbox3857(z, x, y);
   const wmsPath =
     '/geoserver/mrlc_display/NLCD_2021_Land_Cover_L48/ows' +
