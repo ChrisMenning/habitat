@@ -635,13 +635,30 @@ const PARCEL_OWNER_BASE_URL = 'https://gis.browncountywi.gov/arcgis/rest/service
  * Corporate / LLC names are typically stored entirely in LastName1.
  */
 function _buildOwnerName(attrs) {
-  const tc = s => String(s || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-  const last  = tc(attrs.LastName1  || '');
-  const first = tc(attrs.FirstName1 || '');
-  const mid   = tc(attrs.MiddleName1|| '');
-  if (!last) return '';
-  if (first) return `${last}, ${first}${mid ? ' ' + mid : ''}`;
-  return last; // corporate / trust name stored entirely in LastName1
+  const tc  = s => String(s || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const str = s => String(s || '').trim();
+
+  const last1  = tc(attrs.LastName1      || '');
+  const ext1   = tc(attrs.NameExtension1 || '');
+  const first1 = tc(attrs.FirstName1     || '');
+  const mid1   = tc(attrs.MiddleName1    || '');
+
+  if (last1) {
+    const ext = ext1 ? ` ${ext1}` : '';
+    if (first1) return `${last1}${ext}, ${first1}${mid1 ? ' ' + mid1 : ''}`;
+    return `${last1}${ext}`;
+  }
+
+  // Attention line — trusts, LLCs, c/o names stored here when LastName1 is empty
+  const attn = tc(str(attrs.Attention));
+  if (attn) return attn;
+
+  // Co-owner fallback
+  const last2  = tc(attrs.LastName2  || '');
+  const first2 = tc(attrs.FirstName2 || '');
+  if (last2) return first2 ? `${last2}, ${first2}` : last2;
+
+  return '';
 }
 
 /**
@@ -655,7 +672,7 @@ function _fetchOwnerNames(parcelIds) {
     const escaped = parcelIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
     const body = new URLSearchParams({
       where:             `ParcelNumber IN (${escaped}) AND (Confidential IS NULL OR Confidential = 0)`,
-      outFields:         'ParcelNumber,LastName1,FirstName1,MiddleName1',
+      outFields:         'ParcelNumber,Attention,LastName1,FirstName1,MiddleName1,NameExtension1,LastName2,FirstName2',
       returnGeometry:    'false',
       f:                 'json',
       resultRecordCount: '2000',

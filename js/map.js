@@ -1507,9 +1507,8 @@ export function setNestingBadgeVisibility(visible) {
 //                    color driven by ownership class via MapLibre match expression
 //   parcel-outline — line layer visible from zoom 12 so users get a structural cue
 //                    before fills appear
-//   parcel-label   — municipality / owner text centered on each public parcel
-//                    shown from zoom 15; private parcels carry own_label = '' so
-//                    the text-field expression produces nothing for them
+//   parcel-label   — owner text centered on each parcel (zoom ≥ 15)
+//                    public parcels: municipality name; private: owner name from layer-26 join
 
 import { OWNERSHIP_META } from './parcels.js';
 
@@ -1578,7 +1577,7 @@ export function registerParcelLayer(visible) {
     },
   }, 'parcel-outline');  // insert below outline so outline stays crisp
 
-  // Labels — centered in each public parcel; private parcels have own_label=''
+  // Labels — centered in each parcel; public = municipality, private = owner name
   _map.addLayer({
     id:      'parcel-label',
     type:    'symbol',
@@ -1595,13 +1594,14 @@ export function registerParcelLayer(visible) {
       ],
       'text-max-width':       8,
       'text-anchor':          'center',
-      'text-allow-overlap':   false,
-      'text-ignore-placement':false,
+      // Allow overlap so private parcel names aren't suppressed by collision
+      'text-allow-overlap':   true,
+      'text-ignore-placement':true,
     },
     paint: {
       'text-color':            ['get', 'own_text_color'],
       'text-halo-color':       'rgba(255,255,255,0.85)',
-      'text-halo-width':       1.5,
+      'text-halo-width':       0.8,
       'text-opacity': [
         'interpolate', ['linear'], ['zoom'],
         15, 0,
