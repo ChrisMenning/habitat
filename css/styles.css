@@ -449,62 +449,168 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Side panel — layer controls (left) ────────────────────────────────────── */
-#panel {
+/* ── Activity Bar ──────────────────────────────────────────────────────────── */
+#activity-bar {
   position: absolute;
   top: 12px;
   left: 8px;
+  width: 52px;
+  height: calc(100% - 24px);
   background: #0d1f12;
   border: 1px solid #1e3a22;
   border-radius: 10px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(52,211,153,0.06);
   z-index: 5;
-  width: 230px;
-  max-height: calc(100% - 24px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  gap: 2px;
   animation: hud-in 0.35s ease both;
+  overflow: hidden;
 }
 
-/* Panel header strip */
-.panel-header {
+.ab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 48px;
+  padding: 5px 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  color: #6ee7b7;
+  gap: 3px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  user-select: none;
+  position: relative;
+  flex-shrink: 0;
+}
+.ab-btn:hover {
+  background: rgba(52,211,153,0.12);
+  border-color: rgba(52,211,153,0.25);
+  color: #d1fae5;
+}
+.ab-btn--active {
+  background: rgba(52,211,153,0.18);
+  border-color: rgba(52,211,153,0.4);
+  color: #34d399;
+}
+/* accent line on left edge of active button */
+.ab-btn--active::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 20%;
+  height: 60%;
+  width: 3px;
+  background: #34d399;
+  border-radius: 0 2px 2px 0;
+}
+.ab-btn:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+.ab-icon { font-size: 18px; line-height: 1; }
+.ab-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+.ab-spacer { flex: 1; }
+.ab-btn--danger { color: #6b7280; }
+.ab-btn--danger:hover {
+  color: #f87171;
+  border-color: rgba(248,113,113,0.3);
+  background: rgba(248,113,113,0.08);
+}
+
+/* ── Flyout panel container ────────────────────────────────────────────────── */
+#panel-flyout {
+  position: absolute;
+  top: 12px;
+  left: 68px; /* 8px margin + 52px bar + 8px gap */
+  z-index: 5;
+  pointer-events: none; /* transparent when all panes hidden */
+}
+
+.flyout-pane {
+  width: 240px;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  background: #0d1f12;
+  border: 1px solid #1e3a22;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(52,211,153,0.06);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.4,0,0.2,1);
+  /* Panes are stacked; only one visible at a time */
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.flyout-pane.flyout-pane--visible {
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.flyout-pane-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 14px 7px;
+  padding: 9px 12px 7px;
   border-bottom: 1px solid #1e3a22;
   background: #091610;
+  flex-shrink: 0;
 }
-.panel-header-title {
+.flyout-pane-title {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: #34d399;
   flex: 1;
 }
-.panel-header-btn {
-  background: rgba(52,211,153,0.10);
-  border: 1px solid rgba(52,211,153,0.25);
-  color: #6ee7b7;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 5px;
+.flyout-pane-close {
+  background: none;
+  border: 1px solid rgba(52,211,153,0.2);
+  color: #6b7280;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  padding: 0;
 }
-.panel-header-btn:hover         { background: rgba(52,211,153,0.2); border-color: #34d399; }
-.panel-header-btn:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
+.flyout-pane-close:hover         { background: rgba(248,113,113,0.15); color: #f87171; border-color: #f87171; }
+.flyout-pane-close:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
 
-/* Heatmap toggle group at bottom of habitat section */
-.panel-heatmap-group {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #1e3a22;
+.flyout-pane-body {
+  padding: 10px 14px 16px;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52,211,153,0.3) transparent;
 }
+.flyout-pane-body::-webkit-scrollbar       { width: 4px; }
+.flyout-pane-body::-webkit-scrollbar-thumb { background: rgba(52,211,153,0.3); border-radius: 2px; }
 
 /* ── Alerts panel — separate floating element (beside layer panel) ─────────── */
 #alerts-panel {
