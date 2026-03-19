@@ -288,6 +288,17 @@
           <span class="layer-label">Bee-Crop Field Fringe</span>
         </label>
         <p class="layer-desc">Heatmap of bee-dependent crop pixels from the NLCD raster — shows where cultivated fields and pasture border the corridor. Warmer = higher pollination demand.</p>
+        <p class="layer-group-label">Tree Canopy (WI DNR · NAIP)</p>
+        <label class="layer-row" for="toggle-tree-canopy">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-tree-canopy"
+                   aria-label="Wisconsin Urban Tree Canopy overlay">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-tree-evergreen"></i></span>
+          <span class="layer-label">Tree Canopy <span id="tree-canopy-year-label" style="font-size:0.8em;opacity:0.65;margin-left:0.3em"></span></span>
+        </label>
+        <p class="layer-desc">WI DNR urban tree canopy classification (1 m resolution · NAIP surveys 2013, 2020, 2022). Scrubbing the timeline automatically switches to the nearest available survey year.</p>
         <p class="panel-section-note">Raster overlays for fragmentation and mismatch analysis.</p>
         <div id="panel-landcover-inner"><!-- populated by ui.js --></div>
       </div>

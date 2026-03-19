@@ -327,6 +327,32 @@ export const NLCD_LAYERS = [
  */
 export const RASTER_LAYERS = [];
 
+// ── WI DNR Urban Tree Canopy layers ──────────────────────────────────────────
+
+/**
+ * Three survey years of WI DNR 1 m-resolution urban tree canopy classification
+ * derived from NAIP aerial imagery.  All three layers are registered on map load
+ * and the timeline scrubber shows exactly one at a time (the most recent year
+ * whose survey date is ≤ the timeline's end year).
+ *
+ * @type {Array<{id:string, year:number, tileUrl:string, attribution:string}>}
+ */
+const _TC_BASE = 'https://dnrmaps.wi.gov/arcgis_image/rest/services/FR_URBAN_FORESTRY';
+const _TC_RULE = '%7B%22rasterFunction%22%3A%22Green-Brown_value_1%22%7D'; // {"rasterFunction":"Green-Brown_value_1"}
+function _tcTileUrl(year) {
+  return `${_TC_BASE}/FR_Urban_Tree_Canopy_Raster_${year}/ImageServer/exportImage` +
+    `?bbox={bbox-epsg-3857}&bboxSR=3857&size=256,256&imageSR=3857` +
+    `&format=png32&renderingRule=${_TC_RULE}` +
+    `&noData=255&noDataInterpretation=esriNoDataMatchAny&f=image`;
+}
+export const TREE_CANOPY_YEARS  = [2013, 2020, 2022];
+export const TREE_CANOPY_LAYERS = TREE_CANOPY_YEARS.map(year => ({
+  id:          `tree-canopy-${year}`,
+  year,
+  tileUrl:     _tcTileUrl(year),
+  attribution: `<a href="https://dnr.wisconsin.gov/topic/urbanforests/ufia/plan-treecanopy" target="_blank">WI DNR Urban Tree Canopy ${year}</a>`,
+}));
+
 export const EBIRD_LAYER = [
   {
     id:          'ebird',

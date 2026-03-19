@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
@@ -144,7 +144,27 @@ function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddSt
 const _rasterLayerIds = new Set([
   ...RASTER_LAYERS.map(l => l.id),
   ...NLCD_LAYERS.map(l => l.id),
+  ...TREE_CANOPY_LAYERS.map(l => l.id),
 ]);
+
+// ── Tree Canopy year-sync ────────────────────────────────────────────────────
+let _treeCanopyOn = false;
+
+/**
+ * Shows the most recent tree canopy survey year whose year is ≤ endYear,
+ * hiding all others. If the layer is toggled off, hides all.
+ * @param {number} endYear
+ */
+function _syncTreeCanopyYear(endYear) {
+  // Find the best matching year: largest year that is ≤ endYear
+  const best = [...TREE_CANOPY_LAYERS].reverse().find(l => l.year <= endYear);
+  for (const l of TREE_CANOPY_LAYERS) {
+    setRasterLayerVisibility(l.id, _treeCanopyOn && best?.id === l.id);
+  }
+  // Update toggle label to reflect the active survey year
+  const lbl = document.getElementById('tree-canopy-year-label');
+  if (lbl) lbl.textContent = _treeCanopyOn && best ? String(best.year) : '';
+}
 
 /**
  * Routes a visibility change to the correct map helper based on layer type.
@@ -956,6 +976,10 @@ map.on('load', async () => {
   // 0b. NLCD per-class raster layers (16 toggleable land-cover types)
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
+  }
+  // 0c. WI DNR tree canopy layers — all 3 survey years, all initially hidden
+  for (const layer of TREE_CANOPY_LAYERS) {
+    registerRasterLayer(layer.id, false, layer.tileUrl, layer.attribution);
   }  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
   registerPesticideLayer('pesticide', PESTICIDE_LAYER.defaultOn);
   // 0d. Parcel ownership fill — beneath area polygon layers; lazy data loaded on first toggle
@@ -1150,6 +1174,10 @@ map.on('load', async () => {
   document.getElementById('toggle-bees-richness')?.addEventListener('change', e => {
     setHeatmapVisibility('bees-richness', e.target.checked);
   });
+  document.getElementById('toggle-tree-canopy')?.addEventListener('change', e => {
+    _treeCanopyOn = e.target.checked;
+    _syncTreeCanopyYear(_timelineEndYear);
+  });
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
@@ -1212,6 +1240,7 @@ map.on('load', async () => {
   initTimeline((startYear, endYear, activeMonths) => {
     _timelineStartYear = startYear;
     _timelineEndYear   = endYear;
+    _syncTreeCanopyYear(endYear);
     setDatePredicate(dateStr => {
       if (!dateStr) return true;
       const d = new Date(dateStr);
