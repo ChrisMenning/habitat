@@ -116,7 +116,8 @@ function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddSt
   document.getElementById('intel-val-inat').textContent      = pollinatorCount.toLocaleString();
   if (gddStat) {
     document.getElementById('intel-val-climate').textContent = gddStat.value;
-    document.getElementById('intel-lbl-climate').textContent = gddStat.label;
+    const lbEl = document.getElementById('intel-lbl-climate-text') ?? document.getElementById('intel-lbl-climate');
+    lbEl.textContent = gddStat.label;
   }
   const ebirdEl = document.getElementById('intel-val-ebird');
   if (ebirdEl) ebirdEl.textContent = ebirdCount > 0 ? ebirdCount.toLocaleString() : '—';
@@ -1175,7 +1176,8 @@ map.on('load', async () => {
     const gddStat = getGddIntelStat();
     if (gddStat.value !== '\u2014') {
       document.getElementById('intel-val-climate').textContent = gddStat.value;
-      document.getElementById('intel-lbl-climate').textContent = gddStat.label;
+    const lbEl2 = document.getElementById('intel-lbl-climate-text') ?? document.getElementById('intel-lbl-climate');
+    lbEl2.textContent = gddStat.label;
     }
   });
 

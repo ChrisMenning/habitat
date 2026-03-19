@@ -13,22 +13,23 @@
     Then open:                  http://localhost:3000
   -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
 <header id="header">
   <div id="header-text">
-    <h1>🐝 Bay Hive</h1>
+    <h1><i class="ph ph-bee" aria-hidden="true"></i> Bay Hive</h1>
     <p>Public Data Intelligence for Pollinator Operations in the Green Bay area.</p>
   </div>
   <div id="header-actions">
-    <button id="btn-help"  class="header-btn" title="Help &amp; feature guide">❓ Help</button>
-    <button id="btn-about" class="header-btn" title="About Bay Hive">ℹ️ About</button>
-    <button id="btn-export" class="header-btn" title="Export HTML report">📄 Export</button>
-    <button id="btn-export-png" class="header-btn" title="Save map as PNG image">🖼️ PNG</button>
-    <button id="btn-permalink" class="header-btn" title="Copy sharable link to clipboard">🔗 Link</button>
-    <a href="/tests.html" target="_blank" class="header-btn" title="Open unit test runner" style="text-decoration:none;">🧪 Tests</a>
+    <button id="btn-help"  class="header-btn" title="Help &amp; feature guide"><i class="ph ph-question" aria-hidden="true"></i> Help</button>
+    <button id="btn-about" class="header-btn" title="About Bay Hive"><i class="ph ph-info" aria-hidden="true"></i> About</button>
+    <button id="btn-export" class="header-btn" title="Export HTML report"><i class="ph ph-file-text" aria-hidden="true"></i> Export</button>
+    <button id="btn-export-png" class="header-btn" title="Save map as PNG image"><i class="ph ph-image" aria-hidden="true"></i> PNG</button>
+    <button id="btn-permalink" class="header-btn" title="Copy sharable link to clipboard"><i class="ph ph-link" aria-hidden="true"></i> Link</button>
+    <a href="/tests.html" target="_blank" class="header-btn" title="Open unit test runner" style="text-decoration:none;"><i class="ph ph-flask" aria-hidden="true"></i> Tests</a>
     <div id="status" aria-live="polite">Loading…</div>
   </div>
 </header>
@@ -37,35 +38,35 @@
 <div id="intel-bar" aria-label="Situational summary">
   <div class="intel-stat" id="intel-corridor">
     <span class="intel-val" id="intel-val-corridor">—</span>
-    <span class="intel-lbl">🌸 Corridor area</span>
+    <span class="intel-lbl"><i class="ph ph-path" aria-hidden="true"></i> Corridor area</span>
   </div>
   <div class="intel-stat" id="intel-habitat">
     <span class="intel-val" id="intel-val-habitat">—</span>
-    <span class="intel-lbl">🌿 Habitat nodes</span>
+    <span class="intel-lbl"><i class="ph ph-tree" aria-hidden="true"></i> Habitat nodes</span>
   </div>
   <div class="intel-stat" id="intel-inat">
     <span class="intel-val" id="intel-val-inat">—</span>
-    <span class="intel-lbl">🐝 Pollinators sighted</span>
+    <span class="intel-lbl"><i class="ph ph-butterfly" aria-hidden="true"></i> Pollinators sighted</span>
   </div>
   <div class="intel-stat intel-stat--climate" id="intel-climate"
        role="button" tabindex="0" aria-label="View climate ribbon"
        title="Click to view climate ribbon">
     <span class="intel-val" id="intel-val-climate">—</span>
-    <span class="intel-lbl" id="intel-lbl-climate">🌡 Season phase</span>
+    <span class="intel-lbl" id="intel-lbl-climate"><i class="ph ph-thermometer" aria-hidden="true"></i> <span id="intel-lbl-climate-text">Season phase</span></span>
   </div>
   <div class="intel-stat" id="intel-ebird">
     <span class="intel-val" id="intel-val-ebird">—</span>
-    <span class="intel-lbl">🐦 eBird sightings</span>
+    <span class="intel-lbl"><i class="ph ph-bird" aria-hidden="true"></i> eBird sightings</span>
   </div>
   <div class="intel-stat" id="intel-species">
     <span class="intel-val" id="intel-val-species">—</span>
-    <span class="intel-lbl">🌼 Native species</span>
+    <span class="intel-lbl"><i class="ph ph-flower" aria-hidden="true"></i> Native species</span>
   </div>
   <div class="intel-stat intel-stat--alert" id="intel-alerts"
        role="button" tabindex="0" aria-label="View intelligence alerts"
        title="Click to open alerts panel">
     <span class="intel-val" id="intel-val-alerts">—</span>
-    <span class="intel-lbl">⚡ Alerts</span>
+    <span class="intel-lbl"><i class="ph ph-lightning" aria-hidden="true"></i> Alerts</span>
   </div>
 </div>
 
@@ -85,7 +86,7 @@
         aria-controls="pane-habitat"
         aria-expanded="false"
         title="Habitat Sites">
-      <span class="ab-icon" aria-hidden="true">🌿</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-leaf"></i></span>
       <span class="ab-label">Habitat</span>
     </button>
 
@@ -95,7 +96,7 @@
         aria-controls="pane-sightings"
         aria-expanded="false"
         title="Sightings">
-      <span class="ab-icon" aria-hidden="true">🔭</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-binoculars"></i></span>
       <span class="ab-label">Sightings</span>
     </button>
 
@@ -105,7 +106,7 @@
         aria-controls="pane-analysis"
         aria-expanded="false"
         title="Analysis Layers">
-      <span class="ab-icon" aria-hidden="true">📊</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-chart-bar"></i></span>
       <span class="ab-label">Analysis</span>
     </button>
 
@@ -115,7 +116,7 @@
         aria-controls="pane-conservation"
         aria-expanded="false"
         title="Conservation Areas &amp; Hazards">
-      <span class="ab-icon" aria-hidden="true">🛡️</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-shield"></i></span>
       <span class="ab-label">Conserv.</span>
     </button>
 
@@ -125,7 +126,7 @@
         aria-controls="pane-landcover"
         aria-expanded="false"
         title="Land Cover &amp; Cropland">
-      <span class="ab-icon" aria-hidden="true">🗺️</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-map-trifold"></i></span>
       <span class="ab-label">Landcover</span>
     </button>
 
@@ -135,7 +136,7 @@
         aria-controls="pane-legend"
         aria-expanded="false"
         title="Map Legend">
-      <span class="ab-icon" aria-hidden="true">📖</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-book-open"></i></span>
       <span class="ab-label">Legend</span>
     </button>
 
@@ -145,7 +146,7 @@
         aria-controls="pane-trends"
         aria-expanded="false"
         title="Historical Trends">
-      <span class="ab-icon" aria-hidden="true">📈</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-trend-up"></i></span>
       <span class="ab-label">Trends</span>
     </button>
 
@@ -155,7 +156,7 @@
         aria-controls="pane-alerts"
         aria-expanded="false"
         title="Intelligence Alerts">
-      <span class="ab-icon" aria-hidden="true">⚡</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-lightning"></i></span>
       <span class="ab-label">Alerts</span>
     </button>
 
@@ -164,7 +165,7 @@
     <button id="btn-layers-all-off" class="ab-btn ab-btn--danger"
         title="Turn all layers off"
         aria-label="Turn all layers off">
-      <span class="ab-icon" aria-hidden="true">⊘</span>
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-eye-slash"></i></span>
       <span class="ab-label">All off</span>
     </button>
 
@@ -178,7 +179,7 @@
         role="region" aria-label="Habitat Sites"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-habitat-title">🌿 Habitat Sites</span>
+        <span class="flyout-pane-title" id="pane-habitat-title"><i class="ph ph-leaf" aria-hidden="true"></i> Habitat Sites</span>
         <button class="flyout-pane-close" aria-label="Close Habitat Sites panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -192,14 +193,14 @@
         role="region" aria-label="Sightings"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-sightings-title">🔭 Sightings</span>
+        <span class="flyout-pane-title" id="pane-sightings-title"><i class="ph ph-binoculars" aria-hidden="true"></i> Sightings</span>
         <button class="flyout-pane-close" aria-label="Close Sightings panel">✕</button>
       </div>
       <div class="flyout-pane-body">
         <p class="panel-section-note">Observe species activity near habitat sites.</p>
         <div id="panel-filter-chips"><!-- populated by filters.js --></div>
         <div id="panel-dates-inner">
-          <button id="btn-reload" class="reload-btn">↺ Load Observations</button>
+          <button id="btn-reload" class="reload-btn"><i class="ph ph-arrow-clockwise" aria-hidden="true"></i> Load Observations</button>
         </div>
         <div id="panel-layers"><!-- populated by ui.js --></div>
       </div>
@@ -210,7 +211,7 @@
         role="region" aria-label="Analysis Layers"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-analysis-title">📊 Analysis</span>
+        <span class="flyout-pane-title" id="pane-analysis-title"><i class="ph ph-chart-bar" aria-hidden="true"></i> Analysis</span>
         <button class="flyout-pane-close" aria-label="Close Analysis panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -222,7 +223,7 @@
                    aria-label="Pollinator Activity Heat Map">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
-          <span class="layer-emoji" aria-hidden="true">🌡</span>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-thermometer"></i></span>
           <span class="layer-label">Pollinator Activity</span>
         </label>
         <p class="layer-desc">Combined density of all pollinator sightings (iNat, GBIF, eBird) — shows where pollinators are most active.</p>
@@ -236,7 +237,7 @@
         role="region" aria-label="Conservation Areas and Hazards"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-conservation-title">🛡️ Conservation &amp; Hazards</span>
+        <span class="flyout-pane-title" id="pane-conservation-title"><i class="ph ph-shield" aria-hidden="true"></i> Conservation &amp; Hazards</span>
         <button class="flyout-pane-close" aria-label="Close Conservation and Hazards panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -249,7 +250,7 @@
         role="region" aria-label="Land Cover and Cropland"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-landcover-title">🗺️ Land Cover &amp; Cropland</span>
+        <span class="flyout-pane-title" id="pane-landcover-title"><i class="ph ph-map-trifold" aria-hidden="true"></i> Land Cover &amp; Cropland</span>
         <button class="flyout-pane-close" aria-label="Close Land Cover panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -260,7 +261,7 @@
                    aria-label="Bee-crop agricultural fringe heatmap">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
-          <span class="layer-emoji" aria-hidden="true">🐝</span>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-bee"></i></span>
           <span class="layer-label">Bee-Crop Field Fringe</span>
         </label>
         <p class="layer-desc">Heatmap of bee-dependent crop pixels from the NLCD raster — shows where cultivated fields and pasture border the corridor. Warmer = higher pollination demand.</p>
@@ -274,7 +275,7 @@
         role="region" aria-label="Map Layer Legend"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-legend-title">📖 Legend</span>
+        <span class="flyout-pane-title" id="pane-legend-title"><i class="ph ph-book-open" aria-hidden="true"></i> Legend</span>
         <button class="flyout-pane-close" aria-label="Close Legend panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -288,7 +289,7 @@
         role="region" aria-label="Historical Trends"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-trends-title">📈 Historical Trends</span>
+        <span class="flyout-pane-title" id="pane-trends-title"><i class="ph ph-trend-up" aria-hidden="true"></i> Historical Trends</span>
         <button class="flyout-pane-close" aria-label="Close Historical Trends panel">✕</button>
       </div>
       <div class="flyout-pane-body">
@@ -301,7 +302,7 @@
         role="region" aria-label="Intelligence Alerts"
         aria-hidden="true" inert>
       <div class="flyout-pane-header">
-        <span class="flyout-pane-title" id="pane-alerts-title">⚡ Intelligence Alerts</span>
+        <span class="flyout-pane-title" id="pane-alerts-title"><i class="ph ph-lightning" aria-hidden="true"></i> Intelligence Alerts</span>
         <span id="alerts-header-count" class="alerts-badge"></span>
         <button class="flyout-pane-close" aria-label="Close Intelligence Alerts panel">✕</button>
       </div>
@@ -328,7 +329,7 @@
 <!-- ── Timeline scrubber ────────────────────────────────────────────────────── -->
 <div id="timeline" aria-label="Year range filter">
   <div id="timeline-header">
-    <span id="timeline-caption">🦋 Wildlife sightings</span>
+    <span id="timeline-caption"><i class="ph ph-butterfly" aria-hidden="true"></i> Wildlife sightings</span>
     <span id="timeline-label" aria-live="polite">All years</span>
   </div>
   <div id="timeline-track" role="group" aria-label="Drag handles to filter by year">
@@ -351,15 +352,15 @@
 <div id="modal-help" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-help-title" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h2 id="modal-help-title">❓ Bay Hive — Feature Guide</h2>
+      <h2 id="modal-help-title"><i class="ph ph-question" aria-hidden="true"></i> Bay Hive — Feature Guide</h2>
       <button class="modal-close" aria-label="Close help">✕</button>
     </div>
     <div class="modal-body">
 
-      <h3>🗺️ Navigating the Map</h3>
+      <h3><i class="ph ph-map-trifold" aria-hidden="true"></i> Navigating the Map</h3>
       <p>Pan and zoom normally. The map is centered on Green Bay, WI with a 15 km analysis radius. Click any point or polygon to open a popup with details. Click empty map space to dismiss highlights.</p>
 
-      <h3>⬡ Layer Controls Panel <span class="modal-key">left side</span></h3>
+      <h3><i class="ph ph-sliders-horizontal" aria-hidden="true"></i> Layer Controls Panel <span class="modal-key">left side</span></h3>
       <p>Toggle any layer on or off using the sliders. The <strong>All off</strong> button at the top clears every layer at once. Layers are organized into four collapsible sections:</p>
       <ul>
         <li><strong>Habitat Programs</strong> — active pollinator investment sites (NE WI Pollinator Corridor, Monarch Waystations, Homegrown National Park yards). Turn these on first — they are the core of the map.</li>
@@ -368,7 +369,7 @@
         <li><strong>🔭 Sightings</strong> — iNaturalist and GBIF biodiversity observation points filtered by date range.</li>
       </ul>
 
-      <h3>🔆 Analysis Overlays</h3>
+      <h3><i class="ph ph-magnifying-glass-plus" aria-hidden="true"></i> Analysis Overlays</h3>
       <p>Several computed layers supplement the raw data:</p>
       <ul>
         <li><strong>🐝 Bee-Crop Field Fringe</strong> — amber heatmap of NLCD agricultural pixels (Cultivated Crops + Pasture/Hay) near the corridor. Warmer = higher bee-pollination demand from nearby fields. Helps identify which corridor sites sit closest to fields that need pollination services.</li>
@@ -378,33 +379,33 @@
         <li><strong>🪨 Nesting Habitat Badge</strong> — small circular badge on each corridor site marker showing a 0–100 nesting suitability score. Computed from NLCD classes 31 (Barren), 52 (Shrub/Scrub), and 71 (Grassland/Herbaceous) within 300 m of the site. Gray = Low (0–33), Tan = Moderate (34–66), Dark brown = Good (67–100). Badges appear automatically once any NLCD layer is toggled on.</li>
       </ul>
 
-      <h3>⚡ Alerts Panel <span class="modal-key">right side</span></h3>
+      <h3><i class="ph ph-lightning" aria-hidden="true"></i> Alerts Panel <span class="modal-key">right side</span></h3>
       <p>The intelligence alerts panel shows automatically computed warnings and opportunities derived from the loaded data. Click any alert to fly the map to the relevant site(s) and highlight them. Alert levels:</p>
       <ul>
-        <li><span class="modal-badge modal-badge--warn">⚠️ Warning</span> — requires attention (PFAS near habitat, high mismatch)</li>
-        <li><span class="modal-badge modal-badge--info">ℹ️ Info</span> — connectivity gap, unsupported sites</li>
-        <li><span class="modal-badge modal-badge--opp">🌱 Opportunity</span> — clusters with no habitat nearby, isolated sites</li>
-        <li><span class="modal-badge modal-badge--pos">✅ Positive</span> — connected corridor pairs</li>
-        <li><span class="modal-badge modal-badge--bal">⚖️ Mismatch</span> — crop demand vs. habitat supply</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> — requires attention (PFAS near habitat, high mismatch)</li>
+        <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i> Info</span> — connectivity gap, unsupported sites</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> — clusters with no habitat nearby, isolated sites</li>
+        <li><span class="modal-badge modal-badge--pos"><i class="ph ph-check-circle" aria-hidden="true"></i> Positive</span> — connected corridor pairs</li>
+        <li><span class="modal-badge modal-badge--bal"><i class="ph ph-scales" aria-hidden="true"></i> Mismatch</span> — crop demand vs. habitat supply</li>
       </ul>
       <p>The ⚡ count in the intel bar pulses when alerts are present. Click it to scroll to the alerts panel.</p>
       <p>Two alerts relate to the new overlays:</p>
       <ul>
-        <li><span class="modal-badge modal-badge--warn">⚠️ Warning</span> <strong>High Pesticide Pressure</strong> — fires when a corridor site or waystation falls in a Critical-band county (top quartile pesticide intensity). Includes affected site names and county context.</li>
-        <li><span class="modal-badge modal-badge--opp">🌱 Opportunity</span> <strong>Poor Nesting Habitat</strong> — fires when any corridor site scores below 25 out of 100. Suggests bare-soil patches, unmowed edges, or shrub/grassland additions near those sites.</li>
+        <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i> Warning</span> <strong>High Pesticide Pressure</strong> — fires when a corridor site or waystation falls in a Critical-band county (top quartile pesticide intensity). Includes affected site names and county context.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i> Opportunity</span> <strong>Poor Nesting Habitat</strong> — fires when any corridor site scores below 25 out of 100. Suggests bare-soil patches, unmowed edges, or shrub/grassland additions near those sites.</li>
       </ul>
 
-      <h3>🔭 Sightings &amp; Date Range</h3>
+      <h3><i class="ph ph-binoculars" aria-hidden="true"></i> Sightings &amp; Date Range</h3>
       <p>iNaturalist and GBIF observations are filtered by the From/To date inputs. Change the dates and click <strong>↺ Load Observations</strong> (or wait for the debounce after typing). The <strong>timeline scrubber</strong> at the bottom of the page provides a quick year-range filter without re-fetching from the network.</p>
       <p>Filter chips under the date inputs let you narrow observations to: verified research grade, near a habitat site, native species, or non-native/invasive species.</p>
 
-      <h3>🗄 Caching</h3>
+      <h3><i class="ph ph-database" aria-hidden="true"></i> Caching</h3>
       <p>All data is cached in your browser's IndexedDB. Area layers (corridor, waystations, land cover) are cached for 24 hours. Observation data is cached by date range for 1 hour. The intel bar shows <em>Cached</em> when the current load was served from cache and <em>Live</em> when a real network fetch occurred.</p>
 
-      <h3>📄 Export</h3>
+      <h3><i class="ph ph-file-text" aria-hidden="true"></i> Export</h3>
       <p>The Export button generates a plain-text intelligence report summarizing corridor coverage, waystation count, sighting totals, active alerts, and the current map view state. Useful for sharing a snapshot with collaborators.</p>
 
-      <h3>🗺️ Map Layer Legend</h3>
+      <h3><i class="ph ph-book-open" aria-hidden="true"></i> Map Layer Legend</h3>
       <p>The <strong>Map Layer Legend</strong> section in the left panel shows color swatches for every polygon area layer. Click a swatch row to toggle that layer on/off directly from the legend. The <strong>Establishment · ring color</strong> section explains the colored outer ring on iNaturalist sighting dots (green = native, red = introduced/invasive, gray = unknown).</p>
 
     </div>
@@ -416,7 +417,7 @@
      aria-labelledby="modal-climate-title" hidden>
   <div class="modal-box modal-box--wide">
     <div class="modal-header">
-      <h2 id="modal-climate-title">🌡 Climate Ribbon — Green Bay, WI</h2>
+      <h2 id="modal-climate-title"><i class="ph ph-thermometer" aria-hidden="true"></i> Climate Ribbon — Green Bay, WI</h2>
       <button class="modal-close" aria-label="Close climate ribbon">✕</button>
     </div>
     <div class="modal-body" id="modal-climate-body">
@@ -436,7 +437,7 @@
 <div id="modal-about" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-about-title" hidden>
   <div class="modal-box">
     <div class="modal-header">
-      <h2 id="modal-about-title">🐝 About Bay Hive</h2>
+      <h2 id="modal-about-title"><i class="ph ph-bee" aria-hidden="true"></i> About Bay Hive</h2>
       <button class="modal-close" aria-label="Close about">✕</button>
     </div>
     <div class="modal-body">

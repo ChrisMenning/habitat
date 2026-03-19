@@ -114,7 +114,7 @@ export function computeAlerts({
       const allCoords = [pfasCoord, ...nearby.map(centroid)];
       alerts.push({
         level:  'warn',
-        icon:   '⚠️',
+        icon:   '<i class="ph ph-warning"></i>',
         key:    `pfas-${pfas.properties.name}`,
         text:   `PFAS site "${pfas.properties.name}" is within 1 km of ${names.join(', ')}${nearby.length > 2 ? ` +${nearby.length - 2} more` : ''}.`,
         coords: allCoords,
@@ -135,7 +135,7 @@ export function computeAlerts({
     const names = unsupportedSites.map(s => s.properties.name || 'Corridor site').slice(0, 3);
     alerts.push({
       level:  'info',
-      icon:   'ℹ️',
+      icon:   '<i class="ph ph-info"></i>',
       key:    'unsupported-sites',
       text:   `${unsupportedSites.length} corridor site${unsupportedSites.length > 1 ? 's have' : ' has'} no recorded pollinator sightings within 500 m: ${names.join(', ')}${unsupportedSites.length > 3 ? ` +${unsupportedSites.length - 3} more` : ''}.`,
       coords: unsupportedSites.map(centroid),
@@ -220,7 +220,7 @@ export function computeAlerts({
 
     alerts.push({
       level:    'opportunity',
-      icon:     '🌱',
+      icon:     '<i class="ph ph-plant"></i>',
       key:      'opportunity-zones',
       text:     `${enrichedClusters.length} area${enrichedClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.${ownerNote}`,
       clusters: enrichedClusters,
@@ -247,7 +247,7 @@ export function computeAlerts({
 
       alerts.push({
         level:  'warn',
-        icon:   '⚠️',
+        icon:   '<i class="ph ph-warning"></i>',
         key:    `declining-public-zone-${oc.coord.join(',')}`,
         text:   `Sighting activity in this zone has declined — publicly owned land nearby makes this an urgent outreach target. ${pubParts.join(' and ')} within 800 m of an active opportunity zone where recent sightings dropped ${Math.round((1 - (oc.periodB / oc.periodA)) * 100)}% from the prior year.`,
         coords: [oc.coord],
@@ -277,7 +277,7 @@ export function computeAlerts({
     if (clusterCount > 0) {
       alerts.push({
         level:  'positive',
-        icon:   '✅',
+        icon:   '<i class="ph ph-check-circle"></i>',
         key:    'site-clusters',
         text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
         coords: clusteredSiteCoords,
@@ -309,7 +309,7 @@ export function computeAlerts({
       const extra  = isolated.length > 3 ? ` +${isolated.length - 3} more` : '';
       alerts.push({
         level:  'opportunity',
-        icon:   '🏝️',
+        icon:   '<i class="ph ph-island"></i>',
         key:    'isolated-habitat',
         text:   `${isolated.length} corridor site${isolated.length > 1 ? 's are' : ' is'} isolated — no other corridor site within ${ISOLATION_KM} km: ${labels.join(', ')}${extra}. A new corridor planting within 2 km would restore network continuity.`,
         coords: isolated.map(s => s.coord),
@@ -338,7 +338,7 @@ export function computeAlerts({
     const extra = weakNodes.length > 3 ? ` +${weakNodes.length - 3} more` : '';
     alerts.push({
       level:  'info',
-      icon:   '🔗',
+      icon:   '<i class="ph ph-link-simple"></i>',
       key:    'weak-nodes',
       text:   `${weakNodes.length} corridor site${weakNodes.length > 1 ? 's sit' : ' sits'} in a weak-signal zone — nearest corridor neighbour is 700 m–2 km away, beyond comfortable solitary bee foraging range: ${names.join(', ')}${extra}. A new planting within 700 m of each would restore mesh-level connectivity.`,
       coords: weakNodes.map(n => n.coord),
@@ -392,7 +392,7 @@ export function computeAlerts({
       const a = cSites[worst.from], b = cSites[worst.to];
       alerts.push({
         level:  'info',
-        icon:   '🔗',
+        icon:   '<i class="ph ph-link-simple"></i>',
         key:    'connectivity-gap',
         text:   `Corridor connectivity gap: the largest gap in the spanning network is ${worst.dist.toFixed(1)} km (between "${a.name}" and "${b.name}"). Most native bees forage < 2 km — a stepping-stone planting here would close the gap.`,
         coords: [a.coord, b.coord],
@@ -430,7 +430,7 @@ export function computeAlerts({
       const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
       alerts.push({
         level:  'warn',
-        icon:   '⚖️',
+        icon:   '<i class="ph ph-scales"></i>',
         key:    'mismatch-high',
         text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
         coords: [],
@@ -440,7 +440,7 @@ export function computeAlerts({
       const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
       alerts.push({
         level:  'opportunity',
-        icon:   '⚖️',
+        icon:   '<i class="ph ph-scales"></i>',
         key:    'mismatch-moderate',
         text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}).${colonyNote}${censusNote} Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
         coords: [],
@@ -467,7 +467,7 @@ export function computeAlerts({
     if (empty.length > 0) {
       alerts.push({
         level:  'opportunity',
-        icon:   '📍',
+        icon:   '<i class="ph ph-map-pin"></i>',
         key:    'regional-gap',
         text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered HNP yard or waystation there would begin corridor coverage.`,
         coords: [],
@@ -484,7 +484,7 @@ export function computeAlerts({
       const deficit = Math.abs(Math.round(climateData.pctDeviation));
       alerts.push({
         level:  'info',
-        icon:   'ℹ️',
+        icon:   '<i class="ph ph-info"></i>',
         key:    'gdd-below-normal',
         text:   `GDD accumulation is ${deficit}% below the 1991–2020 normal for this date. Pollinator emergence and bloom timing may be running late this season.`,
         coords: [],
@@ -507,7 +507,7 @@ export function computeAlerts({
         .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       alerts.push({
         level:  'warn',
-        icon:   '⚠️',
+        icon:   '<i class="ph ph-warning"></i>',
         key:    'fall-frost-risk',
         text:   `First fall frost likely within ~2 weeks (50% probability ~${frostDate}). Annual plantings at corridor sites may be approaching end of season.`,
         coords: [],
@@ -537,7 +537,7 @@ export function computeAlerts({
       const extra = criticalSites.length > 3 ? ` +${criticalSites.length - 3} more` : '';
       alerts.push({
         level:  'warn',
-        icon:   '⚠️',
+        icon:   '<i class="ph ph-warning"></i>',
         key:    'pesticide-pressure',
         text:   `High Pesticide Pressure: ${criticalSites.length} habitat site${criticalSites.length > 1 ? 's fall' : ' falls'} in a critical-band county (${countyNames.join(', ')}). Dominant row-crop agriculture drives neonicotinoid seed treatment and intensive herbicide use in this area. Coordinated buffer plantings and reduced spray windows would significantly benefit pollinators at: ${siteNames.join(', ')}${extra}.`,
         coords: criticalSites.map(centroid),
@@ -563,7 +563,7 @@ export function computeAlerts({
       const extra = poorSites.length > 3 ? ` +${poorSites.length - 3} more` : '';
       alerts.push({
         level:  'opportunity',
-        icon:   '🌱',
+        icon:   '<i class="ph ph-plant"></i>',
         key:    'poor-nesting-habitat',
         text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index — little bare ground, shrubland, or grassland detected within 300 m. Adding bare-soil patches, sand berms, or letting edges go unmowed would significantly expand nesting resources: ${names.join(', ')}${extra}.`,
         coords: poorSites.map(centroid),
@@ -614,7 +614,7 @@ export function computeAlerts({
           const addrNote   = p.norm.address !== '—' ? ` at ${p.norm.address}` : '';
           alerts.push({
             level:  'warn',
-            icon:   '⚠️',
+            icon:   '<i class="ph ph-warning"></i>',
             key:    `public-land-gap-${pid}`,
             text:   `High-Value Public Land Gap: ${acres.toFixed(1)}-acre ${ownerLabel} parcel${addrNote} has no habitat program site within 500 m and sits in an active opportunity zone. Public ownership makes this an actionable outreach target — no private negotiation required.`,
             coords: [pCoord],
@@ -754,7 +754,7 @@ export function renderAlerts(alerts, onFocus = null) {
   if (header) {
     const warnCount = alerts.filter(a => a.level === 'warn').length;
     header.textContent = alerts.length > 0
-      ? `${alerts.length} alert${alerts.length > 1 ? 's' : ''}${warnCount ? ` · ${warnCount} ⚠️` : ''}`
+      ? `${alerts.length} alert${alerts.length > 1 ? 's' : ''}${warnCount ? ` · ${warnCount} ⚠` : ''}`
       : 'No alerts';
     header.className = warnCount > 0 ? 'alerts-badge alerts-badge--warn' : 'alerts-badge';
   }

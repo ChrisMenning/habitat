@@ -366,7 +366,7 @@ export function openDrawer(feature) {
 
     const weakSignalHtml = (nearest > MESH_M && nearest <= WEAK_M) ? `
       <div class="drawer-weak-signal">
-        <span class="drawer-weak-signal-icon">⚠️</span>
+        <span class="drawer-weak-signal-icon"><i class="ph ph-warning" aria-hidden="true"></i></span>
         <div>
           <strong>Weak connectivity signal</strong> — nearest corridor node is ${Math.round(nearest)} m away.
           <p class="drawer-weak-blurb">

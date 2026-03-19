@@ -39,7 +39,7 @@ export async function initHealthCheck() {
   );
 
   banner.innerHTML =
-    `<span class="hb-icon" aria-hidden="true">⚠️</span>` +
+    `<span class="hb-icon" aria-hidden="true"><i class="ph ph-warning"></i></span>` +
     `<div class="hb-msg">` +
       `<strong>${missing.length} API key${missing.length > 1 ? 's' : ''} not configured</strong>` +
       ` \u2014 affected features: ${items.join(' \u00b7 ')}.` +

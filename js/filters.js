@@ -145,10 +145,10 @@ export function applyFilters() {
  */
 export function buildFilterChips(container) {
   const chips = [
-    { id: 'native-only',  label: 'Native only',        icon: '🌿' },
-    { id: 'invasive-only', label: 'Invasive / introduced', icon: '🚨' },
-    { id: 'recent-30',    label: 'Last 30 days',        icon: '📅' },
-    { id: 'near-habitat', label: 'Near habitat sites',  icon: '📍' },
+    { id: 'native-only',  label: 'Native only',        icon: '<i class="ph ph-leaf"></i>' },
+    { id: 'invasive-only', label: 'Invasive / introduced', icon: '<i class="ph ph-warning-octagon"></i>' },
+    { id: 'recent-30',    label: 'Last 30 days',        icon: '<i class="ph ph-calendar"></i>' },
+    { id: 'near-habitat', label: 'Near habitat sites',  icon: '<i class="ph ph-map-pin"></i>' },
   ];
 
   const row = document.createElement('div');
@@ -162,7 +162,7 @@ export function buildFilterChips(container) {
     btn.className = 'filter-chip';
     btn.dataset.filterId = chip.id;
     btn.setAttribute('aria-pressed', 'false');
-    btn.innerHTML = `<span aria-hidden="true">${esc(chip.icon)}</span> ${esc(chip.label)}`;
+    btn.innerHTML = `${chip.icon} ${esc(chip.label)}`;
 
     btn.addEventListener('click', () => {
       const on = _active.has(chip.id);

@@ -1,6 +1,9 @@
 /* ── Reset & base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* ── Phosphor icon baseline alignment ─────────────────────────────────────── */
+i.ph { vertical-align: -0.15em; }
+
 /* ── Parcel ownership table (site drawer) ────────────────────────────────── */
 .drawer-parcels-details {
   margin-top: 0.75rem;
@@ -384,6 +387,7 @@ body {
   flex-shrink: 0;
 }
 .hb-icon { font-size: 1rem; flex-shrink: 0; }
+.hb-icon .ph { vertical-align: -0.15em; }
 .hb-msg  { flex: 1; line-height: 1.4; }
 .hb-msg strong { color: #fdba74; }
 .hb-msg code { font-size: 0.75rem; background: rgba(255,255,255,0.12); padding: 1px 5px; border-radius: 3px; }
@@ -514,7 +518,7 @@ body {
   outline: 2px solid #34d399;
   outline-offset: 2px;
 }
-.ab-icon { font-size: 18px; line-height: 1; }
+.ab-icon { font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .ab-label {
   font-size: 8px;
   font-weight: 700;
@@ -700,7 +704,7 @@ details > summary:focus-visible {
 .toggle input:checked + .toggle-track::after        { transform: translateX(14px); }
 .toggle input:focus-visible + .toggle-track         { outline: 2px solid #34d399; outline-offset: 2px; }
 
-.layer-emoji { font-size: 14px; line-height: 1; }
+.layer-emoji { font-size: 14px; line-height: 1; display: flex; align-items: center; }
 
 .layer-label {
   flex: 1;
@@ -1262,7 +1266,7 @@ details > summary:focus-visible {
 }
 .alert-item:last-child { border-bottom: none; }
 
-.alert-icon { flex-shrink: 0; font-size: 14px; line-height: 1.5; }
+.alert-icon { flex-shrink: 0; font-size: 16px; line-height: 1; display: flex; align-items: center; }
 .alert-text { color: #374151; flex: 1; text-align: left; }
 
 /* Clickable alert buttons */

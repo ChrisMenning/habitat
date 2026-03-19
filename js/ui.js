@@ -700,7 +700,7 @@ export function buildAreaPopupHTML(props) {
     return `
       <div class="popup-body">
         <strong class="popup-name">${esc(props.name)}</strong>
-        <span class="popup-source area-hazard-badge">⚠️ PFAS Contamination Site · WI DNR</span>
+        <span class="popup-source area-hazard-badge"><i class="ph ph-warning" aria-hidden="true"></i> PFAS Contamination Site · WI DNR</span>
         ${rows.length ? `<dl class="popup-meta">
           ${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
         </dl>` : ''}
