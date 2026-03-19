@@ -196,10 +196,8 @@ let _timelineEndYear   = new Date().getFullYear();
 let _corridorFeats   = [];
 let _waystationFeats = [];
 let _hnpFeats        = [];
-// Full unfiltered eBird features — retained so the hummingbird toggle can re-filter
-// without a network refetch.
+// Full unfiltered eBird features — retained for filter re-application without a network refetch.
 let _ebirdAllFeats      = [];
-let _ebirdHummingOnly   = false;
 // Active site-layer set — reflects current toggle state for the three site-layer types.
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 
@@ -561,14 +559,10 @@ async function loadObservations() {
     if (ebirdResult.status === 'fulfilled') {
       const ebirdFeats = ebirdResult.value.features ?? [];
       _ebirdAllFeats = ebirdFeats;
-      // Apply hummingbird filter if the toggle is already on (e.g. page reload with saved state)
-      const ebirdVisible = _ebirdHummingOnly
-        ? ebirdFeats.filter(f => f.properties?.common?.toLowerCase().includes('hummingbird'))
-        : ebirdFeats;
-      setLayerFeatures('ebird', ebirdVisible);
-      setBaseFeatures('ebird', ebirdVisible);
-      counts['ebird'] = ebirdVisible.length;
-      ebirdCount = ebirdVisible.length;
+      setLayerFeatures('ebird', ebirdFeats);
+      setBaseFeatures('ebird', ebirdFeats);
+      counts['ebird'] = ebirdFeats.length;
+      ebirdCount = ebirdFeats.length;
     } else {
       console.warn('eBird failed:', ebirdResult.reason);
       counts['ebird'] = 0;
@@ -943,19 +937,6 @@ map.on('load', async () => {
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
-  document.getElementById('toggle-ebird-hummingbird')?.addEventListener('change', e => {
-    _ebirdHummingOnly = e.target.checked;
-    if (!_ebirdAllFeats.length) return; // not loaded yet
-    const base = _ebirdHummingOnly
-      ? _ebirdAllFeats.filter(f => f.properties?.common?.toLowerCase().includes('hummingbird'))
-      : _ebirdAllFeats;
-    setBaseFeatures('ebird', base);
-    applyFilters();            // re-apply any active date/species filters on the new base
-    // Update intel bar count to reflect the active subset
-    const valEl = document.getElementById('intel-val-ebird');
-    if (valEl) valEl.textContent = base.length.toLocaleString();
-  });
-
   // "All layers off" button â€” unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
     document.querySelectorAll('#panel input[type="checkbox"]:checked').forEach(cb => {
