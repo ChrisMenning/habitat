@@ -1683,9 +1683,9 @@ export function setParcelFeatures(geojson, classifyFn) {
     features: geojson.features.map(f => {
       const cls   = classifyFn(f.properties ?? {});
       const meta  = OWNERSHIP_META[cls];
-      // Label = municipality title-cased (all loaded parcels are public)
-      const muni  = String(f.properties?.Municipality ?? '').trim();
-      const label = muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+      // Only label publicly-owned parcels, using the ownership class display name.
+      // Private parcels get an empty label so they are not annotated on the map.
+      const label = cls !== 'private' ? (meta?.label ?? '') : '';
       return {
         ...f,
         properties: {

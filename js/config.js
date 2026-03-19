@@ -127,7 +127,7 @@ export const BEE_LAYERS = [
     label:       'Bee Records',
     emoji:       '🐝',
     description: 'All GBIF occurrence records across 6 bee families (Andrenidae, Apidae, Colletidae, Halictidae, Megachilidae, Melittidae) — the same data source as the FWS Bee Distribution Tool, scoped to Brown County.',
-    defaultOn:   false,
+    defaultOn:   true,
   },
   {
     id:          'bees-richness',
@@ -141,7 +141,7 @@ export const BEE_LAYERS = [
     label:       'Imperiled Species',
     emoji:       '⚠️',
     description: 'Occurrences of bee species with NatureServe global ranks G1–G3 (Critically Imperiled to Vulnerable) or IUCN Vulnerable / Endangered / Critically Endangered. Includes federally listed species (e.g. Rusty-patched Bumble Bee).',
-    defaultOn:   false,
+    defaultOn:   true,
   },
 ];
 

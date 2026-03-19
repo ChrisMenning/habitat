@@ -73,16 +73,64 @@ const HNP_UPSTREAM = 'https://map.homegrownnationalpark.org/api/guest/map/planti
 
 function proxyHnp(res) {
   https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
-    res.writeHead(upstream.statusCode, {
-      'Content-Type':                'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control':               'public, max-age=900',  // 15 min
+    const chunks = [];
+    upstream.on('data', chunk => chunks.push(chunk));
+    upstream.on('end', () => {
+      let plantings;
+      try {
+        plantings = JSON.parse(Buffer.concat(chunks).toString());
+      } catch (e) {
+        res.writeHead(502);
+        res.end(JSON.stringify({ error: 'HNP API returned invalid JSON' }));
+        return;
+      }
+      if (!Array.isArray(plantings)) {
+        res.writeHead(502);
+        res.end(JSON.stringify({ error: 'HNP API returned unexpected format' }));
+        return;
+      }
+      const features = plantings
+        .filter(p => p.latitude != null && p.longitude != null)
+        .map(p => ({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
+          properties: { id: p.id, org_type: p.type },
+        }));
+      const geojson = JSON.stringify({ type: 'FeatureCollection', features });
+      res.writeHead(upstream.statusCode, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'no-cache',
+      });
+      res.end(geojson);
     });
-    upstream.pipe(res);
   }).on('error', err => {
     res.writeHead(502);
     res.end(JSON.stringify({ error: err.message }));
   });
+}
+
+// ── CDL WMS ping ────────────────────────────────────────────────────────────
+// Server-side HEAD to the CropScape WMS — nassgeodata.gmu.edu sends no CORS
+// headers so a browser fetch would always be blocked; use this proxy instead.
+const CDL_WMS_PING = 'https://nassgeodata.gmu.edu/arcgis/services/CDLService/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities';
+
+function proxyCdlPing(res) {
+  const req = https.request(CDL_WMS_PING, { method: 'HEAD', timeout: 10000 }, upstream => {
+    res.writeHead(upstream.statusCode < 500 ? 200 : 502, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'no-cache',
+    });
+    res.end(JSON.stringify({ status: upstream.statusCode }));
+    upstream.resume();
+  });
+  req.on('error', err => {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  });
+  req.on('timeout', () => { req.destroy(); });
+  req.end();
 }
 
 // ── CDL stats proxy ───────────────────────────────────────────────────────
@@ -1751,6 +1799,12 @@ const server = http.createServer((req, res) => {
   // Proxy: HNP guest API (no CORS headers on their server)
   if (pathname === '/api/hnp-plantings') {
     proxyHnp(res);
+    return;
+  }
+
+  // Ping: USDA CropScape CDL WMS reachability check (server-side HEAD, no CORS)
+  if (pathname === '/api/cdl-ping') {
+    proxyCdlPing(res);
     return;
   }
 

@@ -293,6 +293,10 @@ const _refreshParcelViewport = _debounce(async () => {
       _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
       const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
       if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
+      // Sync ribbon and export snapshot so all counts agree
+      document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+      document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+      setExportData({ alerts: updatedAlerts });
     }
   } catch (err) {
     console.warn('Parcel viewport fetch failed:', err);
@@ -559,6 +563,10 @@ async function loadObservations() {
         if (_lastAlertArgs) {
           const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores });
           renderAlerts(updatedAlerts, _alertFocusHandler);
+          // Sync ribbon and export snapshot so all counts agree
+          document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+          document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+          setExportData({ alerts: updatedAlerts });
         }
       }).catch(() => { /* nesting scores unavailable — silent degradation */ });
     } else {
@@ -1236,7 +1244,7 @@ map.on('load', async () => {
   });
 
   // Wire click interactions on all layers (points + polygon fills)
-  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER]);
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
   wireInteractions(
     [...areaLayerIds, ...pointLayerIds],

@@ -44,33 +44,30 @@ export async function fetchHnpYards() {
   const res = await fetch(HNP_API);
   if (!res.ok) throw new Error(`HNP API failed: ${res.status}`);
 
-  const plantings = await res.json();
-  if (!Array.isArray(plantings)) throw new Error('HNP API returned unexpected format');
+  const data = await res.json();
+  if (!data || !Array.isArray(data.features)) throw new Error('HNP API returned unexpected format');
 
-  const features = plantings
-    .filter(p => {
-      const { latitude: lat, longitude: lng } = p;
+  const features = data.features
+    .filter(f => {
+      if (!f.geometry?.coordinates) return false;
+      const [lng, lat] = f.geometry.coordinates;
       return (
-        lat != null && lng != null &&
         lat >= BBOX.minLat && lat <= BBOX.maxLat &&
         lng >= BBOX.minLng && lng <= BBOX.maxLng
       );
     })
-    .map(p => ({
+    .map(f => ({
       type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [p.longitude, p.latitude],
-      },
+      geometry: f.geometry,
       properties: {
         data_source: 'hnp',
         layer_id:    'hnp',
         est_key:     'hnp',
-        name:        p.type === 'ORGANIZATIONS'
+        name:        f.properties.org_type === 'ORGANIZATIONS'
           ? 'HNP Member Organization'
           : 'Homegrown National Park Yard',
-        org_type:    p.type,
-        hnp_id:      p.id,
+        org_type:    f.properties.org_type,
+        hnp_id:      f.properties.id,
       },
     }));
 

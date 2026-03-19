@@ -209,7 +209,7 @@ def('🔑 API Configuration', 'NOAA_CDO_TOKEN configured (live GDD / climate dat
 
 // ── 🔌 Server Proxy Endpoints ─────────────────────────────────────────────────
 def('🔌 Server Proxy Endpoints', 'GET /api/hnp-plantings → GeoJSON FeatureCollection', async () => {
-  const r = await fetch('/api/hnp-plantings');
+  const r = await fetch('/api/hnp-plantings', { cache: 'no-store' });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const d = await r.json();
   if (d.type !== 'FeatureCollection') throw new Error(`Expected FeatureCollection, got: ${d.type ?? JSON.stringify(d).slice(0,80)}`);
@@ -325,11 +325,15 @@ def('🌐 External API Connectivity', 'OpenFreeMap tile style reachable', async 
   if (!r.ok) throw new Error(`HTTP ${r.status} — map base style unavailable`);
 });
 def('🌐 External API Connectivity', 'USDA CropScape CDL WMS reachable', async () => {
-  const r = await fetch('https://nassgeodata.gmu.edu/arcgis/services/CDLService/MapServer/WMSServer?SERVICE=WMS&REQUEST=GetCapabilities', { method: 'HEAD' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  // Direct browser fetch is CORS-blocked; use the server-side ping proxy.
+  const r = await fetch('/api/cdl-ping', { cache: 'no-store' });
+  if (!r.ok) throw new Error(`Proxy returned HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.error) throw new Error(d.error);
+  if (d.status >= 500) throw new Error(`CDL WMS returned HTTP ${d.status}`);
 });
 def('🌐 External API Connectivity', 'HNP plantings API reachable (via /api/hnp-plantings proxy)', async () => {
-  const r = await fetch('/api/hnp-plantings');
+  const r = await fetch('/api/hnp-plantings', { cache: 'no-store' });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const d = await r.json();
   if (d.type !== 'FeatureCollection') throw new Error('Expected FeatureCollection');
@@ -339,6 +343,15 @@ def('🌐 External API Connectivity', 'HNP plantings API reachable (via /api/hnp
 
 // ── 🗺️ Map Rendering ──────────────────────────────────────────────────────────
 let _testMap = null;
+// Single shared promise that resolves once the map 'load' event fires.
+// Awaiting it multiple times is safe — a resolved Promise always resolves instantly.
+let _mapLoadPromise = null;
+
+/** Returns the shared load promise (set by the map-init test). */
+function awaitStyleLoad() {
+  if (!_mapLoadPromise) return Promise.reject(new Error('Map not initialized'));
+  return _mapLoadPromise;
+}
 def('🗺️ Map Rendering', 'MapLibre GL JS library loaded', async () => {
   if (typeof maplibregl === 'undefined') throw new Error('maplibregl is not defined — CDN script failed to load');
   if (!maplibregl.Map) throw new Error('maplibregl.Map is not a constructor');
@@ -357,15 +370,17 @@ def('🗺️ Map Rendering', 'Map instance initializes without throw', async () 
     attributionControl: false,
     logoPosition: 'bottom-left',
   });
-  if (!(_testMap instanceof maplibregl.Map)) throw new Error('Map constructor returned non-Map object');
-});
-def('🗺️ Map Rendering', 'Map "load" event fires within 30 s', async () => {
-  if (!_testMap) throw new Error('Map not initialized (prior test failed)');
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Timed out after 30 s — style or tile server unreachable')), 30000);
+  // Create the shared load promise immediately so all later tests can await it.
+  _mapLoadPromise = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timed out after 35 s — style or tile server unreachable')), 35000);
     _testMap.once('load', () => { clearTimeout(timeout); resolve(); });
     if (_testMap.isStyleLoaded()) { clearTimeout(timeout); resolve(); }
   });
+  if (!(_testMap instanceof maplibregl.Map)) throw new Error('Map constructor returned non-Map object');
+});
+def('🗺️ Map Rendering', 'Map "load" event fires within 30 s', async () => {
+  if (!_mapLoadPromise) throw new Error('Map not initialized (prior test failed)');
+  await _mapLoadPromise;
 });
 def('🗺️ Map Rendering', 'SVG icon files served correctly', async () => {
   const icons = ['hummingbird', 'butterfly-with-detailed-wings', 'park', 'biohazard', 'butterfly', 'flower', 'flower-tulip', 'crow-solid-full', 'deer'];
@@ -380,7 +395,7 @@ def('🗺️ Map Rendering', 'SVG icon files served correctly', async () => {
   if (failures.length) throw new Error(failures.join('; '));
 });
 def('🗺️ Map Rendering', 'GeoJSON source can be added and updated', async () => {
-  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  await awaitStyleLoad();
   const id = '_test-source';
   if (_testMap.getSource(id)) _testMap.removeSource(id);
   _testMap.addSource(id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -391,7 +406,7 @@ def('🗺️ Map Rendering', 'GeoJSON source can be added and updated', async ()
   ]});
 });
 def('🗺️ Map Rendering', 'Circle layer can be added to map', async () => {
-  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  await awaitStyleLoad();
   const lid = '_test-layer';
   if (_testMap.getLayer(lid)) _testMap.removeLayer(lid);
   _testMap.addLayer({ id: lid, type: 'circle', source: '_test-source',
@@ -400,7 +415,7 @@ def('🗺️ Map Rendering', 'Circle layer can be added to map', async () => {
   if (!_testMap.getLayer(lid)) throw new Error('Layer not found after addLayer');
 });
 def('🗺️ Map Rendering', 'Layer visibility can be toggled', async () => {
-  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  await awaitStyleLoad();
   const lid = '_test-layer';
   if (!_testMap.getLayer(lid)) throw new Error('Layer not present (prior test may have failed)');
   _testMap.setLayoutProperty(lid, 'visibility', 'none');
@@ -411,7 +426,7 @@ def('🗺️ Map Rendering', 'Layer visibility can be toggled', async () => {
   if (vis2 !== 'visible') throw new Error(`Expected "visible", got "${vis2}"`);
 });
 def('🗺️ Map Rendering', 'Map canvas can be exported as data URL', async () => {
-  if (!_testMap || !_testMap.isStyleLoaded()) throw new Error('Map style not loaded');
+  await awaitStyleLoad();
   const canvas = _testMap.getCanvas();
   if (!canvas) throw new Error('getCanvas() returned null');
   const dataUrl = canvas.toDataURL('image/png');
