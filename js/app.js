@@ -10,7 +10,7 @@
  *   config.js â€” Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER } from './config.js';
+import { LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants,
@@ -34,6 +34,18 @@ import { initMap, registerLayer, registerAreaLayer,
          setHeatmapVisibility,
          registerCdlFringeHeatmap,
          updateCdlFringeHeatmap,
+         registerPesticideLayer,
+         setPesticideFeatures,
+         setPesticideLayerVisibility,
+         registerNestingBadgeLayer,
+         setNestingBadgeFeatures,
+         setNestingBadgeVisibility,
+         registerParcelLayer,
+         setParcelFeatures as setMapParcelFeatures,
+         setParcelLayerVisibility,
+         registerCommonsLayer,
+         setCommonsFeatures as setMapCommonsFeatures,
+         setCommonsLayerVisibility,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
@@ -42,16 +54,20 @@ import { initMap, registerLayer, registerAreaLayer,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
          getMap } from './map.js';
-import { buildLayerPanel, buildEstLegend, buildAreaLegend, updateCounts,
-         setLoading, setStatus, getDefaultDates,
-         buildPopupHTML, buildAreaPopupHTML }          from './ui.js';
+import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
+         setLoading, setStatus,
+         buildPopupHTML, buildAreaPopupHTML,
+         closeLightbox }                               from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts }                from './alerts.js';
 import { initFilters, setBaseFeatures, setHabitatCoords,
          setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
 import { openDrawer, closeDrawer, isDrawerFeature,
          setSightings as setDrawerSightings,
-         setHabitatSites as setDrawerHabitatSites }   from './drawer.js';
+         setHabitatSites as setDrawerHabitatSites,
+         setNestingScores as setDrawerNestingScores,
+         setParcelFeatures as setDrawerParcelFeatures,
+         setCommonsImages as setDrawerCommonsImages }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
          mountTimelineDrag, registerTemporalLayer }   from './timeline.js';
 import { setExportData, exportReport, exportMapPng }  from './export.js';
@@ -59,6 +75,10 @@ import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
+import { fetchPesticideCounties }                      from './pesticide.js';
+import { fetchNestingScores, enrichCentroidsWithNesting } from './nesting.js';
+import { fetchParcelsForBbox, classifyOwnership }         from './parcels.js';
+import { fetchCommonsForApp }                             from './commons.js';
 
 // â”€â”€ Utility â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -116,6 +136,9 @@ const _rasterLayerIds = new Set([
 function areaOrPointVisibility(id, visible) {
   if (AREA_LAYERS.some(l => l.id === id)) setAreaVisibility(id, visible);
   else if (_rasterLayerIds.has(id))       setRasterLayerVisibility(id, visible);
+  else if (id === 'pesticide')            setPesticideLayerVisibility('pesticide', visible);
+  else if (id === 'parcels')              setParcelLayerVisibility(visible);
+  else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
   else                                    setLayerVisibility(id, visible);
 }
 
@@ -136,6 +159,21 @@ function setLayerActive(id, visible) {
     else         _activeSiteLayers.delete(id);
     setHeatmapVisibility('connectivity-mesh', _activeSiteLayers.size > 0);
     refreshConnectivityMesh();
+  }
+
+  // Nesting badges follow NLCD active state
+  if (_rasterLayerIds.has(id)) {
+    syncNestingBadgeVisibility();
+  }
+
+  // Start viewport-gated parcel fetches when layer is enabled
+  if (id === 'parcels' && visible) {
+    _refreshParcelViewport();
+  }
+
+  // Lazy-fetch Commons photos on first enable
+  if (id === 'commons-photos' && visible && !_commonsLoaded) {
+    _lazyFetchCommons();
   }
 
   // Sync panel checkbox (programmatic assignment does NOT fire 'change')
@@ -164,6 +202,27 @@ let _ebirdAllFeats      = [];
 let _ebirdHummingOnly   = false;
 // Active site-layer set — reflects current toggle state for the three site-layer types.
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
+
+// Nesting score state — populated async after corridor data loads
+let _nestingScores    = new Map();   // site name → {score, counts, total}
+let _nestingLoaded    = false;        // true once first fetch completes
+let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
+let _alertFocusHandler = null;        // module-level so async callbacks can re-render alerts
+
+// Parcel and Commons state — populated lazily on first layer enable
+let _parcelFeatures = [];
+let _parcelLoaded   = false;
+let _commonsLoaded  = false;
+
+/** Show/hide nesting badges based on whether any NLCD layer is currently on. */
+function syncNestingBadgeVisibility() {
+  if (!_nestingLoaded) return;
+  const anyNlcd = NLCD_LAYERS.some(l => {
+    const cb = document.getElementById(`toggle-${l.id}`);
+    return cb?.checked;
+  });
+  setNestingBadgeVisibility(anyNlcd);
+}
 
 const map = initMap('map');
 
@@ -199,6 +258,73 @@ function refreshConnectivityMesh() {
   updateConnectivityMesh(_corridorFeats, wsFeats, hnpFeats, _activeSiteLayers);
 }
 
+// ── Lazy data loaders (parcel + commons) ──────────────────────────────────────
+
+/** Debounce helper — returns a version of fn that delays execution by ms. */
+function _debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+/**
+ * Viewport-gated parcel fetch.  Called on moveend / zoomend whenever the
+ * Parcel Ownership layer is active.  Only fires at zoom ≥ 13 (finer queries
+ * time out on the county GIS server).
+ */
+const _refreshParcelViewport = _debounce(async () => {
+  if (!document.getElementById('toggle-parcels')?.checked) return;
+  if (map.getZoom() < 13) return;
+  const b    = map.getBounds();
+  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+  try {
+    const feats  = await fetchParcelsForBbox(bbox);
+    _parcelFeatures = feats;
+    _parcelLoaded   = true;
+    setMapParcelFeatures({ type: 'FeatureCollection', features: feats }, classifyOwnership);
+    setDrawerParcelFeatures(feats);
+    if (_lastAlertArgs) {
+      _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
+      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
+      if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
+    }
+  } catch (err) {
+    console.warn('Parcel viewport fetch failed:', err);
+    const hint = document.getElementById('parcel-zoom-hint-panel');
+    if (hint) hint.textContent = 'Parcel data unavailable — county GIS endpoint could not be reached.';
+  }
+}, 800);
+
+/**
+ * Fetches Wikimedia Commons geotagged photos near the map centre on the first
+ * time the Commons Photos layer is enabled.
+ */
+async function _lazyFetchCommons() {
+  try {
+    const center = map.getCenter().toArray();
+    const images = await fetchCommonsForApp(center);
+    _commonsLoaded = true;
+    setDrawerCommonsImages(images);
+    const features = images
+      .filter(img => img.lat && img.lng)
+      .map(img => ({
+        type:       'Feature',
+        geometry:   { type: 'Point', coordinates: [img.lng, img.lat] },
+        properties: {
+          pageId:      img.pageId,
+          title:       img.title,
+          thumburl:    img.thumburl,
+          description: img.description,
+          artist:      img.artist,
+          license:     img.license,
+          descurl:     img.descurl,
+        },
+      }));
+    setMapCommonsFeatures({ type: 'FeatureCollection', features });
+  } catch (err) {
+    console.warn('Commons photos unavailable:', err);
+  }
+}
+
 // â”€â”€ Data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
@@ -214,8 +340,8 @@ function refreshConnectivityMesh() {
  * which triggers a fresh network fetch automatically.
  */
 async function loadObservations() {
-  const d1 = document.getElementById('date-from').value || undefined;
-  const d2 = document.getElementById('date-to').value   || undefined;
+  // No date restriction — fetch all available history. The timeline scrubber
+  // handles in-memory filtering by year range after data is loaded.
 
   setLoading(true);
   closePopup();
@@ -226,7 +352,7 @@ async function loadObservations() {
   const AREA_TTL = 24 * 60 * 60 * 1000;  // 24 h â€” area datasets change rarely
 
   // Embed dates in observation cache keys so a date change is a natural miss.
-  const obsKey = `${d1 ?? ''}:${d2 ?? ''}`;
+  const obsKey = 'all';
 
   // Tracks how many sources required a real network fetch this call.
   let networkFetches = 0;
@@ -251,14 +377,14 @@ async function loadObservations() {
       inatResult, gbifPollResult, gbifPlantResult,
       padusResult, snaResult, dnrResult,
       corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
-      quickStatsResult, cdlFringeResult, ebirdResult,
+      quickStatsResult, cdlFringeResult, ebirdResult, pesticideResult,
     ] = await Promise.allSettled([
 
       // â”€â”€ Observations (date-keyed, 1 h TTL) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // Caches the fully-processed layer partition so partitionByLayer and
       // observationsToGeoJSON are also skipped on a cache hit.
-      withCache(`obs/inat/${obsKey}`, OBS_TTL, async () => {
-        const { observations, total } = await fetchObservations(d1, d2);
+      withCache(`obs/inat/all`, OBS_TTL, async () => {
+        const { observations, total } = await fetchObservations(undefined, undefined);
         const geojson  = observationsToGeoJSON(observations);
         const byLayer  = partitionByLayer(geojson, LAYERS.map(l => l.id));
         byLayer._total = total;  // stored alongside layer arrays
@@ -267,14 +393,14 @@ async function loadObservations() {
 
       // Caches the final GeoJSON features array â€” resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/${obsKey}`, OBS_TTL, async () => {
-        const { occurrences } = await fetchGbifPollinators(d1, d2);
+      withCache(`obs/gbif-poll/all`, OBS_TTL, async () => {
+        const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
       }),
 
-      withCache(`obs/gbif-plants/${obsKey}`, OBS_TTL, async () => {
-        const { occurrences }       = await fetchGbifPlants(d1, d2);
+      withCache(`obs/gbif-plants/all`, OBS_TTL, async () => {
+        const { occurrences }       = await fetchGbifPlants(undefined, undefined);
         const { native, nonNative } = await partitionPlantOccurrences(occurrences);
         return {
           native:    gbifToGeoJSON(native,    'gbif-native-plants').features,
@@ -294,8 +420,11 @@ async function loadObservations() {
       withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
       withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
 
-      // ── eBird recent bird observations (date-keyed, 1 h TTL) ───
-      withCache(`obs/ebird/${obsKey}`, OBS_TTL, () => fetchEbirdObservations()),
+      // ── eBird recent bird observations (1 h TTL, always last 30 days) ───
+      withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()),
+
+      // ── Pesticide county choropleth (24 h TTL, static county data) ──────────
+      withCache('area/pesticide', AREA_TTL, fetchPesticideCounties),
     ]);
 
     const counts = {};
@@ -373,8 +502,23 @@ async function loadObservations() {
     // â”€â”€ GBCC Pollinator Corridor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (corridorResult.status === 'fulfilled') {
       setAreaFeatures('gbcc-corridor', corridorResult.value);
-      setAreaMarkersFeatures('gbcc-corridor', corridorCentroids(corridorResult.value));
+      const _corridorCentroids = corridorCentroids(corridorResult.value);
+      setAreaMarkersFeatures('gbcc-corridor', _corridorCentroids);
       counts['gbcc-corridor'] = corridorResult.value.features.length;
+      // Async: fetch NLCD nesting scores and update badges progressively
+      fetchNestingScores(_corridorCentroids.features).then(scores => {
+        _nestingScores = scores;
+        _nestingLoaded = true;
+        setDrawerNestingScores(scores);
+        const enriched = enrichCentroidsWithNesting(_corridorCentroids, scores);
+        setNestingBadgeFeatures(enriched);
+        syncNestingBadgeVisibility();
+        // Re-render alerts to include the poor-nesting-habitat alert
+        if (_lastAlertArgs) {
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores });
+          renderAlerts(updatedAlerts, _alertFocusHandler);
+        }
+      }).catch(() => { /* nesting scores unavailable — silent degradation */ });
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -494,8 +638,17 @@ async function loadObservations() {
     }).filter(Boolean);
     setHabitatCoords(habitatCoords);
 
+    // Pesticide county choropleth — must be resolved before computeAlerts
+    const pesticideCounties = pesticideResult.status === 'fulfilled' && pesticideResult.value
+      ? pesticideResult.value.features : [];
+    if (pesticideResult.status === 'fulfilled' && pesticideResult.value) {
+      setPesticideFeatures('pesticide', pesticideResult.value);
+    } else if (pesticideResult.status === 'rejected') {
+      console.warn('Pesticide county data unavailable:', pesticideResult.reason);
+    }
+
     // Alerts
-    const alerts = computeAlerts({
+    _lastAlertArgs = {
       corridorFeatures:    corridorFeats,
       waystationFeatures:  waystationFeats,
       pfasFeatures:        pfasFeats,
@@ -504,8 +657,11 @@ async function loadObservations() {
       cdlStats,
       quickStats,
       climateData:         getClimateState(),
-    });
-    renderAlerts(alerts, alert => {
+      pesticideCounties,
+      parcelFeatures:      _parcelFeatures,
+    };
+    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores });
+    _alertFocusHandler = alert => {
       if (!alert.coords?.length) return;
       // Ensure all layers relevant to this alert are visible before zooming.
       for (const layerId of alert.layers ?? []) {
@@ -517,7 +673,8 @@ async function loadObservations() {
         padding: { top: 80, bottom: 100, left: 540, right: 80 },
         maxZoom: isGap ? 12 : 15,
       });
-    });
+    };
+    renderAlerts(alerts, _alertFocusHandler);
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
@@ -576,8 +733,8 @@ async function loadObservations() {
       waystationCount:    _waystationFeats.length,
       inatCount:          inatObs,
       gbifCount,
-      dateFrom:           d1 ?? '',
-      dateTo:             d2 ?? '',
+      dateFrom:           '',
+      dateTo:             '',
       alerts,
       corridorFeatures:   corridorFeats,
       waystationFeatures: waystationFeats,
@@ -610,8 +767,14 @@ map.on('load', async () => {
   // 0b. NLCD per-class raster layers (16 toggleable land-cover types)
   for (const layer of NLCD_LAYERS) {
     registerRasterLayer(layer.id, layer.defaultOn, layer.tileUrl, layer.attribution);
-  }
-  // 0c. Connectivity mesh — registered early so it sits above rasters but below point layers.
+  }  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
+  registerPesticideLayer('pesticide', PESTICIDE_LAYER.defaultOn);
+  // 0d. Parcel ownership fill — beneath area polygon layers; lazy data loaded on first toggle
+  registerParcelLayer(false);
+  // 0d. Nesting badge layer — rendered above all other layers; badges start hidden
+  //     until nesting scores arrive and an NLCD layer is toggled on.
+  registerNestingBadgeLayer(false);
+  // 0d. Connectivity mesh — registered early so it sits above rasters but below point layers.
   // Visibility matches the corridor layer's defaultOn; no separate toggle.
   registerConnectivityMesh(true);
   registerPollinatorTrafficHeatmap(true);
@@ -668,12 +831,17 @@ map.on('load', async () => {
   registerLayer('native-plants',  LAYERS.find(l => l.id === 'native-plants').defaultOn,  { radius: 8, symbol: 'icon-flower' });
   registerLayer('other-plants',   LAYERS.find(l => l.id === 'other-plants').defaultOn,   { radius: 8, symbol: 'icon-flower-tulip' });
   registerLayer('other-wildlife', LAYERS.find(l => l.id === 'other-wildlife').defaultOn, { radius: 8, symbol: 'icon-deer' });
+  // Commons photo markers — registered last so they render above all other layers
+  registerCommonsLayer(false);
 
   // Build the side-panel UI
   // Opacity callback: routes to the correct setter based on layer type
   function handleOpacity(id, opacity) {
     if (AREA_LAYERS.some(l => l.id === id))    setAreaLayerOpacity(id, opacity);
     else if (_rasterLayerIds.has(id))          setRasterOpacity(id, opacity);
+    else if (id === 'pesticide')               { /* choropleth opacity is fixed by band expressions */ }
+    else if (id === 'parcels')                 { /* parcel opacity is zoom-interpolated in registerParcelLayer */ }
+    else if (id === 'commons-photos')          { /* commons circle opacity is fixed */ }
     else                                       setPointLayerOpacity(id, opacity);
   }
 
@@ -701,11 +869,35 @@ map.on('load', async () => {
       { groupLabel: 'Habitat Treatments',  layers: conservationLayers.filter(l => l.id === 'gbcc-treatment') },
       { groupLabel: 'Protected Lands',     layers: conservationLayers.filter(l => !l.id.startsWith('gbcc-')) },
       { groupLabel: 'Hazards',             layers: HAZARD_LAYERS      },
+      { groupLabel: 'Chemical Threats',    layers: [PESTICIDE_LAYER]  },
+      { groupLabel: 'Ownership',           layers: [PARCEL_LAYER]     },
     ],
     setLayerActive,
     document.getElementById('panel-areas-inner'),
     handleOpacity,
   );
+  buildPesticideLegend(document.getElementById('panel-areas-inner'));
+
+  // Zoom-level hint for parcel layer — injected after the toggle's description
+  // paragraph so it sits naturally beneath the layer row.
+  const _parcelToggleWrap = document.getElementById('toggle-parcels')?.closest('div');
+  if (_parcelToggleWrap) {
+    const _parcelHint = document.createElement('p');
+    _parcelHint.id        = 'parcel-zoom-hint-panel';
+    _parcelHint.className = 'parcel-zoom-hint-panel';
+    _parcelHint.setAttribute('aria-live', 'polite');
+    _parcelHint.textContent = 'Parcel detail visible at neighborhood zoom (zoom in to see).';
+    _parcelToggleWrap.appendChild(_parcelHint);
+  }
+
+  /** Updates the parcel zoom hint text based on current map zoom. */
+  function _updateParcelZoomHint() {
+    const hint = document.getElementById('parcel-zoom-hint-panel');
+    if (!hint) return;
+    hint.textContent = map.getZoom() >= 14
+      ? 'Parcel ownership visible.'
+      : 'Parcel detail visible at neighborhood zoom (zoom in to see).';
+  }
 
   // â”€â”€ Land Cover Analysis (NLCD classes + CDL, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Group the 16 NLCD classes by their semantic group property.
@@ -728,9 +920,10 @@ map.on('load', async () => {
   // â”€â”€ Sightings (tertiary, for impact correlation, collapsed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   buildLayerPanel(
     [
-      { groupLabel: 'iNaturalist',     layers: LAYERS      },
-      { groupLabel: 'GBIF',            layers: GBIF_LAYERS },
+      { groupLabel: 'iNaturalist',        layers: LAYERS      },
+      { groupLabel: 'GBIF',               layers: GBIF_LAYERS },
       { groupLabel: 'eBird (Cornell Lab)', layers: EBIRD_LAYER },
+      { groupLabel: 'Wikimedia Commons',  layers: [COMMONS_LAYER] },
     ],
     setLayerActive,
     null,
@@ -739,10 +932,9 @@ map.on('load', async () => {
   buildEstLegend();
   buildAreaLegend(setLayerActive);
 
-  // Populate date inputs with defaults
-  const { from, to } = getDefaultDates();
-  document.getElementById('date-from').value = from;
-  document.getElementById('date-to').value   = to;
+  // Permalink — restore state from URL hash, then init sync
+  const _permalinkState = parsePermalink();
+  if (_permalinkState) applyPermalinkState(_permalinkState, map);
 
   // Connectivity mesh follows corridor — no standalone toggle needed.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
@@ -774,12 +966,6 @@ map.on('load', async () => {
 
   document.getElementById('btn-reload').addEventListener('click', loadObservations);
 
-  // Auto-reload when dates change (debounced so the request only fires once
-  // the user finishes picking, not on every keystroke)
-  const debouncedLoad = debounce(loadObservations, 600);
-  document.getElementById('date-from').addEventListener('change', debouncedLoad);
-  document.getElementById('date-to').addEventListener('change', debouncedLoad);
-
   // Export button
   document.getElementById('btn-export').addEventListener('click', exportReport);
   document.getElementById('btn-export-png')?.addEventListener('click', exportMapPng);
@@ -794,9 +980,16 @@ map.on('load', async () => {
     el.addEventListener('click', e => { if (e.target === el) el.setAttribute('hidden', ''); })
   );
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape')
+    if (e.key === 'Escape') {
       document.querySelectorAll('.modal-overlay:not([hidden])').forEach(m => m.setAttribute('hidden', ''));
+      closeLightbox();
+    }
   });
+  // Lightbox close button and overlay-click
+  document.getElementById('lightbox-overlay')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeLightbox();
+  });
+  document.querySelector('.lightbox-close')?.addEventListener('click', closeLightbox);
 
   // Load static waystation GeoJSON immediately (no async fetch needed)
   setLayerFeatures('waystations', waystationGeoJSON().features);
@@ -831,9 +1024,7 @@ map.on('load', async () => {
   }, 2009);
   mountTimelineDrag();
 
-  // Permalink — restore state from URL hash, then init sync
-  const _permalinkState = parsePermalink();
-  if (_permalinkState) applyPermalinkState(_permalinkState, map);
+  // Permalink — init sync (state already restored above)
   initPermalink(
     () => getMap(),
     () => [_timelineStartYear, _timelineEndYear],
@@ -843,6 +1034,11 @@ map.on('load', async () => {
 
   // Recompute mesh on zoom — cluster state changes at each zoom step
   map.on('zoomend', refreshConnectivityMesh);
+  // Update parcel zoom hint and refresh parcel data on zoom
+  map.on('zoomend', _updateParcelZoomHint);
+  map.on('zoomend', _refreshParcelViewport);
+  // Refresh parcel data when the viewport moves
+  map.on('moveend', _refreshParcelViewport);
 
   // Clicking empty map space clears any active alert highlight
   map.on('click', e => {

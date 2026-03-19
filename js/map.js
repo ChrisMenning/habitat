@@ -1297,3 +1297,432 @@ export function setHeatmapOpacity(sourceId, opacity) {
  * @returns {import('maplibre-gl').Map}
  */
 export function getMap() { return _map; }
+
+// ── Pesticide pressure choropleth ─────────────────────────────────────────────
+
+/**
+ * Registers a county-level pesticide pressure choropleth.
+ *
+ * Two redundant visual channels satisfy WCAG AA non-text contrast:
+ *   • Fill color   — pale yellow (low) → red (critical)
+ *   • Fill opacity — 0.15 (Low) → 0.42 (Critical)  — stepped not continuous
+ * Band 3–4 counties additionally receive a dashed outline (third channel).
+ *
+ * Must be called before polygon area layers so it renders beneath them.
+ *
+ * @param {string}  id      - logical id (typically 'pesticide')
+ * @param {boolean} visible - initial visibility
+ */
+export function registerPesticideLayer(id, visible) {
+  _map.addSource(`pesticide-${id}`, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  // Fill — color + stepped opacity (two independent WCAG visual channels)
+  _map.addLayer({
+    id:     `fill-pesticide-${id}`,
+    type:   'fill',
+    source: `pesticide-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'fill-color': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        1, '#fef9c3',  // pale yellow  — Low
+        2, '#fbbf24',  // amber        — Moderate
+        3, '#f97316',  // orange       — High
+        4, '#dc2626',  // red          — Critical
+        '#cccccc',
+      ],
+      'fill-opacity': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        1, 0.15,
+        2, 0.22,
+        3, 0.32,
+        4, 0.42,
+        0.10,
+      ],
+    },
+  });
+
+  // Solid county outline for all bands
+  _map.addLayer({
+    id:     `outline-pesticide-${id}`,
+    type:   'line',
+    source: `pesticide-${id}`,
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color': [
+        'match', ['coalesce', ['get', 'band'], 0],
+        3, '#c2410c',
+        4, '#991b1b',
+        '#92400e',
+      ],
+      'line-width': 1.0,
+    },
+  });
+
+  // Dashed overlay for band 3–4 only — WCAG redundant visual channel
+  // (line-dasharray cannot be data-driven; a separate layer is the standard pattern)
+  _map.addLayer({
+    id:     `hatch-pesticide-${id}`,
+    type:   'line',
+    source: `pesticide-${id}`,
+    filter: ['>=', ['coalesce', ['get', 'band'], 0], 3],
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color':     '#dc2626',
+      'line-width':      2.0,
+      'line-dasharray': [5, 4],
+      'line-opacity':    0.65,
+    },
+  });
+}
+
+/**
+ * Replaces features in the pesticide choropleth source.
+ *
+ * @param {string}                    id
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setPesticideFeatures(id, geojson) {
+  _map.getSource(`pesticide-${id}`)?.setData(geojson);
+}
+
+/**
+ * Shows or hides the three pesticide choropleth sub-layers.
+ *
+ * @param {string}  id
+ * @param {boolean} visible
+ */
+export function setPesticideLayerVisibility(id, visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const prefix of ['fill-pesticide-', 'outline-pesticide-', 'hatch-pesticide-']) {
+    const lid = `${prefix}${id}`;
+    if (_map.getLayer(lid)) _map.setLayoutProperty(lid, 'visibility', vis);
+  }
+}
+
+// ── Nesting habitat indicator badge layer ─────────────────────────────────────
+//
+// Two sub-layers share the `nesting-badges` GeoJSON source:
+//   nesting-badge-circle  — filled circle, tinted by tier, offset to upper-right
+//   nesting-badge-text    — white score number centred on the circle
+//
+// Only shown at zoom ≥ 13 (same as NLCD tiles become meaningful), and only
+// when the caller has set visibility 'visible' (tied to NLCD active state).
+
+const NESTING_MIN_ZOOM = 13;
+
+/**
+ * Registers the nesting badge source and two sub-layers.
+ * Must be called after the map 'load' event fires.
+ *
+ * @param {boolean} visible
+ */
+export function registerNestingBadgeLayer(visible) {
+  if (_map.getSource('nesting-badges')) return;
+
+  _map.addSource('nesting-badges', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  // Tier → badge background color
+  const tierColor = [
+    'match', ['get', 'nesting_tier'],
+    'good',     '#6b3a2a',
+    'moderate', '#b58a5a',
+    /* default: low */ '#9ca3af',
+  ];
+
+  // Badge background circle — circle-translate offsets it upper-right of the marker
+  _map.addLayer({
+    id:      'nesting-badge-circle',
+    type:    'circle',
+    source:  'nesting-badges',
+    minzoom: NESTING_MIN_ZOOM,
+    layout:  { visibility: vis },
+    paint: {
+      'circle-radius':        9,
+      'circle-color':         tierColor,
+      'circle-opacity':       0.96,
+      'circle-stroke-color':  '#ffffff',
+      'circle-stroke-width':  1.5,
+      'circle-translate':     [13, -13],
+      'circle-translate-anchor': 'viewport',
+    },
+  });
+
+  // Score number text — text-offset aligns with circle-translate at text-size 9
+  // (12/9 ≈ 1.33 ems → matches 13px circle-translate)
+  _map.addLayer({
+    id:      'nesting-badge-text',
+    type:    'symbol',
+    source:  'nesting-badges',
+    minzoom: NESTING_MIN_ZOOM,
+    layout: {
+      visibility:              vis,
+      'text-field':            ['to-string', ['get', 'nesting_score']],
+      'text-font':             ['Noto Sans Bold'],
+      'text-size':             9,
+      'text-offset':           [1.44, -1.44],
+      'text-allow-overlap':    true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      'text-color': '#ffffff',
+    },
+  });
+}
+
+/**
+ * Replaces badge source data.
+ * Features must carry `nesting_score` (number) and `nesting_tier` (string) properties.
+ *
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setNestingBadgeFeatures(geojson) {
+  const src = _map.getSource('nesting-badges');
+  if (src) src.setData(geojson);
+}
+
+/**
+ * Shows or hides both nesting badge sub-layers.
+ * @param {boolean} visible
+ */
+export function setNestingBadgeVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['nesting-badge-circle', 'nesting-badge-text']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
+// ── Parcel ownership layer ────────────────────────────────────────────────────
+//
+// Three sub-layers share the `parcels` GeoJSON source:
+//   parcel-fill    — zoom-interpolated fill opacity (0 at z13 → 0.45 at z15)
+//                    color driven by ownership class via MapLibre match expression
+//   parcel-outline — line layer visible from zoom 12 so users get a structural cue
+//                    before fills appear
+//   parcel-label   — owner text centered on each parcel (zoom ≥ 15)
+//                    label = municipality name title-cased (public parcels only)
+
+import { OWNERSHIP_META } from './parcels.js';
+
+const _OWNERSHIP_FILL_COLOR = [
+  'match', ['get', 'own_class'],
+  'city',          OWNERSHIP_META.city.color,
+  'county',        OWNERSHIP_META.county.color,
+  'state',         OWNERSHIP_META.state.color,
+  'institutional', OWNERSHIP_META.institutional.color,
+  /* private / default */ 'transparent',
+];
+
+/**
+ * Registers the parcel fill and outline layers.
+ * Must be called after the map 'load' event.
+ *
+ * @param {boolean} visible  initial visibility
+ */
+export function registerParcelLayer(visible) {
+  if (_map.getSource('parcels')) return;
+
+  _map.addSource('parcels', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  // Outline — appears one zoom level before fills to give a structural cue
+  _map.addLayer({
+    id:      'parcel-outline',
+    type:    'line',
+    source:  'parcels',
+    minzoom: 12,
+    layout:  { visibility: vis },
+    paint: {
+      'line-color':   '#64748b',
+      'line-width':   [
+        'interpolate', ['linear'], ['zoom'],
+        12, 0.4,
+        15, 1.2,
+      ],
+      'line-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        12, 0.0,
+        13, 0.5,
+        15, 0.75,
+      ],
+    },
+  });
+
+  // Fill — smooth reveal starting at zoom 13
+  _map.addLayer({
+    id:      'parcel-fill',
+    type:    'fill',
+    source:  'parcels',
+    minzoom: 13,
+    layout:  { visibility: vis },
+    paint: {
+      'fill-color':   _OWNERSHIP_FILL_COLOR,
+      'fill-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        13, 0.0,
+        15, 0.45,
+      ],
+    },
+  }, 'parcel-outline');  // insert below outline so outline stays crisp
+
+  // Labels — centered in each parcel; public = municipality, private = owner name
+  _map.addLayer({
+    id:      'parcel-label',
+    type:    'symbol',
+    source:  'parcels',
+    minzoom: 15,
+    layout: {
+      visibility:             vis,
+      'text-field':           ['get', 'own_label'],
+      'text-font':            ['Noto Sans Regular'],
+      'text-size':            [
+        'interpolate', ['linear'], ['zoom'],
+        15, 10,
+        17, 13,
+      ],
+      'text-max-width':       8,
+      'text-anchor':          'center',
+      // Allow overlap so private parcel names aren't suppressed by collision
+      'text-allow-overlap':   true,
+      'text-ignore-placement':true,
+    },
+    paint: {
+      'text-color':            ['get', 'own_text_color'],
+      'text-halo-color':       'rgba(255,255,255,0.85)',
+      'text-halo-width':       0.8,
+      'text-opacity': [
+        'interpolate', ['linear'], ['zoom'],
+        15, 0,
+        16, 1,
+      ],
+    },
+  });
+}
+
+/**
+ * Replaces parcel source data *and* stamps `own_class` onto each feature's
+ * properties so the paint expression works.
+ *
+ * @param {GeoJSON.FeatureCollection} geojson
+ * @param {function(object):string}   classifyFn — classifyOwnership from parcels.js
+ */
+export function setParcelFeatures(geojson, classifyFn) {
+  const src = _map.getSource('parcels');
+  if (!src) return;
+  // Stamp own_class and own_label onto each feature so paint/layout
+  // expressions can read them without touching the source data.
+  const stamped = {
+    ...geojson,
+    features: geojson.features.map(f => {
+      const cls   = classifyFn(f.properties ?? {});
+      const meta  = OWNERSHIP_META[cls];
+      // Label = municipality title-cased (all loaded parcels are public)
+      const muni  = String(f.properties?.Municipality ?? '').trim();
+      const label = muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+      return {
+        ...f,
+        properties: {
+          ...(f.properties ?? {}),
+          own_class:      cls,
+          own_label:      label,
+          own_text_color: meta?.textColor ?? '#fff',
+        },
+      };
+    }),
+  };
+  src.setData(stamped);
+}
+
+/**
+ * Shows or hides both parcel sub-layers.
+ * @param {boolean} visible
+ */
+export function setParcelLayerVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['parcel-fill', 'parcel-outline', 'parcel-label']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
+// ── Wikimedia Commons camera-marker layer ────────────────────────────────────
+
+/**
+ * Registers the Commons photo marker layer.
+ * Features carry `title`, `thumburl`, `descurl`, `description`, `artist`,
+ * `license` properties for use in click handlers / lightbox.
+ *
+ * @param {boolean} visible
+ */
+export function registerCommonsLayer(visible) {
+  if (_map.getSource('commons-photos')) return;
+
+  _map.addSource('commons-photos', {
+    type:    'geojson',
+    data:    { type: 'FeatureCollection', features: [] },
+    cluster: false,
+  });
+
+  const vis = visible ? 'visible' : 'none';
+
+  _map.addLayer({
+    id:     'commons-photo-circle',
+    type:   'circle',
+    source: 'commons-photos',
+    layout: { visibility: vis },
+    paint: {
+      'circle-radius':       7,
+      'circle-color':        '#7c3aed',
+      'circle-opacity':      0.85,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+  });
+
+  _map.addLayer({
+    id:     'commons-photo-icon',
+    type:   'symbol',
+    source: 'commons-photos',
+    layout: {
+      visibility:              vis,
+      'text-field':            '📷',
+      'text-size':             11,
+      'text-allow-overlap':    true,
+      'text-ignore-placement': true,
+    },
+  });
+}
+
+/**
+ * Replaces Commons photo source data.
+ * Features must have Point geometry and appropriate properties.
+ * @param {GeoJSON.FeatureCollection} geojson
+ */
+export function setCommonsFeatures(geojson) {
+  const src = _map.getSource('commons-photos');
+  if (src) src.setData(geojson);
+}
+
+/**
+ * Shows or hides the Commons photo layers.
+ * @param {boolean} visible
+ */
+export function setCommonsLayerVisibility(visible) {
+  const vis = visible ? 'visible' : 'none';
+  for (const id of ['commons-photo-circle', 'commons-photo-icon']) {
+    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
+  }
+}
+
+

@@ -77,6 +77,8 @@ export function computeMonthHistogram(coord, sightings, radiusKm = 0.5) {
  * @param {GeoJSON.Feature[]} ctx.waystationFeatures
  * @param {GeoJSON.Feature[]} ctx.pfasFeatures
  * @param {GeoJSON.Feature[]} ctx.pollinatorSightings   — iNat pollinators + GBIF pollinators combined
+ * @param {GeoJSON.Feature[]} [ctx.pesticideCounties]   — county features from pesticide.js
+ * @param {GeoJSON.Feature[]} [ctx.parcelFeatures]      — parcel features from parcels.js
  * @returns {Alert[]}
  */
 export function computeAlerts({
@@ -88,6 +90,9 @@ export function computeAlerts({
   cdlStats           = null,
   quickStats         = null,
   climateData        = null,
+  pesticideCounties  = [],
+  nestingScores      = new Map(),
+  parcelFeatures     = [],
 }) {
   const alerts = [];
 
@@ -161,15 +166,94 @@ export function computeAlerts({
   }
   if (opportunityClusters.length > 0) {
     const total = opportunityClusters.reduce((s, c) => s + c.count, 0);
+
+    // Enrich with parcel ownership when parcel data is loaded
+    const enrichedClusters = opportunityClusters.map(oc => {
+      if (!parcelFeatures.length) return { ...oc, ownerSummary: null };
+      const nearby = _queryParcelsNearCoord(oc.coord, 800, parcelFeatures);
+      const counts  = _summariseOwnership(nearby);
+      return { ...oc, ownerSummary: counts, nearbyParcels: nearby };
+    });
+
+    // ── Temporal trend per cluster ──────────────────────────────────────────
+    // Compare sighting counts in the most recent 12 months (Period B) against
+    // the prior 12 months (Period A).  A cluster is "declining" when:
+    //   • Period A has ≥ 3 sightings (enough signal), AND
+    //   • Period B count is < 70% of Period A count (meaningful drop, not noise).
+    const _now          = new Date();
+    const _msPerYear    = 365.25 * 24 * 60 * 60 * 1000;
+    const _cutoffRecent = new Date(_now - _msPerYear);        // 12 mo ago
+    const _cutoffEarly  = new Date(_now - 2 * _msPerYear);    // 24 mo ago
+
+    enrichedClusters.forEach(oc => {
+      const nearby = pollinatorSightings.filter(s => {
+        const sc = s.geometry?.coordinates;
+        return sc && distKm(oc.coord, sc) <= OPPORTUNITY_RADIUS_KM;
+      });
+      let periodA = 0, periodB = 0;
+      for (const s of nearby) {
+        const d = s.properties?.date ? new Date(s.properties.date) : null;
+        if (!d || isNaN(d)) continue;
+        if (d >= _cutoffEarly && d < _cutoffRecent) periodA++;
+        else if (d >= _cutoffRecent)                periodB++;
+      }
+      oc.periodA   = periodA;
+      oc.periodB   = periodB;
+      oc.declining = periodA >= 3 && periodB < periodA * 0.7;
+    });
+
+    // Build per-cluster ownership phrases
+    const zonePhrases = enrichedClusters.map((oc) => {
+      if (!oc.ownerSummary) return null;
+      const parts = [];
+      if (oc.ownerSummary.city)          parts.push(`${oc.ownerSummary.city} City parcel${oc.ownerSummary.city > 1 ? 's' : ''}`);
+      if (oc.ownerSummary.county)        parts.push(`${oc.ownerSummary.county} County parcel${oc.ownerSummary.county > 1 ? 's' : ''}`);
+      if (oc.ownerSummary.state)         parts.push(`${oc.ownerSummary.state} State parcel${oc.ownerSummary.state > 1 ? 's' : ''}`);
+      if (oc.ownerSummary.institutional) parts.push(`${oc.ownerSummary.institutional} institutional parcel${oc.ownerSummary.institutional > 1 ? 's' : ''}`);
+      if (!parts.length && oc.ownerSummary.private > 0) parts.push('private land — neighbor outreach needed');
+      return parts.length ? parts.join(', ') : null;
+    }).filter(Boolean);
+
+    const ownerNote = zonePhrases.length
+      ? ` Nearby: ${zonePhrases.slice(0, 2).join('; ')}.`
+      : '';
+
     alerts.push({
       level:    'opportunity',
       icon:     '🌱',
       key:      'opportunity-zones',
-      text:     `${opportunityClusters.length} area${opportunityClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.`,
-      clusters: opportunityClusters,
-      coords:   opportunityClusters.map(c => c.coord),
+      text:     `${enrichedClusters.length} area${enrichedClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.${ownerNote}`,
+      clusters: enrichedClusters,
+      coords:   enrichedClusters.map(c => c.coord),
       layers:   ['pollinators', 'gbif-pollinators'],
     });
+
+    // ── Temporal enrichment: escalate when declining trend + public land ────
+    // For each cluster showing a statistically meaningful decline in the most
+    // recent 12-month window (Period B < 70% of Period A) that also has at
+    // least one City-of-Green-Bay or Brown-County parcel within 800 m, fire a
+    // separate ⚠️ Warning alert.  This is the "compounding alert" — ownership
+    // accessibility + observed decline = highest-priority intervention candidate.
+    for (const oc of enrichedClusters) {
+      if (!oc.declining) continue;
+      if (!oc.ownerSummary) continue;
+      const pubCity   = oc.ownerSummary.city   ?? 0;
+      const pubCounty = oc.ownerSummary.county ?? 0;
+      if (!pubCity && !pubCounty) continue;
+
+      const pubParts = [];
+      if (pubCity)   pubParts.push(`${pubCity} City of Green Bay parcel${pubCity > 1 ? 's' : ''}`);
+      if (pubCounty) pubParts.push(`${pubCounty} Brown County parcel${pubCounty > 1 ? 's' : ''}`);
+
+      alerts.push({
+        level:  'warn',
+        icon:   '⚠️',
+        key:    `declining-public-zone-${oc.coord.join(',')}`,
+        text:   `Sighting activity in this zone has declined — publicly owned land nearby makes this an urgent outreach target. ${pubParts.join(' and ')} within 800 m of an active opportunity zone where recent sightings dropped ${Math.round((1 - (oc.periodB / oc.periodA)) * 100)}% from the prior year.`,
+        coords: [oc.coord],
+        layers: ['pollinators', 'gbif-pollinators', 'parcels'],
+      });
+    }
   }
 
   // ── Alert: Connected habitat clusters ───────────────────────────────────
@@ -432,7 +516,221 @@ export function computeAlerts({
     }
   }
 
+  // ── Alert: High Pesticide Pressure ──────────────────────────────────────────
+  // Fires when a corridor site or waystation falls in a top-quartile (band 4)
+  // county.  Band is resolved by nearest county ring centroid so it works even
+  // when polygon tile delivery is delayed.
+  if (pesticideCounties.length > 0) {
+    const criticalSites = habitatSites.filter(site => {
+      const info = _getPesticideBandForCoord(centroid(site), pesticideCounties);
+      return info?.band === 4;
+    });
+    if (criticalSites.length > 0) {
+      const countyNames = [...new Set(
+        criticalSites
+          .map(s => _getPesticideBandForCoord(centroid(s), pesticideCounties)?.county)
+          .filter(Boolean)
+      )];
+      const siteNames = criticalSites.map(
+        s => s.properties.name || s.properties.registrant || 'Site'
+      ).slice(0, 3);
+      const extra = criticalSites.length > 3 ? ` +${criticalSites.length - 3} more` : '';
+      alerts.push({
+        level:  'warn',
+        icon:   '⚠️',
+        key:    'pesticide-pressure',
+        text:   `High Pesticide Pressure: ${criticalSites.length} habitat site${criticalSites.length > 1 ? 's fall' : ' falls'} in a critical-band county (${countyNames.join(', ')}). Dominant row-crop agriculture drives neonicotinoid seed treatment and intensive herbicide use in this area. Coordinated buffer plantings and reduced spray windows would significantly benefit pollinators at: ${siteNames.join(', ')}${extra}.`,
+        coords: criticalSites.map(centroid),
+        layers: ['gbcc-corridor', 'waystations', 'pesticide'],
+      });
+    }
+  }
+
+  // ── Alert: Poor Nesting Habitat ──────────────────────────────────────────
+  // Fires when any corridor site scores below 25 on the 300 m NLCD nesting index.
+  // Level ‘opportunity’: flagging these sites as candidates for bare-ground or
+  // grassland enhancement rather than treating them as imminent threats.
+  if (nestingScores.size > 0) {
+    const poorSites = corridorFeatures.filter(f => {
+      const key  = f.properties?.name ?? '';
+      const info = nestingScores.get(key);
+      return info && info.score < 25;
+    });
+    if (poorSites.length > 0) {
+      const names = poorSites
+        .map(f => f.properties?.name || 'Corridor site')
+        .slice(0, 3);
+      const extra = poorSites.length > 3 ? ` +${poorSites.length - 3} more` : '';
+      alerts.push({
+        level:  'opportunity',
+        icon:   '🌱',
+        key:    'poor-nesting-habitat',
+        text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index — little bare ground, shrubland, or grassland detected within 300 m. Adding bare-soil patches, sand berms, or letting edges go unmowed would significantly expand nesting resources: ${names.join(', ')}${extra}.`,
+        coords: poorSites.map(centroid),
+        layers: ['gbcc-corridor'],
+      });
+    }
+  }
+
+  // ── Alert: High-Value Public Land Gap ───────────────────────────────────────
+  // Fires when: (a) a City or County parcel lies within an opportunity zone
+  //             (b) that parcel has no existing habitat site within 500 m
+  //             (c) it is ≥ 0.5 acres
+  // Alert level: 'warn' (elevated from standard opportunity because public land
+  // is actionable without private negotiation).
+  if (parcelFeatures.length > 0) {
+    const PUBLIC_MIN_ACRES = 0.5;
+    const HABITAT_RADIUS_KM = 0.5;
+    const ZONE_RADIUS_M     = 800;
+
+    // Build opportunity zone centroids from sighting buckets (reuse bucket logic above)
+    const zoneCentroids = [];
+    for (const [key, count] of buckets) {
+      if (count < CLUSTER_MIN) continue;
+      const [lx, ly] = key.split(',').map(Number);
+      const c = [lx / 100 + 0.005, ly / 100 + 0.005];
+      if (!habitatSites.some(s => distKm(c, centroid(s)) <= OPPORTUNITY_RADIUS_KM)) {
+        zoneCentroids.push(c);
+      }
+    }
+
+    if (zoneCentroids.length > 0) {
+      const seen = new Set();
+      for (const zoneCoord of zoneCentroids) {
+        const nearbyParcels = _queryParcelsNearCoord(zoneCoord, ZONE_RADIUS_M, parcelFeatures);
+        for (const p of nearbyParcels) {
+          const cls = p.ownerClass;
+          if (cls !== 'city' && cls !== 'county') continue;
+          const acres = p.norm.acres;
+          if (acres < PUBLIC_MIN_ACRES) continue;
+          const pid  = p.norm.parcelId;
+          if (seen.has(pid)) continue;
+          const pCoord = _parcelCentroidCoord(p.feature);
+          if (!pCoord) continue;
+          // Must not already have a habitat site within 500 m
+          if (habitatSites.some(s => distKm(pCoord, centroid(s)) <= HABITAT_RADIUS_KM)) continue;
+          seen.add(pid);
+          const ownerLabel = cls === 'city' ? 'City of Green Bay' : 'Brown County';
+          const addrNote   = p.norm.address !== '—' ? ` at ${p.norm.address}` : '';
+          alerts.push({
+            level:  'warn',
+            icon:   '⚠️',
+            key:    `public-land-gap-${pid}`,
+            text:   `High-Value Public Land Gap: ${acres.toFixed(1)}-acre ${ownerLabel} parcel${addrNote} has no habitat program site within 500 m and sits in an active opportunity zone. Public ownership makes this an actionable outreach target — no private negotiation required.`,
+            coords: [pCoord],
+            layers: ['gbcc-corridor', 'waystations', 'parcels'],
+          });
+          if (alerts.filter(a => a.key.startsWith('public-land-gap-')).length >= 3) break;
+        }
+      }
+    }
+  }
+
   return alerts;
+}
+
+// ── Parcel spatial helpers (used by alert engine — mirrors parcels.js logic) ──
+
+function _parcelCentroidCoord(feature) {
+  const geom = feature.geometry;
+  if (!geom) return null;
+  if (geom.type === 'Point') return geom.coordinates;
+  const ring = geom.type === 'MultiPolygon'
+    ? geom.coordinates[0]?.[0]
+    : geom.coordinates?.[0];
+  if (!ring?.length) return null;
+  return [
+    ring.reduce((s, c) => s + c[0], 0) / ring.length,
+    ring.reduce((s, c) => s + c[1], 0) / ring.length,
+  ];
+}
+
+function _classifyParcelOwnership(props) {
+  // New Brown County schema (2026): explicit PublicOwner field
+  const pubOwner = props?.PublicOwner ?? null;
+  if (!pubOwner) return 'private';
+  if (pubOwner === 'State')  return 'state';
+  if (pubOwner === 'County') return 'county';
+  if (pubOwner === 'Other')  return 'institutional';
+  if (pubOwner === 'Municipal') {
+    const muni = String(props?.Municipality ?? '').toLowerCase();
+    if (/city\s+of\s+green\s+bay|green\s+bay/.test(muni)) return 'city';
+    return 'institutional';
+  }
+  return 'private';
+}
+
+function _queryParcelsNearCoord(coord, radiusM, features) {
+  const radiusKm = radiusM / 1000;
+  const results  = [];
+  for (const f of features) {
+    const c = _parcelCentroidCoord(f);
+    if (!c) continue;
+    const d = distKm(coord, c);
+    if (d > radiusKm) continue;
+    const ownerClass = _classifyParcelOwnership(f.properties ?? {});
+    // Parse acres from MapAreaTxt ('0.264 AC' or '8,274 SF')
+    const mapAreaTxt = String(f.properties?.MapAreaTxt ?? '').replace(/,/g, '');
+    const acMatch    = mapAreaTxt.match(/^([\d.]+)\s*AC$/i);
+    const sfMatch    = mapAreaTxt.match(/^([\d.]+)\s*SF$/i);
+    const acres      = acMatch ? parseFloat(acMatch[1]) : sfMatch ? parseFloat(sfMatch[1]) / 43560 : 0;
+    const muni  = String(f.properties?.Municipality ?? '').trim();
+    const muniTC = muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+    let owner = '—';
+    if      (f.properties?.PublicOwner === 'County')    owner = 'Brown County';
+    else if (f.properties?.PublicOwner === 'State')     owner = 'State of Wisconsin';
+    else if (f.properties?.PublicOwner === 'Municipal') owner = muniTC || 'Municipality';
+    else if (f.properties?.PublicOwner === 'Other')     owner = 'Public (Other)';
+    results.push({ feature: f, ownerClass, distM: Math.round(d * 1000),
+      norm: {
+        owner,
+        parcelId: String(f.properties?.PARCELID ?? '').trim() || '—',
+        address:  muniTC || '—',
+        acres,
+      },
+    });
+  }
+  return results;
+}
+
+function _summariseOwnership(parcels) {
+  const counts = { city: 0, county: 0, state: 0, institutional: 0, private: 0 };
+  for (const p of parcels) counts[p.ownerClass] = (counts[p.ownerClass] ?? 0) + 1;
+  return counts;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Finds the nearest county in pesticideCounties to the given [lng,lat] point
+ * (using squared degree distance from polygon ring centroid) and returns its
+ * properties, or null if no counties are loaded.
+ *
+ * @param {[number,number]}   coord
+ * @param {GeoJSON.Feature[]} counties
+ * @returns {{ band: number, band_label: string, county: string }|null}
+ */
+function _getPesticideBandForCoord(coord, counties) {
+  if (!counties?.length) return null;
+  let best = null, bestDSq = Infinity;
+  for (const f of counties) {
+    const geom = f?.geometry;
+    if (!geom) continue;
+    const ring = geom.type === 'MultiPolygon'
+      ? geom.coordinates[0]?.[0]
+      : geom.coordinates?.[0];
+    if (!ring?.length) continue;
+    const cx = ring.reduce((s, c) => s + c[0], 0) / ring.length;
+    const cy = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+    const dSq = (coord[0] - cx) ** 2 + (coord[1] - cy) ** 2;
+    if (dSq < bestDSq) { bestDSq = dSq; best = f; }
+  }
+  if (!best) return null;
+  return {
+    band:       best.properties.band,
+    band_label: best.properties.band_label,
+    county:     best.properties.name,
+  };
 }
 
 // ── DOM rendering ─────────────────────────────────────────────────────────────

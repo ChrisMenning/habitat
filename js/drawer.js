@@ -13,8 +13,10 @@
  * Point features (observations) continue to use the regular popup.
  */
 
-import { esc } from './ui.js';
+import { esc, openLightbox } from './ui.js';
 import { computeMonthHistogram } from './alerts.js';
+import { nestingTier, nestingDescription } from './nesting.js';
+import { queryParcelsNear, OWNERSHIP_META, getParcelState } from './parcels.js';
 
 const NEARBY_KM = 0.75;
 
@@ -23,6 +25,19 @@ let _sightings = [];
 
 /** All loaded habitat site features — updated after each load. */
 let _habitatSites = [];
+
+/** Nesting scores keyed by site name — updated asynchronously after NLCD fetch. */
+let _nestingScores = new Map();
+
+/** Parcel features — updated when parcel layer is first enabled. */
+let _parcelFeatures = [];
+
+/** Wikimedia Commons images — updated asynchronously for the full app area. */
+let _commonsImages = [];
+
+export function setNestingScores(scores)    { _nestingScores  = scores   ?? new Map(); }
+export function setParcelFeatures(features) { _parcelFeatures = features ?? []; }
+export function setCommonsImages(images)    { _commonsImages  = images   ?? []; }
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
 
@@ -157,6 +172,126 @@ function _buildSpeciesSection(speciesByGroup) {
     <summary class="drawer-section-label drawer-section-summary">Observed Species</summary>
     <div class="drawer-species-groups">${groupsHtml}</div>
   </details>`;
+}
+
+// ── Parcel + photo drawer sections ───────────────────────────────────────────
+
+/**
+ * Builds a collapsible "Nearby Parcels" table section.
+ * Handles parcel fetch states: loading → spinner, error → message, ready → table.
+ * @param {number[]|null} coord  [lng, lat]
+ */
+function _buildNearbyParcelsSection(coord) {
+  if (!coord) return '';
+  const RADIUS_M = 400;
+
+  const state = getParcelState();
+
+  // Loading state — parcel fetch is in progress
+  if (state === 'loading') {
+    return `
+    <details class="drawer-parcels-details" open>
+      <summary class="drawer-section-label drawer-section-summary">Nearby Parcels (${RADIUS_M}&thinsp;m)</summary>
+      <p class="parcel-loading"><span class="parcel-spinner" aria-hidden="true"></span> Loading parcel data…</p>
+    </details>`;
+  }
+
+  // Error state — endpoint unreachable or returned an error
+  if (state === 'error') {
+    return `
+    <details class="drawer-parcels-details">
+      <summary class="drawer-section-label drawer-section-summary">Nearby Parcels (${RADIUS_M}&thinsp;m)</summary>
+      <p class="parcel-unavailable">Parcel data unavailable — county GIS endpoint could not be reached.</p>
+    </details>`;
+  }
+
+  // Idle or ready but no features loaded yet (layer not yet enabled)
+  if (!_parcelFeatures.length) return '';
+
+  const nearby = queryParcelsNear(coord, RADIUS_M, _parcelFeatures).slice(0, 5);
+  if (!nearby.length) return '';
+
+  const rows = nearby.map(p => {
+    const meta = OWNERSHIP_META[p.ownerClass];
+    const badgeStyle = p.ownerClass !== 'private'
+      ? `background:${esc(meta.color)};color:${esc(meta.textColor)};`
+      : 'background:#374151;color:#9ca3af;';
+    const classBadge = `<span class="parcel-owner-badge" style="${badgeStyle}">${esc(meta.label)}</span>`;
+    const copyBtn = p.norm.address !== '—'
+      ? `<button class="parcel-copy-btn" data-address="${esc(p.norm.address)}" type="button" aria-label="Copy address ${esc(p.norm.address)}">📋&thinsp;<span class="copy-confirm" aria-live="polite"></span></button>`
+      : '';
+    const acresLabel = p.norm.acres > 0 ? p.norm.acres.toFixed(2) + '&thinsp;ac' : '—';
+    return `<tr>
+      <td class="parcel-td-owner">${esc(p.norm.owner)}</td>
+      <td class="parcel-td-class">${classBadge}</td>
+      <td class="parcel-td-pid">${esc(p.norm.parcelId)}</td>
+      <td class="parcel-td-addr">${esc(p.norm.address)}</td>
+      <td class="parcel-td-acres">${acresLabel}</td>
+      <td class="parcel-td-copy">${copyBtn}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <details class="drawer-parcels-details">
+      <summary class="drawer-section-label drawer-section-summary">Nearby Parcels (${RADIUS_M}&thinsp;m)</summary>
+      <table class="parcel-table" aria-label="Nearby parcels within ${RADIUS_M} m">
+        <thead>
+          <tr>
+            <th scope="col">Owner / Municipality</th>
+            <th scope="col">Class</th>
+            <th scope="col">Parcel ID</th>
+            <th scope="col">Location</th>
+            <th scope="col">Area</th>
+            <th scope="col"><span aria-label="Copy address">📋</span></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p class="parcel-zoom-hint">Enable "Parcel Ownership" layer to see parcels on map (zoom ≥ 14)</p>
+    </details>`;
+}
+
+/**
+ * Builds a collapsible "Nearby Photos" grid using pre-loaded Commons images.
+ * @param {number[]|null} coord  [lng, lat]
+ */
+function _buildNearbyPhotosSection(coord) {
+  if (!coord || !_commonsImages.length) return '';
+  const RADIUS_KM = 0.5;
+  const photos = _commonsImages.filter(img => {
+    if (!img.lat || !img.lng) return false;
+    const R  = 6371;
+    const d1 = (img.lat - coord[1]) * Math.PI / 180;
+    const d2 = (img.lng - coord[0]) * Math.PI / 180;
+    const x  = Math.sin(d1 / 2) ** 2
+              + Math.cos(coord[1] * Math.PI / 180)
+              * Math.cos(img.lat  * Math.PI / 180)
+              * Math.sin(d2 / 2) ** 2;
+    return (R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))) <= RADIUS_KM;
+  }).slice(0, 6);
+  if (!photos.length) return '';
+
+  const items = photos.map(img =>
+    `<li class="commons-photo-item" role="listitem">
+      <button class="commons-photo-thumb-btn"
+              data-page-id="${esc(String(img.pageId))}"
+              type="button"
+              aria-label="View photo: ${esc(img.title)}">
+        <img class="commons-photo-thumb"
+             src="${esc(img.thumburl)}"
+             alt="${esc(img.description || img.title)}"
+             loading="lazy"
+             width="120" height="90">
+      </button>
+    </li>`
+  ).join('');
+
+  return `
+    <details class="drawer-photos-details">
+      <summary class="drawer-section-label drawer-section-summary">Nearby Photos · Wikimedia Commons</summary>
+      <ul class="commons-photo-grid" role="list">${items}</ul>
+      <p class="commons-photo-note">Photos from Wikimedia Commons contributors — click to view attribution.</p>
+    </details>`;
 }
 
 /**
@@ -345,6 +480,30 @@ export function openDrawer(feature) {
     return '';
   })();
 
+  // ── Nesting suitability score ─────────────────────────────────────────────
+  const nestingHtml = (() => {
+    const key  = p.name || p.registrant || '';
+    const info = _nestingScores.get(key);
+    if (!info) return '';
+    const { tier, label, color } = nestingTier(info.score);
+    const desc  = nestingDescription(info.score, info.counts ?? {});
+    const ariaL = `Nesting suitability: ${info.score} out of 100 — ${label}. ${desc}`;
+    return `
+      <div class="drawer-section-label">Nesting suitability (NLCD 300 m radius)</div>
+      <div class="drawer-nesting-row"
+           role="img"
+           aria-label="${esc(ariaL)}">
+        <div class="drawer-nesting-score" style="background:${color};">${info.score}</div>
+        <div class="drawer-nesting-detail">
+          <span class="drawer-nesting-label" style="color:${color};">${esc(label)}</span>
+          <span class="drawer-nesting-desc">${esc(desc)}</span>
+        </div>
+      </div>`;
+  })();
+
+  const nearbyParcelsHtml = _buildNearbyParcelsSection(coord);
+  const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
+
   body.innerHTML = `
     <div class="drawer-header" style="background:${headerColor};">
       <div class="drawer-header-label">${esc(titleLabel)}</div>
@@ -353,12 +512,40 @@ export function openDrawer(feature) {
     <div class="drawer-content">
       ${approxHtml}
       ${metaHtml}
+      ${nestingHtml}
+      ${nearbyParcelsHtml}
       ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>
       ${nearbySightingsHtml}
       ${nearbySitesHtml}
+      ${nearbyPhotosHtml}
       ${linkHtml}
     </div>`;
+
+  // Wire parcel copy buttons
+  body.querySelectorAll('.parcel-copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const addr = btn.dataset.address;
+      navigator.clipboard?.writeText(addr).catch(() => {}).finally(() => {
+        const conf = btn.querySelector('.copy-confirm');
+        if (conf) {
+          conf.textContent = 'Address copied';
+          setTimeout(() => { conf.textContent = ''; }, 1600);
+        }
+      });
+    });
+  });
+
+  // Wire commons photo thumbnails → lightbox
+  if (_commonsImages.length) {
+    const photoMap = new Map(_commonsImages.map(img => [String(img.pageId), img]));
+    body.querySelectorAll('.commons-photo-thumb-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const img = photoMap.get(btn.dataset.pageId);
+        if (img) openLightbox(img);
+      });
+    });
+  }
 
   drawer.classList.add('drawer--open');
   drawer.setAttribute('aria-hidden', 'false');

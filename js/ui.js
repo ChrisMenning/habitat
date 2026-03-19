@@ -7,6 +7,62 @@
 
 import { ESTABLISHMENT, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER } from './config.js';
 
+// ── Pesticide legend ──────────────────────────────────────────────────────────
+
+// Band definitions used in both the MapLibre paint expression and this legend.
+const _PESTICIDE_BANDS = [
+  { band: 1, label: 'Low',      desc: 'score < 0.45 · forest / low-input dairy',      color: '#fef9c3', border: '#92400e', dashed: false },
+  { band: 2, label: 'Moderate', desc: '0.45–0.60 · mixed dairy / row-crop transition', color: '#fbbf24', border: '#92400e', dashed: false },
+  { band: 3, label: 'High',     desc: '0.60–0.70 · significant corn/soy + insecticide', color: '#f97316', border: '#c2410c', dashed: true  },
+  { band: 4, label: 'Critical', desc: '≥ 0.70 · dominant row-crop + neonicotinoids',   color: '#dc2626', border: '#991b1b', dashed: true  },
+];
+
+/**
+ * Appends the pesticide pressure choropleth legend to a container element.
+ * Includes labeled color swatches and a brief methodology note to satisfy
+ * WCAG SC 1.4.1 (color not the only conveyed channel).
+ *
+ * @param {HTMLElement} container - element to append the legend into
+ */
+export function buildPesticideLegend(container) {
+  if (!container) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'pesticide-legend';
+  wrap.setAttribute('aria-label', 'Pesticide pressure band legend');
+  const title = document.createElement('p');
+  title.className = 'pesticide-legend-title';
+  title.textContent = '🧪 Pesticide Pressure — intensity bands';
+  wrap.appendChild(title);
+  for (const b of _PESTICIDE_BANDS) {
+    const row = document.createElement('div');
+    row.className = 'pesticide-legend-row';
+    row.setAttribute('role', 'listitem');
+    const swatch = document.createElement('div');
+    swatch.className = `pesticide-legend-swatch${b.dashed ? ' pesticide-legend-swatch--dashed' : ''}`;
+    swatch.style.cssText = `background:${b.color};border-color:${b.border};`;
+    swatch.setAttribute('aria-hidden', 'true');
+    const bandLabel = document.createElement('span');
+    bandLabel.className = 'pesticide-legend-band';
+    bandLabel.textContent = `Band ${b.band}`;
+    const label = document.createElement('span');
+    label.className = 'pesticide-legend-label';
+    label.textContent = b.label;
+    const desc = document.createElement('span');
+    desc.className = 'pesticide-legend-desc';
+    desc.textContent = b.desc;
+    row.appendChild(swatch);
+    row.appendChild(bandLabel);
+    row.appendChild(label);
+    row.appendChild(desc);
+    wrap.appendChild(row);
+  }
+  const note = document.createElement('p');
+  note.className = 'pesticide-legend-note';
+  note.textContent = 'Proxy derived from USDA CDL crop mix × application rate lookup. Dashed border = top-half intensity (bands 3–4).';
+  wrap.appendChild(note);
+  container.appendChild(wrap);
+}
+
 // ── Security helper ──────────────────────────────────────────────────────────
 
 /**
@@ -473,4 +529,45 @@ export function buildAreaPopupHTML(props) {
 
   // Fallback — should never occur
   return `<div class="popup-body"><strong>${esc(props.name || 'Feature')}</strong></div>`;
+}
+
+// ── Photo lightbox ────────────────────────────────────────────────────────────
+
+/**
+ * Opens the full-screen lightbox showing a Wikimedia Commons image.
+ * Keyboard focus is moved to the close button; Escape / overlay-click closes.
+ *
+ * @param {{ thumburl:string, title:string, description:string, artist:string, license:string, descurl:string }} image
+ */
+export function openLightbox(image) {
+  const overlay = document.getElementById('lightbox-overlay');
+  if (!overlay) return;
+
+  const imgEl     = document.getElementById('lightbox-img');
+  const titleEl   = document.getElementById('lightbox-title');
+  const artistEl  = document.getElementById('lightbox-artist');
+  const licenseEl = document.getElementById('lightbox-license');
+  const linkEl    = document.getElementById('lightbox-link');
+
+  if (imgEl) {
+    imgEl.src = image.thumburl;
+    imgEl.alt = image.description || image.title;
+  }
+  if (titleEl)   titleEl.textContent   = image.description || image.title;
+  if (artistEl)  artistEl.textContent  = image.artist;
+  if (licenseEl) licenseEl.textContent = image.license;
+  if (linkEl) {
+    linkEl.href = image.descurl;
+    linkEl.textContent = 'View on Wikimedia Commons ↗';
+  }
+
+  overlay.removeAttribute('hidden');
+  overlay.querySelector('.lightbox-close')?.focus();
+}
+
+/**
+ * Closes the photo lightbox overlay.
+ */
+export function closeLightbox() {
+  document.getElementById('lightbox-overlay')?.setAttribute('hidden', '');
 }

@@ -343,9 +343,508 @@ function tileToBbox3857(z, x, y) {
  * Fetch a full NLCD WMS tile, filter it to a single class, and write the
  * resulting PNG to the HTTP response.
  */
+// ── NLCD nesting suitability score batch ─────────────────────────────────────
+// Accepts /api/nlcd-nesting?sites=JSON_ARRAY where each element is {id,lng,lat}.
+// For each site fetches NLCD tiles at z=13, counts pixels of classes 31/52/71
+// within a 300m radius, and returns a 0–100 nesting suitability score.
+//
+// Nesting weights:
+//   31  Barren Land         — bare soil/sand, prime ground-nesting substrate  (weight 3)
+//   52  Shrub/Scrub         — stem-nesting; also ground-nesting               (weight 2)
+//   71  Grassland/Herbaceous — ground-nesting bees                            (weight 3)
+
+const NESTING_CODES   = { 31: 3, 52: 2, 71: 3 };
+const NESTING_Z       = 13;
+const NESTING_RADIUS  = 300; // metres
+const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
+
+const _nestingTileCache    = new Map(); // key → { palMap, indices, width, height }
+const _nestingTileCacheAge = new Map(); // key → timestamp
+
+/** Convert [lng, lat] to slippy tile [tx, ty] at zoom z. */
+function _lngLatToTile(z, lng, lat) {
+  const n     = Math.pow(2, z);
+  const tx    = Math.floor((lng + 180) / 360 * n);
+  const latR  = lat * Math.PI / 180;
+  const ty    = Math.floor(
+    (1 - Math.log(Math.tan(latR) + 1 / Math.cos(latR)) / Math.PI) / 2 * n
+  );
+  return [tx, ty];
+}
+
+/** All tiles whose bounding box intersects a 300m circle around [lng, lat]. */
+function _tilesForRadius(z, lng, lat, radiusM) {
+  const dLng = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+  const dLat = radiusM / 111320;
+  const [txL]  = _lngLatToTile(z, lng - dLng, lat);
+  const [txR]  = _lngLatToTile(z, lng + dLng, lat);
+  const [, tyT] = _lngLatToTile(z, lng, lat + dLat);
+  const [, tyB] = _lngLatToTile(z, lng, lat - dLat);
+  const tiles = [];
+  for (let tx = txL; tx <= txR; tx++)
+    for (let ty = tyT; ty <= tyB; ty++)
+      tiles.push([tx, ty]);
+  return tiles;
+}
+
+/** Build a palette-index → NLCD code map for only the nesting classes. */
+function _buildNestingPaletteMap(plte) {
+  const map = new Map();
+  const TOL = 20;
+  const count = plte.length / 3;
+  for (let i = 0; i < count; i++) {
+    const r = plte[i * 3], g = plte[i * 3 + 1], b = plte[i * 3 + 2];
+    for (const [codeStr, [tr, tg, tb]] of Object.entries(NLCD_COLORS)) {
+      const code = Number(codeStr);
+      if (NESTING_CODES[code] === undefined) continue;
+      if (Math.abs(r - tr) <= TOL && Math.abs(g - tg) <= TOL && Math.abs(b - tb) <= TOL) {
+        map.set(i, code);
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Fetch and decode an NLCD WMS tile at zoom z.
+ * Returns { palMap, indices, width, height } or null on error.
+ * Results are cached for 24 h.
+ */
+async function _getNlcdTileData(z, tx, ty) {
+  const key = `${z}/${tx}/${ty}`;
+  const now = Date.now();
+  if (_nestingTileCache.has(key) && now - _nestingTileCacheAge.get(key) < NESTING_TTL) {
+    return _nestingTileCache.get(key);
+  }
+  const bbox = tileToBbox3857(z, tx, ty);
+  let buf;
+  try {
+    buf = await httpsGetBuf('www.mrlc.gov',
+      '/geoserver/mrlc_display/NLCD_2021_Land_Cover_L48/ows' +
+      '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap' +
+      '&LAYERS=NLCD_2021_Land_Cover_L48' +
+      '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
+      '&CRS=EPSG%3A3857&STYLES=&WIDTH=256&HEIGHT=256' +
+      '&BBOX=' + bbox);
+  } catch { return null; }
+
+  let offset = 8, ihdr = null, plte = null;
+  const idatBufs = [];
+  while (offset < buf.length - 4) {
+    const len  = buf.readUInt32BE(offset);
+    const type = buf.slice(offset + 4, offset + 8).toString('ascii');
+    const data = buf.slice(offset + 8, offset + 8 + len);
+    offset += 12 + len;
+    if      (type === 'IHDR') ihdr = { width: data.readUInt32BE(0), height: data.readUInt32BE(4), colorType: data[9] };
+    else if (type === 'PLTE') plte = data;
+    else if (type === 'IDAT') idatBufs.push(data);
+  }
+  if (!ihdr || ihdr.colorType !== 3 || !plte || idatBufs.length === 0) return null;
+  let inflated;
+  try { inflated = zlib.inflateSync(Buffer.concat(idatBufs)); } catch { return null; }
+  const indices = decodePaletteToIndices(inflated, ihdr.width, ihdr.height);
+  const palMap  = _buildNestingPaletteMap(plte);
+  const result  = { palMap, indices, width: ihdr.width, height: ihdr.height };
+  _nestingTileCache.set(key, result);
+  _nestingTileCacheAge.set(key, now);
+  return result;
+}
+
+/**
+ * Count nesting-class pixels within radiusM of [lng, lat] in a single decoded tile.
+ * Returns { counts: {31:N,52:N,71:N}, total: N }.
+ */
+function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
+  const { palMap, indices, width, height } = tile;
+  const counts = { 31: 0, 52: 0, 71: 0 };
+  let total = 0;
+  const latR    = lat * Math.PI / 180;
+  const cosLat  = Math.cos(latR);
+  // Convert radiusM to approximate degree offsets for bounding-box pre-filter
+  const dLng = radiusM / (111320 * cosLat);
+  const dLat = radiusM / 111320;
+  // Fractional pixel coords of the site in this tile
+  const n    = Math.pow(2, z);
+  const fpx  = ((lng + 180) / 360 * n - tx) * 256;
+  const fpyNum = Math.log(Math.tan(latR) + 1 / Math.cos(latR));
+  const fpy  = ((1 - fpyNum / Math.PI) / 2 * n - ty) * 256;
+  // Pixel radius bounds (approximate using longitude-scale for x, latitude-scale for y)
+  const rpx  = dLng / (360 / (256 * n));
+  const rpy  = dLat / (1 / (256 * n));  // rough — good enough for 300m
+  const pxLo = Math.max(0,         Math.floor(fpx - rpx));
+  const pxHi = Math.min(width - 1, Math.ceil(fpx + rpx));
+  const pyLo = Math.max(0,         Math.floor(fpy - rpy));
+  const pyHi = Math.min(height - 1, Math.ceil(fpy + rpy));
+
+  for (let py = pyLo; py <= pyHi; py++) {
+    for (let px = pxLo; px <= pxHi; px++) {
+      // Convert pixel to WGS 84 and check distance (equirectangular approximation)
+      const [pLng, pLat] = pixelToLngLat(z, tx, ty, px, py);
+      const dx = (pLng - lng) * cosLat * 111320;
+      const dy = (pLat - lat) * 111320;
+      if (dx * dx + dy * dy > radiusM * radiusM) continue;
+      total++;
+      const code = palMap.get(indices[py * width + px]);
+      if (code !== undefined) counts[code] = (counts[code] || 0) + 1;
+    }
+  }
+  return { counts, total };
+}
+
+/**
+ * Convert raw pixel counts to a 0–100 nesting score.
+ * Scaling: 20% weighted-coverage → 100 points.
+ */
+function _nestingRawToScore(counts, total) {
+  if (!total) return 0;
+  const raw = (counts[31] || 0) * 3 + (counts[52] || 0) * 2 + (counts[71] || 0) * 3;
+  // raw / (total * 3) = weighted proportion; × 500 scales so 20% → 100
+  return Math.min(100, Math.round(raw / (total * 3) * 500));
+}
+
+/** Compute nesting scores for a batch of {id, lng, lat} sites. */
+async function _computeNestingBatch(sites) {
+  // Collect all unique tiles needed
+  const tileKeys = new Map(); // 'z/tx/ty' → [tx, ty]
+  for (const s of sites) {
+    for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
+      const k = `${NESTING_Z}/${tx}/${ty}`;
+      if (!tileKeys.has(k)) tileKeys.set(k, [tx, ty]);
+    }
+  }
+  // Fetch all unique tiles in parallel
+  const fetched = new Map();
+  await Promise.allSettled(
+    [...tileKeys.entries()].map(async ([k, [tx, ty]]) => {
+      const data = await _getNlcdTileData(NESTING_Z, tx, ty);
+      if (data) fetched.set(k, { data, tx, ty });
+    })
+  );
+  // Score each site
+  return sites.map(s => {
+    const aggCounts = { 31: 0, 52: 0, 71: 0 };
+    let aggTotal = 0;
+    for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
+      const k = `${NESTING_Z}/${tx}/${ty}`;
+      const t = fetched.get(k);
+      if (!t) continue;
+      const { counts, total } = _countNestingPixels(t.data, NESTING_Z, tx, ty, s.lng, s.lat, NESTING_RADIUS);
+      aggCounts[31] += counts[31] || 0;
+      aggCounts[52] += counts[52] || 0;
+      aggCounts[71] += counts[71] || 0;
+      aggTotal += total;
+    }
+    const score = _nestingRawToScore(aggCounts, aggTotal);
+    return { id: s.id, score, counts: aggCounts, total: aggTotal };
+  });
+}
+
+async function proxyNlcdNesting(req, res) {
+  const parsed = url.parse(req.url, true);
+  let sites;
+  try {
+    const raw = parsed.query.sites;
+    if (!raw) throw new Error('missing sites');
+    sites = JSON.parse(decodeURIComponent(raw));
+    if (!Array.isArray(sites) || sites.some(s => typeof s.lng !== 'number' || typeof s.lat !== 'number')) {
+      throw new Error('invalid sites array');
+    }
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: e.message }));
+    return;
+  }
+  // Limit batch size to prevent abuse
+  if (sites.length > 200) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'batch too large (max 200 sites)' }));
+    return;
+  }
+  try {
+    const results = await _computeNestingBatch(sites);
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'public, max-age=86400',
+    });
+    res.end(JSON.stringify(results));
+  } catch (err) {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
+// ── Brown County parcel ownership proxy ──────────────────────────────────────
+// Brown County, WI publishes parcel data through their ArcGIS REST Feature
+// Service.  The server does not send CORS headers so requests must be proxied.
+//
+// Endpoint:
+//   https://gis.co.brown.wi.us/arcgis/rest/services/OpenData/Parcels_Public_View/FeatureServer/0/query
+//
+// Called with ?bbox=minX,minY,maxX,maxY (WGS 84) from the client.
+// Returns up to 2000 features as GeoJSON.  Cached in memory for 24 h.
+//
+// Brown County assessment schema field assumptions:
+//   OWNNAME / OWN1        — owner name
+//   PARCELID / PARCELNO   — parcel identifier
+//   SITUSADDR / SITEADDR  — site address
+//   CALCACRES / ACRES     — acreage
+//   PROPCLASS / CLASS_CD  — property class code
+
+const PARCEL_BASE_URL =
+  'https://gis.browncountywi.gov/arcgis/rest/services/ParcelAndAddressFeatures/FeatureServer/23/query';
+
+// ── Parcel tile grid ──────────────────────────────────────────────────────────
+// Brown County is tiled into a fixed 0.02° × 0.02° grid aligned to these
+// origin coordinates.  Both the server warmer and the browser client use the
+// same grid so every browser request is a guaranteed cache hit after warmup.
+//
+// Grid extents:  lng -88.20 → -87.80  (20 columns)
+//                lat  44.40 →  44.70  (15 rows)
+// Total tiles: 300
+// Warmup time: 300 × 2.5 s ≈ 12.5 min (runs silently in the background)
+
+const PARCEL_TILE_DEG  = 0.02;
+const PARCEL_TILE_COLS = 20;                    // columns (lng axis)
+const PARCEL_TILE_ROWS = 15;                    // rows    (lat axis)
+const PARCEL_TILE_ORIG_LNG = -88.20;
+const PARCEL_TILE_ORIG_LAT =  44.40;
+const PARCEL_TILE_TTL_MS   = 24 * 60 * 60 * 1000;
+
+// Cache: key = "xi,yi" (integer tile indices)
+const _parcelTileCache = new Map(); // key → { body: string, age: number }
+
+/** Return the [west, south, east, north] bbox for grid tile (xi, yi). */
+function _tileBbox(xi, yi) {
+  const w = +(PARCEL_TILE_ORIG_LNG + xi * PARCEL_TILE_DEG).toFixed(6);
+  const s = +(PARCEL_TILE_ORIG_LAT + yi * PARCEL_TILE_DEG).toFixed(6);
+  const e = +(w + PARCEL_TILE_DEG).toFixed(6);
+  const n = +(s + PARCEL_TILE_DEG).toFixed(6);
+  return [w, s, e, n];
+}
+
+// Layer 26 (GCS_Parcel) is a non-spatial table with owner name fields.
+// Join key: layer 23 PARCELID = layer 26 ParcelNumber.
+// Confidential=1 records are excluded (privacy protection).
+const PARCEL_OWNER_BASE_URL = 'https://gis.browncountywi.gov/arcgis/rest/services/ParcelAndAddressFeatures/FeatureServer/26/query';
+
+/**
+ * Build a display-ready owner name from a layer-26 attributes object.
+ * Names are stored ALL-CAPS; we convert to title case.
+ * Corporate / LLC names are typically stored entirely in LastName1.
+ */
+function _buildOwnerName(attrs) {
+  const tc  = s => String(s || '').trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const str = s => String(s || '').trim();
+
+  const last1  = tc(attrs.LastName1      || '');
+  const ext1   = tc(attrs.NameExtension1 || '');
+  const first1 = tc(attrs.FirstName1     || '');
+  const mid1   = tc(attrs.MiddleName1    || '');
+
+  if (last1) {
+    const ext = ext1 ? ` ${ext1}` : '';
+    if (first1) return `${last1}${ext}, ${first1}${mid1 ? ' ' + mid1 : ''}`;
+    return `${last1}${ext}`;
+  }
+
+  // Attention line — trusts, LLCs, c/o names stored here when LastName1 is empty
+  const attn = tc(str(attrs.Attention));
+  if (attn) return attn;
+
+  // Co-owner fallback
+  const last2  = tc(attrs.LastName2  || '');
+  const first2 = tc(attrs.FirstName2 || '');
+  if (last2) return first2 ? `${last2}, ${first2}` : last2;
+
+  return '';
+}
+
+/**
+ * POST to layer 26 for the given PARCELID list and return a Map of
+ * ParcelNumber → display owner name.  Records with Confidential=1 are omitted.
+ */
+function _fetchOwnerNames(parcelIds) {
+  return new Promise((resolve, reject) => {
+    if (!parcelIds.length) { resolve(new Map()); return; }
+    // SQL IN clause — single-quote each id, escape any embedded single quotes
+    const escaped = parcelIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
+    const body = new URLSearchParams({
+      where:             `ParcelNumber IN (${escaped}) AND (Confidential IS NULL OR Confidential = 0)`,
+      outFields:         'ParcelNumber,Attention,LastName1,FirstName1,MiddleName1,NameExtension1,LastName2,FirstName2',
+      returnGeometry:    'false',
+      f:                 'json',
+      resultRecordCount: '2000',
+    }).toString();
+
+    const parsed = new URL(PARCEL_OWNER_BASE_URL);
+    const req = https.request(
+      { method: 'POST', hostname: parsed.hostname, path: parsed.pathname,
+        timeout: 20000,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+                   'Content-Length': Buffer.byteLength(body),
+                   'User-Agent': 'habitat-map/1.0' } },
+      upstream => {
+        const chunks = [];
+        upstream.on('data', c => chunks.push(c));
+        upstream.on('end', () => {
+          try {
+            const j    = JSON.parse(Buffer.concat(chunks).toString());
+            const map  = new Map();
+            for (const rec of j.features ?? []) {
+              const pn   = rec.attributes?.ParcelNumber;
+              const name = _buildOwnerName(rec.attributes ?? {});
+              if (pn && name) map.set(pn, name);
+            }
+            resolve(map);
+          } catch (err) { reject(err); }
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); reject(new Error('owner names timeout')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+/**
+ * Fetch a single grid tile from the county GIS server.
+ * Two-step: geometry + classification from layer 23, owner names from layer 26.
+ * Result is stored in _parcelTileCache keyed by "xi,yi".
+ */
+function _fetchParcelTile(xi, yi) {
+  return new Promise((resolve, reject) => {
+    const key = `${xi},${yi}`;
+    const now = Date.now();
+    const hit = _parcelTileCache.get(key);
+    if (hit && now - hit.age < PARCEL_TILE_TTL_MS) { resolve(hit.body); return; }
+
+    const [w, s, e, n] = _tileBbox(xi, yi);
+    const bbox = `${w},${s},${e},${n}`;
+
+    const params = new URLSearchParams({
+      where:             'PublicOwner IS NOT NULL',
+      geometry:          bbox,
+      geometryType:      'esriGeometryEnvelope',
+      inSR:              '4326',
+      spatialRel:        'esriSpatialRelIntersects',
+      returnGeometry:    'true',
+      outSR:             '4326',
+      outFields:         'PARCELID,PublicOwner,Municipality,MapAreaTxt',
+      f:                 'geojson',
+      resultRecordCount: '2000',
+    });
+
+    const fullUrl = `${PARCEL_BASE_URL}?${params.toString()}`;
+    const parsed  = new URL(fullUrl);
+
+    const req = https.get(
+      { hostname: parsed.hostname, path: parsed.pathname + parsed.search,
+        timeout: 25000, headers: { 'User-Agent': 'habitat-map/1.0' } },
+      upstream => {
+        const chunks = [];
+        upstream.on('data', c => chunks.push(c));
+        upstream.on('end', async () => {
+          if (upstream.statusCode !== 200) {
+            reject(new Error(`Parcel upstream HTTP ${upstream.statusCode}`)); return;
+          }
+          const rawBody = Buffer.concat(chunks).toString('utf8');
+          let geojson;
+          try {
+            geojson = JSON.parse(rawBody);
+            if (geojson.error) { reject(new Error(`ArcGIS ${geojson.error.code}: ${geojson.error.message}`)); return; }
+          } catch (err) { reject(err); return; }
+
+          const body = JSON.stringify(geojson);
+          _parcelTileCache.set(key, { body, age: Date.now() });
+          resolve(body);
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+    req.on('error', reject);
+  });
+}
+
+/** Handle GET /api/parcel-tile?xi=N&yi=N */
+function proxyParcelTile(reqUrl, res) {
+  const qs = url.parse(reqUrl, true).query;
+  const xi = parseInt(qs.xi, 10);
+  const yi = parseInt(qs.yi, 10);
+
+  if (!Number.isFinite(xi) || !Number.isFinite(yi) ||
+      xi < 0 || xi >= PARCEL_TILE_COLS || yi < 0 || yi >= PARCEL_TILE_ROWS) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'tile index out of range' }));
+    return;
+  }
+
+  _fetchParcelTile(xi, yi)
+    .then(body => {
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'public, max-age=86400',
+      });
+      res.end(body);
+    })
+    .catch(err => {
+      res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: err.message }));
+    });
+}
+
+/**
+ * Background cache warmer.  Iterates every grid tile in county-scan order
+ * (row-by-row, roughly south→north) with a 2.5 s pause between tiles so
+ * the county GIS server is not flooded.  Already-cached tiles are skipped.
+ * Runs entirely in the background — errors are logged but do not crash.
+ */
+async function _warmParcelCache() {
+  const total = PARCEL_TILE_COLS * PARCEL_TILE_ROWS;
+  let warmed = 0;
+  let skipped = 0;
+  console.log(`[parcel-warm] starting — ${total} tiles, ~${Math.round(total * 2.5 / 60)} min`);
+
+  for (let yi = 0; yi < PARCEL_TILE_ROWS; yi++) {
+    for (let xi = 0; xi < PARCEL_TILE_COLS; xi++) {
+      const key = `${xi},${yi}`;
+      if (_parcelTileCache.has(key)) { skipped++; continue; }
+
+      await new Promise(r => setTimeout(r, 2500));
+
+      try {
+        await _fetchParcelTile(xi, yi);
+        warmed++;
+        if (warmed % 20 === 0) {
+          console.log(`[parcel-warm] ${warmed + skipped}/${total} (${warmed} fetched)`);
+        }
+      } catch (err) {
+        console.warn(`[parcel-warm] tile ${xi},${yi} failed: ${err.message}`);
+      }
+    }
+  }
+  console.log(`[parcel-warm] complete — ${warmed} fetched, ${skipped} from cache`);
+}
+
+// Legacy bbox-based endpoint kept for any direct callers.
+// For new code, prefer /api/parcel-tile?xi=N&yi=N
+function proxyParcels(reqUrl, res) {
+  const qs = url.parse(reqUrl, true).query;
+  const [rawW, rawS, rawE, rawN] = (qs.bbox || '-88.07,44.47,-87.89,44.57').split(',').map(Number);
+  // Find the grid tile whose centre is closest to the bbox centre and serve it.
+  const cx  = (rawW + rawE) / 2;
+  const cy  = (rawS + rawN) / 2;
+  const xi  = Math.max(0, Math.min(PARCEL_TILE_COLS - 1,
+    Math.floor((cx - PARCEL_TILE_ORIG_LNG) / PARCEL_TILE_DEG)));
+  const yi  = Math.max(0, Math.min(PARCEL_TILE_ROWS - 1,
+    Math.floor((cy - PARCEL_TILE_ORIG_LAT) / PARCEL_TILE_DEG)));
+  proxyParcelTile(`?xi=${xi}&yi=${yi}`, res);
+}
+
 function proxyNlcdTile(code, z, x, y, res) {
-  const targetRgb = NLCD_COLORS[code];
-  if (!targetRgb) { res.writeHead(400); res.end('Unknown NLCD code'); return; }
 
   const bbox = tileToBbox3857(z, x, y);
   const wmsPath =
@@ -871,6 +1370,22 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Batch: NLCD nesting suitability scores for a set of corridor sites
+  if (pathname === '/api/nlcd-nesting') {
+    proxyNlcdNesting(req, res);
+    return;
+  }
+
+  // Brown County parcel ownership data (GIS portal doesn't send CORS headers)
+  if (pathname === '/api/parcel-tile') {
+    proxyParcelTile(req.url, res);
+    return;
+  }
+  if (pathname === '/api/parcels') {
+    proxyParcels(req.url, res);
+    return;
+  }
+
   // Proxy: NLCD per-class filtered tile
   const nlcdMatch = pathname.match(/^\/api\/nlcd-tile\/(\d+)\/(\d+)\/(\d+)\/(\d+)$/);
   if (nlcdMatch) {
@@ -905,4 +1420,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
+  // Pre-warm the parcel tile cache in the background.
+  // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
+  setTimeout(_warmParcelCache, 5000);
 });
