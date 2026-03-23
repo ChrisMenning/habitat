@@ -846,6 +846,142 @@ export function updatePollinatorTrafficHeatmap(sightingFeatures) {
   source.setData({ type: 'FeatureCollection', features });
 }
 
+// ── Expansion Opportunities layer ────────────────────────────────────────────
+
+/**
+ * Registers the Expansion Opportunities circle layer.
+ * Features are colored by composite suitability tier:
+ *   good (≥70)    — emerald green
+ *   moderate (≥45) — amber
+ *   poor (<45)    — red
+ */
+export function registerExpansionOpportunitiesLayer(visible) {
+  _map.addSource('expansion-opportunities', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'points-expansion-opportunities',
+    type:   'circle',
+    source: 'expansion-opportunities',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'circle-radius':         9,
+      'circle-color': [
+        'match', ['coalesce', ['get', 'suitability'], 'moderate'],
+        'good',     '#10b981',
+        'moderate', '#f59e0b',
+        'poor',     '#ef4444',
+        '#6b7280',
+      ],
+      'circle-opacity':        0.82,
+      'circle-stroke-color':   '#ffffff',
+      'circle-stroke-width':   1.5,
+      'circle-stroke-opacity': 0.5,
+    },
+  });
+}
+
+/** Replaces Expansion Opportunities source data. */
+export function updateExpansionOpportunitiesLayer(geojson) {
+  _map.getSource('expansion-opportunities')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
+// ── Problem Areas layer ───────────────────────────────────────────────────────
+
+/**
+ * Registers the Problem Areas circle layer.
+ * Features are colored by severity:
+ *   high   — red
+ *   medium — amber
+ *   low    — gray
+ */
+export function registerProblemAreasLayer(visible) {
+  _map.addSource('problem-areas', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'points-problem-areas',
+    type:   'circle',
+    source: 'problem-areas',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'circle-radius':  10,
+      'circle-color': [
+        'match', ['coalesce', ['get', 'severity'], 'medium'],
+        'high',   '#dc2626',
+        'medium', '#d97706',
+        'low',    '#6b7280',
+        '#9ca3af',
+      ],
+      'circle-opacity':        0.78,
+      'circle-stroke-color':   '#1a1a1a',
+      'circle-stroke-width':   1.5,
+      'circle-stroke-opacity': 0.4,
+      'circle-blur':           0.1,
+    },
+  });
+}
+
+/** Replaces Problem Areas source data. */
+export function updateProblemAreasLayer(geojson) {
+  _map.getSource('problem-areas')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
+// ── Habitat Suitability heatmap ───────────────────────────────────────────────
+
+/**
+ * Registers the habitat suitability heatmap.
+ * Each grid-point feature carries a `weight` property (0–1) computed by
+ * computeSuitabilityPoints() in alerts.js.
+ *
+ * Color ramp: transparent → pale green → medium green → deep forest green.
+ * High-weight (good suitability) areas render as rich green; sparse/polluted
+ * areas fade to transparent.
+ */
+export function registerSuitabilityHeatmap(visible) {
+  _map.addSource('suitability-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'suitability-heat-layer',
+    type:   'heatmap',
+    source: 'suitability-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
+      'heatmap-intensity': 1.2,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.10, 'rgba(187,247,208,0.18)',
+        0.30, 'rgba(74,222,128,0.42)',
+        0.55, 'rgba(22,163,74,0.68)',
+        0.75, 'rgba(20,83,45,0.86)',
+        1.0,  'rgba(6,78,59,1.0)',
+      ],
+      'heatmap-radius': [
+        'interpolate', ['exponential', 2], ['zoom'],
+        8, 40, 10, 80, 12, 160, 14, 320,
+      ],
+      'heatmap-opacity': 0.70,
+    },
+  });
+}
+
+/** Replaces Suitability heatmap source data. */
+export function updateSuitabilityHeatmap(geojson) {
+  _map.getSource('suitability-heat')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
 export function setHeatmapVisibility(id, visible) {
   const vis = visible ? 'visible' : 'none';
   const layerId = `${id}-layer`;

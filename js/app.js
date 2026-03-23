@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS } from './config.js';
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER } from './config.js';
 import { fetchObservations, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
@@ -51,6 +51,12 @@ import { initMap, registerLayer, registerAreaLayer,
          registerCommonsLayer,
          setCommonsFeatures as setMapCommonsFeatures,
          setCommonsLayerVisibility,
+         registerExpansionOpportunitiesLayer,
+         updateExpansionOpportunitiesLayer,
+         registerProblemAreasLayer,
+         updateProblemAreasLayer,
+         registerSuitabilityHeatmap,
+         updateSuitabilityHeatmap,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
@@ -64,7 +70,10 @@ import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend,
          buildPopupHTML, buildAreaPopupHTML,
          esc, closeLightbox }                               from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
-import { computeAlerts, renderAlerts }                from './alerts.js';
+import { computeAlerts, renderAlerts,
+         computeExpansionOpportunities,
+         computeProblemFeatures,
+         computeSuitabilityPoints }            from './alerts.js';
 import { initFilters, setBaseFeatures, setHabitatCoords,
          setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
 import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
@@ -783,6 +792,23 @@ async function loadObservations() {
     };
     renderAlerts(alerts, _alertFocusHandler);
 
+    // ── Analysis layers — expansion, problems, suitability ───────────────────
+    const _analysisCtx = {
+      corridorFeatures:    corridorFeats,
+      waystationFeatures:  waystationFeats,
+      hnpFeatures:         hnpFeats,
+      pfasFeatures:        pfasFeats,
+      pollinatorSightings: allPollinatorFeatures,
+      pesticideCounties,
+    };
+    updateExpansionOpportunitiesLayer(computeExpansionOpportunities(_analysisCtx));
+    updateProblemAreasLayer(computeProblemFeatures({
+      ..._analysisCtx,
+      nestingScores: _nestingScores,
+      canopyScores:  _canopyScores,
+    }));
+    updateSuitabilityHeatmap(computeSuitabilityPoints(_analysisCtx));
+
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
 
@@ -1009,6 +1035,10 @@ map.on('load', async () => {
   registerPollinatorTrafficHeatmap(true);
   // 0d. CDL fringe heatmap — agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
+  // 0e. Analysis layers — expansion opportunities, problem areas, suitability heatmap
+  registerExpansionOpportunitiesLayer(false);
+  registerProblemAreasLayer(false);
+  registerSuitabilityHeatmap(false);
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -1094,6 +1124,16 @@ map.on('load', async () => {
     ],
     setLayerActive,
     document.getElementById('panel-habitat-inner'),
+    handleOpacity,
+  );
+
+  // ── Opportunity & Risk (pane-analysis) ─────────────────────────────────────
+  buildLayerPanel(
+    [
+      { groupLabel: 'Opportunity & Risk', layers: [...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER] },
+    ],
+    setLayerActive,
+    document.getElementById('panel-analysis-inner'),
     handleOpacity,
   );
 
@@ -1196,6 +1236,9 @@ map.on('load', async () => {
   });
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
+  });
+  document.getElementById('toggle-suitability-heat')?.addEventListener('change', e => {
+    setHeatmapVisibility('suitability-heat', e.target.checked);
   });
   // "All layers off" button — unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {

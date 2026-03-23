@@ -252,6 +252,19 @@
           <span class="layer-label">Species Richness</span>
         </label>
         <p class="layer-desc">Heatmap of bee record density — a spatial proxy for species richness. Brighter areas have more bee specimens documented in GBIF collections.</p>
+        <p class="layer-group-label">Habitat Suitability</p>
+        <label class="layer-row" for="toggle-suitability-heat">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-suitability-heat"
+                   aria-label="Habitat Suitability Heatmap">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-plant"></i></span>
+          <span class="layer-label">Suitability Heatmap</span>
+        </label>
+        <p class="layer-desc">Green-ramp heatmap scoring native plant presence, pollinator density, proximity to existing habitat, and distance from pollution sources. Brighter green = higher suitability for new habitat establishment.</p>
+        <p class="layer-group-label">Opportunity &amp; Risk</p>
+        <div id="panel-analysis-inner"><!-- populated by app.js --></div>
       </div>
     </div>
 

@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bay Hive — Pollinator Habitat Intelligence · Greater Green Bay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET & TOKENS ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+
+:root {
+  --honey:      #D4921A;
+  --amber:      #B8780F;
+  --gold:       #F0B040;
+  --wax:        #EEE0C0;
+  --cream:      #F6F0E2;
+  --field:      #141A0C;
+  --bark:       #1E2414;
+  --moss:       #2A3318;
+  --sage:       #4A5C30;
+  --fog:        #B8C4A0;
+  --mist:       #7A8C62;
+  --paper:      #F2EDE0;
+  --ink:        #141A0C;
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-mono:    'DM Mono', 'Courier New', monospace;
+  --font-body:    'DM Sans', sans-serif;
+
+  --gap-xs: 0.5rem;
+  --gap-sm: 1rem;
+  --gap-md: 2rem;
+  --gap-lg: 4rem;
+  --gap-xl: 8rem;
+}
+
+body {
+  background: var(--field);
+  color: var(--fog);
+  font-family: var(--font-body);
+  font-weight: 300;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 999;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bark); }
+::-webkit-scrollbar-thumb { background: var(--sage); }
+
+/* ─── NAV ────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 3rem;
+  background: rgba(20, 26, 12, 0.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(212, 146, 26, 0.12);
+}
+
+.nav-wordmark {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  text-decoration: none;
+}
+.nav-wordmark .w1 { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--wax); }
+.nav-wordmark .w2 { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--honey); }
+.nav-wordmark .wh { font-size: 0.8rem; opacity: 0.5; color: var(--honey); margin-left: 0.1rem; }
+
+.nav-links { display: flex; gap: 2rem; list-style: none; align-items: center; }
+.nav-links a {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mist);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--honey); }
+.nav-cta {
+  background: var(--honey) !important;
+  color: var(--ink) !important;
+  padding: 0.45rem 1.1rem;
+  font-weight: 500 !important;
+  transition: background 0.2s, transform 0.15s !important;
+}
+.nav-cta:hover { background: var(--gold) !important; transform: translateY(-1px); }
+
+/* ─── HERO ───────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 55% 45%;
+  position: relative;
+  overflow: hidden;
+  padding-top: 4rem;
+}
+
+.hero-bg {
+  position: absolute; inset: 0; z-index: 0;
+  overflow: hidden;
+}
+.hero-hex {
+  position: absolute;
+  right: -5%; top: -10%;
+  width: 65%; height: 120%;
+  opacity: 0.055;
+}
+.hero-hex svg { width: 100%; height: 100%; }
+.hero-vignette {
+  position: absolute; inset: 0; z-index: 1;
+  background: radial-gradient(ellipse 70% 90% at 30% 60%, transparent 40%, var(--field) 80%);
+}
+
+.hero-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 6rem 3rem 6rem 4rem;
+}
+
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: riseIn 0.7s 0.1s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.hero-eyebrow-line { width: 2rem; height: 1px; background: var(--honey); }
+.hero-eyebrow span {
+  font-family: var(--font-mono);
+  font-size: 0.61rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--honey);
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3.8rem, 7vw, 6.8rem);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  color: var(--wax);
+  margin-bottom: 0.3rem;
+  opacity: 0;
+  animation: riseIn 0.7s 0.25s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+h1 .hl { color: var(--honey); font-style: italic; }
+
+.h1-tagline {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 600;
+  font-style: italic;
+  color: var(--mist);
+  margin-bottom: 2.25rem;
+  display: block;
+  opacity: 0;
+  animation: riseIn 0.7s 0.38s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+.hero-desc {
+  font-size: 1.05rem;
+  color: var(--fog);
+  max-width: 440px;
+  margin-bottom: 3rem;
+  line-height: 1.75;
+  opacity: 0;
+  animation: riseIn 0.7s 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+.hero-actions {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  opacity: 0;
+  animation: riseIn 0.7s 0.62s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.9rem 1.8rem;
+  font-weight: 500;
+  transition: all 0.18s ease;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary { background: var(--honey); color: var(--ink); }
+.btn-primary:hover { background: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212,146,26,0.3); }
+.btn-ghost { background: transparent; color: var(--fog); border: 1px solid rgba(184,196,160,0.3); }
+.btn-ghost:hover { border-color: var(--honey); color: var(--wax); }
+
+.hero-right {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  padding: 6rem 3rem;
+}
+
+.intel-card {
+  background: rgba(42,51,24,0.5);
+  border: 1px solid rgba(212,146,26,0.2);
+  padding: 2rem;
+  width: 100%;
+  max-width: 360px;
+  backdrop-filter: blur(8px);
+  position: relative;
+  opacity: 0;
+  animation: riseIn 0.8s 0.75s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+.intel-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--honey), transparent);
+}
+.card-header {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--honey);
+  margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-header::after { content: ''; flex: 1; height: 1px; background: rgba(212,146,26,0.25); }
+
+.stat-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgba(184,196,160,0.08);
+}
+.stat-row:last-of-type { border-bottom: none; }
+.stat-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em; color: var(--mist); text-transform: uppercase; }
+.stat-value { font-family: var(--font-display); font-size: 1.4rem; font-weight: 600; color: var(--wax); }
+.stat-unit { font-family: var(--font-mono); font-size: 0.6rem; color: var(--mist); margin-left: 0.25rem; }
+
+.alert-mini {
+  margin-top: 1.5rem;
+  padding: 0.85rem 1rem;
+  background: rgba(212,146,26,0.07);
+  border-left: 2px solid var(--honey);
+}
+.alert-mini-lbl { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--honey); margin-bottom: 0.35rem; }
+.alert-mini p { font-size: 0.8rem; color: var(--fog); line-height: 1.5; }
+
+.scroll-cue {
+  position: absolute;
+  bottom: 2.5rem; left: 4rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  z-index: 2;
+  opacity: 0;
+  animation: riseIn 1s 1.2s forwards;
+}
+.scroll-cue span { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mist); }
+.scroll-line { width: 1px; height: 2.5rem; background: linear-gradient(to bottom, var(--mist), transparent); }
+
+/* ─── SHARED SECTION STYLES ──────────────────────────────────── */
+section { position: relative; }
+
+.sec-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--honey);
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.sec-label::before { content: ''; display: inline-block; width: 1.5rem; height: 1px; background: var(--honey); }
+
+h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 4vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--wax);
+  letter-spacing: -0.01em;
+}
+h2 em { font-style: italic; color: var(--honey); }
+
+h3 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--wax);
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+}
+p { color: var(--fog); }
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,146,26,0.3), transparent);
+}
+
+/* ─── THE PROBLEM ────────────────────────────────────────────── */
+#problem {
+  padding: var(--gap-xl) 4rem;
+  background: var(--bark);
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-lg);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.problem-left .lead {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-style: italic;
+  color: var(--wax);
+  line-height: 1.5;
+  margin: 1.75rem 0 1.5rem;
+}
+.problem-left p { font-size: 0.98rem; line-height: 1.8; max-width: 500px; }
+
+.problem-right { display: flex; flex-direction: column; justify-content: center; gap: 1.25rem; }
+
+.blind-spot {
+  display: flex; gap: 1.2rem; align-items: flex-start;
+  padding: 1.25rem;
+  border: 1px solid rgba(184,196,160,0.1);
+  background: rgba(20,26,12,0.4);
+  transition: border-color 0.2s;
+}
+.blind-spot:hover { border-color: rgba(212,146,26,0.3); }
+.blind-spot-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 0.1rem; }
+.blind-spot-text strong { display: block; font-family: var(--font-body); font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.25rem; }
+.blind-spot-text p { font-size: 0.82rem; line-height: 1.6; color: var(--mist); }
+
+/* ─── THE TOOL ───────────────────────────────────────────────── */
+#tool { padding: var(--gap-xl) 4rem; max-width: 1200px; margin: 0 auto; }
+
+.tool-intro {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg);
+  margin-bottom: var(--gap-lg); align-items: end;
+}
+.tool-intro p { font-size: 1rem; line-height: 1.8; margin-top: 1.5rem; }
+
+.features-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: rgba(184,196,160,0.1);
+  border: 1px solid rgba(184,196,160,0.1);
+}
+
+.feature-cell {
+  background: var(--field);
+  padding: 2rem;
+  transition: background 0.2s;
+  position: relative;
+}
+.feature-cell:hover { background: var(--bark); }
+.feature-cell::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--honey), transparent);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.feature-cell:hover::after { transform: scaleX(1); }
+.feature-num { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2em; color: var(--honey); margin-bottom: 1rem; opacity: 0.7; }
+.feature-cell h3 { font-size: 1rem; color: var(--wax); margin-bottom: 0.5rem; }
+.feature-cell p { font-size: 0.83rem; line-height: 1.65; color: var(--mist); }
+
+/* ─── ALERTS ─────────────────────────────────────────────────── */
+#alerts {
+  background: var(--bark);
+  padding: var(--gap-xl) 4rem;
+}
+
+.alerts-layout {
+  display: grid; grid-template-columns: 1fr 2fr; gap: var(--gap-lg);
+  max-width: 1100px; margin: 0 auto;
+}
+
+.alerts-intro p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
+.alerts-intro .tech-note {
+  margin-top: 1.5rem; padding: 1rem 1.2rem;
+  background: rgba(20,26,12,0.5);
+  border-left: 2px solid rgba(212,146,26,0.4);
+  font-size: 0.82rem; color: var(--mist); line-height: 1.6;
+}
+
+.alerts-table { display: flex; flex-direction: column; }
+
+.alert-row {
+  display: flex; gap: 1.25rem; align-items: flex-start;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid rgba(184,196,160,0.06);
+  transition: background 0.15s;
+}
+.alert-row:hover { background: rgba(42,51,24,0.4); }
+
+.alert-tag {
+  font-family: var(--font-mono); font-size: 0.56rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid currentColor;
+  white-space: nowrap; flex-shrink: 0;
+  margin-top: 0.2rem; line-height: 1.4;
+}
+.tag-pfas    { color: #C44A2A; border-color: rgba(196,74,42,0.4); }
+.tag-habitat { color: var(--honey); border-color: rgba(212,146,26,0.4); }
+.tag-connect { color: #6AACB0; border-color: rgba(106,172,176,0.4); }
+.tag-crops   { color: #9AC050; border-color: rgba(154,192,80,0.4); }
+.tag-site    { color: var(--mist); border-color: rgba(122,140,98,0.4); }
+
+.alert-body strong { display: block; font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.2rem; }
+.alert-body p { font-size: 0.78rem; line-height: 1.55; color: var(--mist); }
+
+/* ─── DATA SOURCES ───────────────────────────────────────────── */
+#data { padding: var(--gap-xl) 4rem; max-width: 1100px; margin: 0 auto; }
+
+.data-intro {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg);
+  margin-bottom: var(--gap-md); align-items: end;
+}
+.data-intro p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
+
+.sources-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: rgba(184,196,160,0.08);
+  border: 1px solid rgba(184,196,160,0.08);
+}
+.source-item { background: var(--field); padding: 1.25rem 1.1rem; transition: background 0.15s; }
+.source-item:hover { background: var(--bark); }
+.source-cat { font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--honey); margin-bottom: 0.35rem; opacity: 0.8; }
+.source-name { font-weight: 400; font-size: 0.82rem; color: var(--wax); line-height: 1.4; }
+
+.data-note {
+  margin-top: 2rem; padding: 1.2rem 1.5rem;
+  background: rgba(42,51,24,0.3);
+  border: 1px solid rgba(184,196,160,0.1);
+  font-family: var(--font-mono); font-size: 0.72rem;
+  letter-spacing: 0.05em; color: var(--mist);
+  display: flex; gap: 1rem; align-items: flex-start;
+}
+.data-note::before { content: '→'; color: var(--honey); flex-shrink: 0; }
+
+/* ─── WHO IT SERVES ──────────────────────────────────────────── */
+#users { background: var(--bark); padding: var(--gap-xl) 4rem; }
+
+.users-layout { max-width: 1100px; margin: 0 auto; }
+.users-header {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg);
+  margin-bottom: 3rem; align-items: end;
+}
+.users-header p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
+
+.user-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.user-card {
+  padding: 1.75rem;
+  border: 1px solid rgba(184,196,160,0.1);
+  background: rgba(20,26,12,0.3);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.user-card:hover { border-color: rgba(212,146,26,0.3); transform: translateY(-3px); }
+.user-card-icon { font-size: 1.4rem; margin-bottom: 1rem; display: block; }
+.user-card h3 { font-size: 0.92rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.5rem; }
+.user-card p { font-size: 0.8rem; line-height: 1.65; color: var(--mist); }
+
+/* ─── GOVERNANCE ─────────────────────────────────────────────── */
+#governance { padding: var(--gap-xl) 4rem; max-width: 1100px; margin: 0 auto; }
+
+.gov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg); margin-top: 3rem; }
+
+.gov-left .origin {
+  font-family: var(--font-display); font-size: 1.1rem; font-style: italic;
+  color: var(--fog); line-height: 1.7;
+  margin-top: 0.5rem; margin-bottom: 1.5rem;
+  padding-left: 1.2rem; border-left: 2px solid rgba(212,146,26,0.4);
+}
+.gov-left p { font-size: 0.95rem; line-height: 1.8; margin-bottom: 1rem; }
+
+.gov-maintainer {
+  margin-top: 1.5rem; display: flex; align-items: baseline; gap: 0.75rem;
+}
+.gov-maintainer-label { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--honey); }
+.gov-maintainer-name { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; color: var(--wax); }
+
+.principle {
+  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(184,196,160,0.08);
+  position: relative;
+}
+.principle::before { content: ''; position: absolute; left: 0; top: 1.25rem; bottom: 1.25rem; width: 2px; background: rgba(212,146,26,0.25); transition: background 0.2s; }
+.principle:hover::before { background: var(--honey); }
+.principle h3 { font-size: 0.9rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.4rem; }
+.principle p { font-size: 0.8rem; line-height: 1.6; color: var(--mist); }
+
+.pathways {
+  margin-top: 3rem;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: rgba(184,196,160,0.1);
+  border: 1px solid rgba(184,196,160,0.1);
+}
+.pathway { background: var(--field); padding: 1.75rem; transition: background 0.2s; }
+.pathway:hover { background: var(--bark); }
+.pathway-num { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2em; color: var(--honey); margin-bottom: 0.75rem; text-transform: uppercase; }
+.pathway h3 { font-size: 0.95rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.5rem; }
+.pathway p { font-size: 0.8rem; line-height: 1.65; color: var(--mist); }
+
+/* ─── GET INVOLVED ───────────────────────────────────────────── */
+#contribute { background: var(--bark); padding: var(--gap-xl) 4rem; }
+
+.contribute-inner { max-width: 1100px; margin: 0 auto; }
+.contribute-header {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg);
+  margin-bottom: 3rem; align-items: end;
+}
+.contribute-header p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
+
+.contribution-types { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
+.contrib-item {
+  padding: 1.5rem; border: 1px solid rgba(184,196,160,0.1);
+  background: rgba(20,26,12,0.3); display: flex; gap: 1rem;
+  transition: border-color 0.2s;
+}
+.contrib-item:hover { border-color: rgba(212,146,26,0.3); }
+.contrib-icon { font-size: 1.3rem; flex-shrink: 0; width: 2rem; text-align: center; }
+.contrib-body strong { display: block; font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.3rem; }
+.contrib-body p { font-size: 0.8rem; line-height: 1.6; color: var(--mist); }
+
+/* ─── TECH STRIP ─────────────────────────────────────────────── */
+.tech-strip {
+  padding: var(--gap-md) 4rem;
+  background: rgba(20,26,12,0.6);
+  border-top: 1px solid rgba(184,196,160,0.08);
+  border-bottom: 1px solid rgba(184,196,160,0.08);
+  display: flex; gap: 3rem; align-items: center; flex-wrap: wrap;
+}
+.tech-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.tech-item-lbl { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--honey); opacity: 0.7; }
+.tech-item-val { font-family: var(--font-mono); font-size: 0.72rem; color: var(--fog); }
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+footer { padding: 4rem 4rem 3rem; background: var(--field); }
+
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 3rem;
+  padding-bottom: 3rem;
+  border-bottom: 1px solid rgba(184,196,160,0.08);
+}
+.footer-brand .wm { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--wax); margin-bottom: 0.75rem; }
+.footer-brand .wm span { color: var(--honey); }
+.footer-brand p { font-size: 0.83rem; line-height: 1.7; color: var(--mist); max-width: 280px; }
+.footer-brand .badge {
+  margin-top: 1.25rem; display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--honey); border: 1px solid rgba(212,146,26,0.3); padding: 0.3rem 0.7rem;
+}
+.footer-col h4 { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--honey); margin-bottom: 1.25rem; opacity: 0.8; }
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.65rem; }
+.footer-col a { font-size: 0.83rem; color: var(--mist); text-decoration: none; transition: color 0.2s; }
+.footer-col a:hover { color: var(--wax); }
+
+.footer-bottom {
+  max-width: 1100px; margin: 2rem auto 0;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1rem;
+}
+.footer-bottom p { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--mist); opacity: 0.6; }
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────── */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: 0.1s; }
+.d2 { transition-delay: 0.2s; }
+.d3 { transition-delay: 0.3s; }
+
+/* ─── MAP GUIDE ──────────────────────────────────────────────── */
+#map-guide { padding: var(--gap-xl) 4rem; background: var(--bark); }
+
+.guide-inner { max-width: 1100px; margin: 0 auto; }
+
+.guide-header {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-lg);
+  margin-bottom: 1rem; align-items: end;
+}
+.guide-header p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
+
+.guide-block { margin-top: var(--gap-lg); }
+.guide-block-label {
+  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--honey); margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.guide-block-label::after { content: ''; flex: 1; height: 1px; background: rgba(212,146,26,0.2); }
+
+.site-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.site-type-card {
+  padding: 1.75rem; border: 1px solid rgba(184,196,160,0.1);
+  background: rgba(20,26,12,0.4); position: relative;
+  transition: border-color 0.2s;
+}
+.site-type-card:hover { border-color: rgba(255,255,255,0.15); }
+.site-type-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.site-corridor::before  { background: #f59e0b; }
+.site-waystation::before { background: #8b5cf6; }
+.site-hnp::before        { background: #10b981; }
+.site-type-dot { width: 12px; height: 12px; border-radius: 50%; margin-bottom: 0.85rem; }
+.dot-corridor   { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+.dot-waystation { background: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.25); }
+.dot-hnp        { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
+.site-type-card h3   { font-size: 0.95rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.5rem; }
+.site-source         { font-family: var(--font-mono); font-size: 0.57rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist); margin-bottom: 0.65rem; opacity: 0.7; }
+.site-type-card p    { font-size: 0.82rem; line-height: 1.65; color: var(--mist); }
+.site-count          { font-family: var(--font-display); font-size: 2rem; font-weight: 600; margin-top: 1.25rem; line-height: 1; }
+.site-count-sub      { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.08em; color: var(--mist); margin-top: 0.4rem; }
+.site-corridor  .site-count { color: #f59e0b; }
+.site-waystation .site-count { color: #8b5cf6; }
+.site-hnp        .site-count { color: #10b981; }
+
+.drawer-preview { display: grid; grid-template-columns: 1fr 2fr; gap: var(--gap-md); align-items: start; }
+.drawer-field-list { list-style: none; display: flex; flex-direction: column; }
+.drawer-field {
+  display: flex; align-items: baseline; gap: 1rem;
+  padding: 0.65rem 0; border-bottom: 1px solid rgba(184,196,160,0.07); font-size: 0.82rem;
+}
+.drawer-field:last-child { border-bottom: none; }
+.drawer-field-key { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--honey); flex-shrink: 0; min-width: 128px; }
+.drawer-field-val { color: var(--fog); line-height: 1.5; }
+
+.conn-legend { display: flex; flex-direction: column; gap: 1rem; }
+.conn-tier {
+  display: grid; grid-template-columns: 96px 1fr; gap: 1.5rem;
+  align-items: center; padding: 1.25rem;
+  border: 1px solid rgba(184,196,160,0.08);
+  background: rgba(20,26,12,0.3); transition: border-color 0.2s;
+}
+.conn-tier:hover { border-color: rgba(212,146,26,0.2); }
+.conn-line-vis { height: 36px; display: flex; align-items: center; justify-content: center; }
+.conn-tier-text h4 { font-family: var(--font-body); font-size: 0.88rem; font-weight: 500; color: var(--wax); margin-bottom: 0.3rem; }
+.conn-range        { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--honey); margin-bottom: 0.4rem; }
+.conn-tier-text p  { font-size: 0.8rem; color: var(--mist); line-height: 1.6; }
+
+.conn-color-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: rgba(184,196,160,0.08);
+  border: 1px solid rgba(184,196,160,0.08);
+}
+.conn-color-cell   { background: var(--field); padding: 1.1rem 1rem; transition: background 0.15s; }
+.conn-color-cell:hover { background: var(--bark); }
+.conn-color-swatch { width: 40px; height: 3px; border-radius: 2px; margin-bottom: 0.6rem; }
+.conn-color-label  { font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fog); }
+.conn-color-desc   { font-size: 0.77rem; color: var(--mist); margin-top: 0.25rem; line-height: 1.5; }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  .hero { grid-template-columns: 1fr; }
+  .hero-content { padding: 7rem 1.5rem 3rem; }
+  .hero-right { display: none; }
+  h1 { font-size: 3.2rem; }
+  #problem, #alerts, #users, #contribute { padding: 4rem 1.5rem; }
+  #tool, #data, #governance { padding: 4rem 1.5rem; }
+  .problem-grid, .tool-intro, .data-intro, .users-header,
+  .gov-grid, .contribute-header, .alerts-layout { grid-template-columns: 1fr; gap: 2rem; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .sources-grid { grid-template-columns: 1fr 1fr; }
+  .user-cards, .pathways { grid-template-columns: 1fr; gap: 1rem; }
+  .contribution-types { grid-template-columns: 1fr; }
+  .tech-strip { padding: 2rem 1.5rem; gap: 1.5rem; }
+  footer { padding: 3rem 1.5rem 2rem; }
+  .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
+  .footer-bottom { flex-direction: column; align-items: flex-start; }
+  #map-guide { padding: 4rem 1.5rem; }
+  .guide-header, .drawer-preview { grid-template-columns: 1fr; gap: 2rem; }
+  .site-type-grid { grid-template-columns: 1fr; }
+  .conn-tier { grid-template-columns: 60px 1fr; gap: 1rem; }
+  .conn-color-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav role="navigation" aria-label="Main navigation">
+  <a href="#" class="nav-wordmark" aria-label="Bay Hive home">
+    <span class="w1">Bay</span>
+    <span class="w2">Hive</span>
+    <span class="wh">⬡</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#problem">The Problem</a></li>
+    <li><a href="#tool">The Tool</a></li>
+    <li><a href="#alerts">Alerts</a></li>
+    <li><a href="#data">Data</a></li>
+    <li><a href="#map-guide">Map Guide</a></li>
+    <li><a href="#governance">Governance</a></li>
+    <li><a href="#contribute" class="nav-cta">Get Involved</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="hero-h1">
+  <div class="hero-bg">
+    <div class="hero-hex">
+      <svg viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="hp" x="0" y="0" width="60" height="69.28" patternUnits="userSpaceOnUse">
+            <polygon points="30,2 58,17.5 58,51.78 30,67.28 2,51.78 2,17.5" fill="none" stroke="#D4921A" stroke-width="0.8"/>
+          </pattern>
+          <pattern id="hp2" x="30" y="34.64" width="60" height="69.28" patternUnits="userSpaceOnUse">
+            <polygon points="30,2 58,17.5 58,51.78 30,67.28 2,51.78 2,17.5" fill="none" stroke="#D4921A" stroke-width="0.8"/>
+          </pattern>
+        </defs>
+        <rect width="400" height="600" fill="url(#hp)"/>
+        <rect width="400" height="600" fill="url(#hp2)"/>
+        <polygon points="150,107.5 178,123 178,157.28 150,172.78 122,157.28 122,123" fill="#D4921A" opacity="0.18"/>
+        <polygon points="240,177.5 268,193 268,227.28 240,242.78 212,227.28 212,193" fill="#D4921A" opacity="0.1"/>
+        <polygon points="90,247.5 118,263 118,297.28 90,312.78 62,297.28 62,263" fill="#D4921A" opacity="0.08"/>
+        <line x1="150" y1="142" x2="240" y2="210" stroke="#D4921A" stroke-width="1" opacity="0.35" stroke-dasharray="4,4"/>
+        <line x1="240" y1="210" x2="90" y2="280" stroke="#D4921A" stroke-width="1" opacity="0.2" stroke-dasharray="4,4"/>
+      </svg>
+    </div>
+    <div class="hero-vignette"></div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <div class="hero-eyebrow-line"></div>
+      <span>Green Bay · WI · 44.519°N 88.020°W · 15 km radius</span>
+    </div>
+    <h1 id="hero-h1">Bay<br><span class="hl">Hive</span></h1>
+    <span class="h1-tagline">Pollinator Habitat Intelligence</span>
+    <p class="hero-desc">
+      A browser-based intelligence platform that fuses more than a dozen authoritative public 
+      datasets into a single, continuously refreshed map of the Green Bay pollinator corridor 
+      — and turns it into actionable spatial alerts.
+    </p>
+    <div class="hero-actions">
+      <a href="#" class="btn btn-primary">↗ Launch the Tool</a>
+      <a href="#contribute" class="btn btn-ghost">Get Involved</a>
+    </div>
+  </div>
+
+  <div class="hero-right" aria-hidden="true">
+    <div class="intel-card">
+      <div class="card-header">Intelligence Summary · Live</div>
+      <div class="stat-row">
+        <span class="stat-label">Corridor Sites</span>
+        <span class="stat-value" id="stat-val-corridor">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Waystations</span>
+        <span class="stat-value" id="stat-val-waystations">56</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Homegrown National Parks</span>
+        <span class="stat-value" id="stat-val-hnp">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Corridor Area</span>
+        <span class="stat-value" id="stat-val-corridor-area">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label" id="stat-lbl-obs">Observations</span>
+        <span class="stat-value" id="stat-val-obs">—</span>
+      </div>
+      <div class="alert-mini">
+        <div class="alert-mini-lbl" id="intel-alert-lbl">⚑ Live field data</div>
+        <p id="intel-alert-text">Querying corridor conditions…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-cue" aria-hidden="true">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- THE PROBLEM -->
+<section id="problem" aria-labelledby="problem-h2">
+  <div class="problem-grid">
+    <div class="problem-left reveal">
+      <div class="sec-label">The Problem</div>
+      <h2 id="problem-h2">The data exists.<br><em>The view doesn't.</em></h2>
+      <p class="lead">Pollinator conservation in northeastern Wisconsin is fragmented across agencies, organizations, and data systems.</p>
+      <p>
+        The Green Bay Conservation Corps manages a regional corridor. The Wisconsin DNR oversees state 
+        natural areas and managed lands. Federal datasets track protected areas and bee distributions. 
+        Community scientists log tens of thousands of sightings annually — but no unified tool brings 
+        these sources together at the local scale. Without a shared spatial view, decision-making about 
+        where to invest restoration effort is more intuition than evidence.
+      </p>
+    </div>
+    <div class="problem-right reveal d2">
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Neglected habitat sites</strong>
+          <p>Sites that receive no documented pollinator activity may be unknowingly overlooked, with no systematic way to identify them.</p>
+        </div>
+      </div>
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Undetected connectivity gaps</strong>
+          <p>Gaps between corridor nodes go undetected until they widen — by which point the damage to habitat connectivity may already be done.</p>
+        </div>
+      </div>
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Unflagged hazard proximity</strong>
+          <p>PFAS contamination sites near sensitive habitat are not systematically cross-referenced with corridor boundaries or waystations.</p>
+        </div>
+      </div>
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Invisible restoration candidates</strong>
+          <p>High-sighting parcels with no formal habitat designation — the best restoration candidates — remain invisible without a unified spatial view.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- THE TOOL -->
+<section id="tool" aria-labelledby="tool-h2">
+  <div class="tool-intro reveal">
+    <div>
+      <div class="sec-label">The Tool</div>
+      <h2 id="tool-h2">One map.<br><em>All the data.</em></h2>
+    </div>
+    <div>
+      <p>
+        Bay Hive integrates more than a dozen authoritative public datasets into a continuously 
+        refreshed map centered on a 15-kilometer radius from Green Bay city center. Observation data 
+        refreshes hourly; area layers daily. No GIS software, no installation, no paid data subscriptions. 
+        It runs with a single command: <code style="font-family:var(--font-mono);font-size:0.85em;color:var(--honey)">node serve.js</code>
+      </p>
+    </div>
+  </div>
+  <div class="features-grid reveal">
+    <div class="feature-cell">
+      <div class="feature-num">01</div>
+      <h3>Multi-source sightings</h3>
+      <p>iNaturalist (up to 2,000 obs), GBIF records (up to 600), eBird, and Wikimedia Commons photos — filterable by research grade, native species, and proximity to habitat.</p>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-num">02</div>
+      <h3>Conservation layers</h3>
+      <p>USGS PAD-US v3.0, WI DNR State Natural Areas, DNR Managed Lands, GBCC Pollinator Corridor, and Habitat Treatment records in one view.</p>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-num">03</div>
+      <h3>Bee distribution analysis</h3>
+      <p>FWS dataset across all 6 bee families, a species richness heatmap, and an imperiled species layer covering NatureServe G1–G3 and IUCN VU+.</p>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-num">04</div>
+      <h3>Land cover &amp; cropland</h3>
+      <p>NLCD 2021 (16 toggleable classes), USDA Cropland Data Layer with bee-crop fringe heatmap, and WI DNR Urban Tree Canopy (2013, 2020, 2022).</p>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-num">05</div>
+      <h3>Hazard overlay</h3>
+      <p>WI DNR PFAS contamination sites with automated 1 km proximity alerts to habitat nodes and Monarch Watch Waystations.</p>
+    </div>
+    <div class="feature-cell">
+      <div class="feature-num">06</div>
+      <h3>Trend analysis &amp; export</h3>
+      <p>Year-over-year sighting charts once two or more observation snapshots are collected. Full plain-text intelligence report export at any time.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ALERTS -->
+<section id="alerts" aria-labelledby="alerts-h2">
+  <div class="alerts-layout">
+    <div class="alerts-intro reveal">
+      <div class="sec-label">Alert Engine</div>
+      <h2 id="alerts-h2">Fourteen<br><em>automated<br>spatial alerts</em></h2>
+      <p>
+        The platform's core analytical output: fourteen spatial checks that run entirely in the 
+        browser against data already loaded in memory, with no server-side processing required.
+      </p>
+      <div class="tech-note">
+        All alert logic is client-side only, documented in plain language within the app itself, 
+        and designed for field review by practitioners who can identify false positives or 
+        missing conditions.
+      </div>
+    </div>
+    <div class="alerts-table reveal d1">
+      <div class="alert-row">
+        <span class="alert-tag tag-pfas">PFAS</span>
+        <div class="alert-body">
+          <strong>PFAS Near Habitat</strong>
+          <p>Contamination site within 1 km of any corridor node or Monarch Watch Waystation (Haversine distance).</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-habitat">Habitat</span>
+        <div class="alert-body">
+          <strong>Unsupported Sites</strong>
+          <p>Corridor sites with no documented pollinator sighting within 500 m.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-habitat">Habitat</span>
+        <div class="alert-body">
+          <strong>Opportunity Zones</strong>
+          <p>~1 km grid cells with ≥5 sightings and no formal habitat designation within 800 m — restoration candidates.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-habitat">Habitat</span>
+        <div class="alert-body">
+          <strong>Public Land Gap</strong>
+          <p>City/County parcel ≥0.5 ac inside an opportunity zone with no nearby habitat — highest-priority acquisition targets.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-habitat">Habitat</span>
+        <div class="alert-body">
+          <strong>Declining Public Zone</strong>
+          <p>Opportunity zone with a declining sighting trend and publicly owned land nearby.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-connect">Connect</span>
+        <div class="alert-body">
+          <strong>Connected Pairs</strong>
+          <p>Habitat site pairs within 300 m — corridor stepping-stone distance.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-connect">Connect</span>
+        <div class="alert-body">
+          <strong>Isolated Habitat</strong>
+          <p>Habitat site with no other habitat within 2 km — isolated from the corridor network.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-connect">Connect</span>
+        <div class="alert-body">
+          <strong>Weak Nodes</strong>
+          <p>Corridor sites whose nearest neighbor is 700 m–2 km away, indicating a weakly connected network position.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-connect">Connect</span>
+        <div class="alert-body">
+          <strong>Connectivity Gap</strong>
+          <p>Widest edge in the corridor's minimum spanning tree — flagged when it exceeds 2.5 km.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-connect">Connect</span>
+        <div class="alert-body">
+          <strong>Quadrant Coverage</strong>
+          <p>Four quadrants around map centroid; flagged when any quadrant has no designated habitat.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-crops">Crops</span>
+        <div class="alert-body">
+          <strong>Pollinator–Crop Mismatch</strong>
+          <p>Bee-dependent crop acreage in areas without adequate estimated habitat coverage nearby.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-site">Site</span>
+        <div class="alert-body">
+          <strong>High Pesticide Pressure</strong>
+          <p>Corridor sites in top-quartile pesticide-pressure counties per the Critical Band index.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-site">Site</span>
+        <div class="alert-body">
+          <strong>Poor Nesting Habitat</strong>
+          <p>Sites scoring below 25/100 on the NLCD-derived nesting suitability index.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-site">Site</span>
+        <div class="alert-body">
+          <strong>Shaded Habitat</strong>
+          <p>Corridor sites with &gt;55% tree canopy coverage within 150 m (WI DNR Urban Tree Canopy 2022).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- DATA SOURCES -->
+<section id="data" aria-labelledby="data-h2">
+  <div class="data-intro reveal">
+    <div>
+      <div class="sec-label">Data Sources</div>
+      <h2 id="data-h2">All public.<br><em>All open.</em></h2>
+    </div>
+    <div>
+      <p>
+        Every layer is sourced from publicly available APIs and datasets. No proprietary data, no lock-in, 
+        no dependency on any single organization's goodwill. The only thing Bay Hive adds is the assembly 
+        — putting it in one place so anyone working on pollinator habitat in this region can see the full 
+        picture at once.
+      </p>
+    </div>
+  </div>
+  <div class="sources-grid reveal">
+    <div class="source-item"><div class="source-cat">Corridor</div><div class="source-name">GBCC ArcGIS Feature Service</div></div>
+    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · up to 2,000 obs</div></div>
+    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">GBIF Occurrence API v1 · up to 600</div></div>
+    <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">FWS Dataset · All 6 Bee Families</div></div>
+    <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">USGS PAD-US v3.0</div></div>
+    <div class="source-item"><div class="source-cat">Conservation</div><div class="source-name">WI DNR State Natural Areas &amp; Managed Lands</div></div>
+    <div class="source-item"><div class="source-cat">Hazards</div><div class="source-name">WI DNR PFAS Contamination Sites</div></div>
+    <div class="source-item"><div class="source-cat">Land Cover</div><div class="source-name">NLCD 2021 · MRLC GeoServer · 16 classes</div></div>
+    <div class="source-item"><div class="source-cat">Cropland</div><div class="source-name">USDA NASS CropScape WMS</div></div>
+    <div class="source-item"><div class="source-cat">Tree Canopy</div><div class="source-name">WI DNR UTC 2013 / 2020 / 2022</div></div>
+    <div class="source-item"><div class="source-cat">Waystations</div><div class="source-name">Monarch Watch · 56 curated sites</div></div>
+    <div class="source-item"><div class="source-cat">Habitat Program</div><div class="source-name">Homegrown National Park API</div></div>
+    <div class="source-item"><div class="source-cat">Photos</div><div class="source-name">Wikimedia Commons · Proximity filtered</div></div>
+    <div class="source-item"><div class="source-cat">Birds · Optional</div><div class="source-name">Cornell eBird API</div></div>
+    <div class="source-item"><div class="source-cat">Crops · Optional</div><div class="source-name">USDA NASS QuickStats API</div></div>
+    <div class="source-item"><div class="source-cat">Climate · Optional</div><div class="source-name">NOAA CDO / NCEI</div></div>
+  </div>
+  <div class="data-note reveal">
+    No proprietary datasets required for core functionality. Optional keys (eBird, NASS, NOAA) unlock additional layers; the platform degrades gracefully without them. Observation data cached 1 hour · Area layers cached 24 hours · Cache/live status visible in the intelligence bar.
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- MAP GUIDE -->
+<section id="map-guide" aria-labelledby="guide-h2">
+  <div class="guide-inner">
+
+    <div class="guide-header reveal">
+      <div>
+        <div class="sec-label">Reading the Map</div>
+        <h2 id="guide-h2">Three kinds of site.<br><em>One connected corridor.</em></h2>
+      </div>
+      <div>
+        <p>
+          The map draws three overlapping habitat networks simultaneously: formally managed planting
+          sites, registered private waystations, and native-planting yards enrolled in the national
+          biodiversity program. Lines between nearby sites visualize whether pollinators of different
+          size classes can actually traverse the gaps between them.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Habitat site types ──────────────────────────────────────────── -->
+    <div class="guide-block reveal">
+      <div class="guide-block-label">Habitat Site Types</div>
+      <div class="site-type-grid">
+
+        <div class="site-type-card site-corridor">
+          <div class="site-type-dot dot-corridor"></div>
+          <div class="site-source">GBCC · ArcGIS Feature Service</div>
+          <h3>Pollinator Corridor Sites</h3>
+          <p>
+            Managed planting areas mapped by the Green Bay Conservation Corps as part of the NE Wisconsin
+            Pollinator Corridor Project. Each site has a documented plant list, mapped area, and a named
+            park or public property. These are the formal backbone of the regional habitat network and the
+            primary targets of the app's alert engine — unsupported sites, weak nodes, and connectivity
+            gaps are all measured relative to this layer.
+          </p>
+          <p class="site-count" id="guide-val-corridor">—</p>
+          <p class="site-count-sub">sites in 15 km radius · <span id="guide-val-corridor-area">—</span> ac total</p>
+        </div>
+
+        <div class="site-type-card site-waystation">
+          <div class="site-type-dot dot-waystation"></div>
+          <div class="site-source">Monarch Watch · Waystation Registry</div>
+          <h3>Monarch Waystations</h3>
+          <p>
+            Registered habitat sites — home gardens, schoolyards, nature centers, community gardens,
+            and places of worship — enrolled in the Monarch Watch Waystation Program. Each provides
+            certified milkweed and nectar plants for monarchs and other pollinators. Locations were
+            verified against Brown County parcel records by address and registrant name; approximate
+            positions are flagged in the drawer and shown at address-range precision (± 50 m).
+          </p>
+          <p class="site-count" id="guide-val-waystations">56</p>
+          <p class="site-count-sub">registered sites in 15 km radius</p>
+        </div>
+
+        <div class="site-type-card site-hnp">
+          <div class="site-type-dot dot-hnp"></div>
+          <div class="site-source">Homegrown National Park · Guest API</div>
+          <h3>HNP Native Planting Yards</h3>
+          <p>
+            Yards and organizational properties enrolled in Doug Tallamy's Homegrown National Park
+            initiative, indicating committed native plantings. While not formally mapped as managed
+            habitat, HNP registrations reveal the latent network of private landowners already engaged
+            in biodiversity restoration — an existing base of potential partners for formal corridor
+            extension and restoration outreach.
+          </p>
+          <p class="site-count" id="guide-val-hnp">—</p>
+          <p class="site-count-sub">enrolled yards in region</p>
+        </div>
+
+      </div>
+    </div><!-- site types -->
+
+    <!-- ── The site dossier ────────────────────────────────────────────── -->
+    <div class="guide-block reveal d1">
+      <div class="guide-block-label">The Site Dossier</div>
+      <div class="drawer-preview">
+        <div>
+          <p style="font-size:0.95rem;line-height:1.8;color:var(--fog);margin-bottom:1.25rem">
+            Clicking any habitat site marker opens a persistent side drawer showing a full dossier
+            for that location — assembled in real time from the data loaded into memory, with no
+            additional network requests.
+          </p>
+          <p style="font-size:0.82rem;line-height:1.7;color:var(--mist)">
+            Dossiers are only available for active habitat program site markers —
+            Corridor, Waystation, and HNP. Observation points (iNaturalist, GBIF) use a
+            smaller popup instead.
+          </p>
+        </div>
+        <ul class="drawer-field-list" aria-label="Site dossier fields">
+          <li class="drawer-field">
+            <span class="drawer-field-key">Name &amp; Source</span>
+            <span class="drawer-field-val">Site name, data source (GBCC, Monarch Watch, or HNP), and registration date if available.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Sighting Count</span>
+            <span class="drawer-field-val">Total pollinator sightings within 750 m across all loaded layers (iNat + GBIF), shown as a live count.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Seasonal Activity</span>
+            <span class="drawer-field-val">12-bar histogram of sighting counts by calendar month — immediately shows which months have documented activity gaps.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Observed Species</span>
+            <span class="drawer-field-val">Species list grouped by data source (iNat, GBIF), sorted by observation count. Groups with more than 5 species have an expandable overflow.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nesting Score</span>
+            <span class="drawer-field-val">NLCD-derived 0–100 index scoring bare ground, shrubland, and grassland within 300 m. Scores below 25 trigger the Poor Nesting Habitat alert.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Canopy Cover</span>
+            <span class="drawer-field-val">WI DNR 2022 urban tree canopy percentage within 150 m. Sites above 55% canopy may be too shaded for sun-loving pollinator plants.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nearby Sites</span>
+            <span class="drawer-field-val">Other habitat sites within 750 m — types, distances, and names — giving an immediate read of local corridor density.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nearby Parcels</span>
+            <span class="drawer-field-val">Brown County parcel records within 400 m, grouped by ownership (City, County, State, institutional, private) and linked to the assessor database.</span>
+          </li>
+        </ul>
+      </div>
+    </div><!-- dossier -->
+
+    <!-- ── Connectivity lines & foraging ranges ────────────────────────── -->
+    <div class="guide-block reveal d2">
+      <div class="guide-block-label">Connectivity Lines &amp; Foraging Ranges</div>
+      <p style="font-size:0.97rem;line-height:1.8;color:var(--fog);max-width:680px;margin-bottom:2rem">
+        A line is drawn between any two habitat sites within 2 km of each other. The line's
+        visual weight and style encode whether pollinators of different size classes can
+        realistically traverse that gap — grounded in published foraging-range data for
+        Midwestern native bee families.
+      </p>
+
+      <div class="conn-legend">
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Optimal · ≤ 300 m · solid thick</div>
+            <h4>Connected — accessible to all native bee species</h4>
+            <p>
+              Includes sweat bees (Halictidae), small mining bees (Andrenidae), mason bees (Osmia),
+              and leafcutter bees (Megachile) — species whose foraging radius rarely exceeds
+              300–400 m. A solid thick line signals these two sites are within reach of even the
+              shortest-ranging foragers. Dense clusters of optimal-range connections indicate a
+              well-functioning corridor node.
+            </p>
+          </div>
+        </div>
+
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Fair · 300–700 m · solid medium</div>
+            <h4>Connected — accessible to bumble bees and large solitary bees</h4>
+            <p>
+              Accessible to bumble bees (Bombus spp.) and larger solitary species such as carpenter
+              bees (Xylocopa) and large mason bees, whose comfortable foraging range extends to
+              roughly 700 m. A medium-weight solid line signals a genuine functional connection,
+              though small-bodied species may not reliably traverse the gap. These pairs are
+              candidates for stepping-stone plantings that would bring them into the optimal tier.
+            </p>
+          </div>
+        </div>
+
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="1.5"
+                    stroke-dasharray="7 6" stroke-linecap="butt" opacity="0.45"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Extended · 700 m–2 km · dashed thin</div>
+            <h4>Connected — but with reduced species support</h4>
+            <p>
+              These sites are connected, but only larger-ranging bumble bees (<em>Bombus pensylvanicus</em>,
+              <em>B. griseocollis</em>) reliably traverse this distance during foraging bouts, with a
+              practical upper limit near 1.5–2 km. Small-bodied species — mining bees, sweat bees,
+              and mason bees — may not cross this gap unaided. A dashed thin line reflects the
+              reduced breadth of species supported. The app's Weak Node and Connectivity Gap alerts
+              flag these pairs as priority candidates for stepping-stone restoration plantings.
+            </p>
+          </div>
+        </div>
+      </div><!-- conn-legend -->
+
+      <div class="guide-block-label" style="margin-top:var(--gap-md)">Line Colors — Connected Site Types</div>
+      <div class="conn-color-grid">
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#f59e0b"></div>
+          <div class="conn-color-label">Corridor ↔ Corridor</div>
+          <div class="conn-color-desc">Both endpoints are GBCC-managed corridor planting sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#8b5cf6"></div>
+          <div class="conn-color-label">Waystation ↔ Waystation</div>
+          <div class="conn-color-desc">Both endpoints are Monarch Watch registered sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#10b981"></div>
+          <div class="conn-color-label">HNP ↔ HNP</div>
+          <div class="conn-color-desc">Both endpoints are Homegrown National Park yards.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#c07ad6"></div>
+          <div class="conn-color-label">Corridor ↔ Waystation</div>
+          <div class="conn-color-desc">Formal corridor site linked with a registered waystation — a bridge between the two programs.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#84be6e"></div>
+          <div class="conn-color-label">Corridor ↔ HNP</div>
+          <div class="conn-color-desc">Managed corridor site adjacent to a native-planting yard — private engagement alongside formal sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#4db6b8"></div>
+          <div class="conn-color-label">Waystation ↔ HNP</div>
+          <div class="conn-color-desc">Registered waystation linked with a native-planting yard — distributed private corridor pair.</div>
+        </div>
+      </div><!-- conn-color-grid -->
+
+    </div><!-- connectivity lines -->
+
+  </div><!-- guide-inner -->
+</section>
+
+<div class="section-divider"></div>
+
+<!-- WHO IT SERVES -->
+<section id="users" aria-labelledby="users-h2">
+  <div class="users-layout">
+    <div class="users-header reveal">
+      <div>
+        <div class="sec-label">Who It Serves</div>
+        <h2 id="users-h2">Built for the people<br><em>doing the work.</em></h2>
+      </div>
+      <div>
+        <p>
+          Bay Hive is designed for a range of users across the conservation and land management ecosystem — 
+          from corridor coordinators and agency biologists to community scientists and municipal planners 
+          identifying restoration parcels.
+        </p>
+      </div>
+    </div>
+    <div class="user-cards">
+      <div class="user-card reveal">
+        <span class="user-card-icon">⬡</span>
+        <h3>Habitat Coordinators</h3>
+        <p>GBCC staff monitoring corridor health, identifying connectivity gaps, and targeting restoration outreach with evidence rather than intuition.</p>
+      </div>
+      <div class="user-card reveal d1">
+        <span class="user-card-icon">⬡</span>
+        <h3>Agency Biologists</h3>
+        <p>WI DNR staff reviewing State Natural Area coverage, PFAS proximity alerts, and cross-referencing managed lands with pollinator pressure data.</p>
+      </div>
+      <div class="user-card reveal d2">
+        <span class="user-card-icon">⬡</span>
+        <h3>Community Scientists</h3>
+        <p>iNaturalist and GBIF contributors who want to see their observations in the context of regional conservation work and corridor health.</p>
+      </div>
+      <div class="user-card reveal">
+        <span class="user-card-icon">⬡</span>
+        <h3>Municipal Planners</h3>
+        <p>City and county parks staff using opportunity zone alerts to identify publicly owned parcels that could anchor new habitat nodes.</p>
+      </div>
+      <div class="user-card reveal d1">
+        <span class="user-card-icon">⬡</span>
+        <h3>Waystation Holders</h3>
+        <p>Monarch Watch and Homegrown National Park participants wanting to understand how their yards and gardens fit into the larger corridor picture.</p>
+      </div>
+      <div class="user-card reveal d2">
+        <span class="user-card-icon">⬡</span>
+        <h3>Researchers &amp; Developers</h3>
+        <p>UW-Green Bay faculty, student researchers, and technical contributors extending the platform with new data sources or alert types.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- GOVERNANCE -->
+<section id="governance" aria-labelledby="gov-h2">
+  <div class="sec-label reveal">Governance</div>
+  <h2 id="gov-h2" class="reveal">Open by design.<br><em>Local by intent.</em></h2>
+
+  <div class="gov-grid">
+    <div class="gov-left reveal">
+      <blockquote class="origin">
+        "Bay Hive began as a personal project: one person, one afternoon, one question about where pollinators 
+        were showing up relative to the habitat people were building for them."
+      </blockquote>
+      <p>
+        Tools that serve a community should be governed by that community, not held in trust by whoever happened 
+        to build them first. Bay Hive is released under the GNU General Public License v3.0 — ensuring it 
+        remains a public good even if forked or adapted by another organization. An organization that takes 
+        stewardship cannot close the source, cannot relicense it as proprietary.
+      </p>
+      <p>
+        Bay Hive is deliberately local. The 15 km radius, the GBCC corridor data, the Brown County parcel 
+        integration — all of it is calibrated to this place. A local conservation organization stewarding 
+        a local tool is the right outcome. The goal is a tool that the Green Bay pollinator community owns, 
+        understands, and can maintain without depending on any single person.
+      </p>
+      <div class="gov-maintainer">
+        <span class="gov-maintainer-label">Current Maintainer</span>
+        <span class="gov-maintainer-name">Chris Menning</span>
+      </div>
+    </div>
+
+    <div class="gov-right reveal d1">
+      <div class="principle">
+        <h3>Public data belongs to the public</h3>
+        <p>Every layer is sourced from publicly available APIs and datasets. No proprietary data, no lock-in. The only thing Bay Hive adds is the assembly.</p>
+      </div>
+      <div class="principle">
+        <h3>The tool serves the corridor, not the maintainer</h3>
+        <p>Decisions about direction should be made in the interest of the people doing habitat work — coordinators, waystation holders, city planners, researchers at UW-Green Bay.</p>
+      </div>
+      <div class="principle">
+        <h3>Transparency by default</h3>
+        <p>The code is open. The data sources are documented. The alert algorithms are explained in plain language in the app itself. There is no black box.</p>
+      </div>
+      <div class="principle">
+        <h3>No growth for its own sake</h3>
+        <p>The right question for any proposed feature: does this help someone doing habitat work make a better decision? Scope creep that serves ambition is not welcome.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pathways reveal">
+    <div class="pathway">
+      <div class="pathway-num">Pathway 01</div>
+      <h3>Fiscal Sponsorship</h3>
+      <p>A 501(c) fiscal host administers funds while the project retains operational independence. Enables grant applications and tax-deductible donations. Candidates include Open Source Collective and Aspiration Tech.</p>
+    </div>
+    <div class="pathway">
+      <div class="pathway-num">Pathway 02</div>
+      <h3>Local Nonprofit Stewardship</h3>
+      <p>Bay Hive's codebase and development become the responsibility of an existing organization doing corridor work — most naturally the Green Bay Conservation Corps. The cleanest transfer of stewardship.</p>
+    </div>
+    <div class="pathway">
+      <div class="pathway-num">Pathway 03</div>
+      <h3>Purpose-Built Organization</h3>
+      <p>A governing body with representation from GBCC, a conservation nonprofit, a local government partner, and a technical maintainer seat. Appropriate if the tool grows beyond Green Bay.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- GET INVOLVED -->
+<section id="contribute" aria-labelledby="contrib-h2">
+  <div class="contribute-inner">
+    <div class="contribute-header reveal">
+      <div>
+        <div class="sec-label">Get Involved</div>
+        <h2 id="contrib-h2">The data is already<br><em>public.</em></h2>
+      </div>
+      <div>
+        <p>
+          The most valuable near-term contributions are field review of the fourteen alert algorithms — 
+          identifying false positives or missing conditions that practitioners recognize in the corridor — 
+          and integration of additional WI DNR or locally maintained datasets. The modular codebase requires 
+          no toolchain setup to extend.
+        </p>
+      </div>
+    </div>
+
+    <div class="contribution-types">
+      <div class="contrib-item reveal">
+        <span class="contrib-icon">⚐</span>
+        <div class="contrib-body">
+          <strong>Alert Field Review</strong>
+          <p>Practitioners with field knowledge of the corridor can identify false positive patterns or alert conditions that the current algorithms miss. This is the highest-value contribution Bay Hive can receive.</p>
+        </div>
+      </div>
+      <div class="contrib-item reveal d1">
+        <span class="contrib-icon">⊕</span>
+        <div class="contrib-body">
+          <strong>Data Integration</strong>
+          <p>Additional WI DNR datasets, parcel ownership records, or locally maintained habitat inventories can be incorporated as new layers or alert inputs by any contributor.</p>
+        </div>
+      </div>
+      <div class="contrib-item reveal">
+        <span class="contrib-icon">◷</span>
+        <div class="contrib-body">
+          <strong>Trend Harvesting</strong>
+          <p>Organizations that deploy Bay Hive as a hosted service can schedule regular observation snapshots via <code style="font-family:var(--font-mono);font-size:0.85em;color:var(--honey)">POST /api/harvest</code> to build the longitudinal dataset needed for multi-year trend analysis.</p>
+        </div>
+      </div>
+      <div class="contrib-item reveal d1">
+        <span class="contrib-icon">⌥</span>
+        <div class="contrib-body">
+          <strong>Technical Extension</strong>
+          <p>The modular ES-module architecture makes it straightforward to add new data sources, refine the nesting suitability scoring model, or build new analytical layers — no build step or toolchain setup required.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STRIP -->
+<div class="tech-strip" aria-label="Technical specifications">
+  <div class="tech-item"><span class="tech-item-lbl">Runtime</span><span class="tech-item-val">Node.js 18+</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Dependencies</span><span class="tech-item-val">Zero (npm)</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Mapping</span><span class="tech-item-val">MapLibre GL 3.6.2</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Modules</span><span class="tech-item-val">Native ES Modules</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Caching</span><span class="tech-item-val">IndexedDB</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Accessibility</span><span class="tech-item-val">WCAG 2.2 AA</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">License</span><span class="tech-item-val">GNU GPL v3.0</span></div>
+  <div class="tech-item"><span class="tech-item-lbl">Deploy</span><span class="tech-item-val">node serve.js</span></div>
+</div>
+
+<!-- FOOTER -->
+<footer role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="wm">Bay <span>Hive</span></div>
+      <p>Pollinator habitat intelligence for the Greater Green Bay region. Fusing public data into actionable conservation insight — openly, locally, durably.</p>
+      <div class="badge">⬡ GNU GPL v3.0</div>
+    </div>
+    <div class="footer-col">
+      <h4>The Platform</h4>
+      <ul>
+        <li><a href="#problem">The Problem</a></li>
+        <li><a href="#tool">What It Does</a></li>
+        <li><a href="#alerts">Alert Engine</a></li>
+        <li><a href="#data">Data Sources</a></li>
+        <li><a href="#map-guide">Map Guide</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Project</h4>
+      <ul>
+        <li><a href="#users">Who It Serves</a></li>
+        <li><a href="#governance">Governance</a></li>
+        <li><a href="#contribute">Get Involved</a></li>
+        <li><a href="#">GitHub Repository</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Bay Hive · Greater Green Bay, WI · 44.519°N 88.020°W · 15 km analysis radius</p>
+    <p>Data sourced from public agencies and open-access repositories. See each source's terms for redistribution rights.</p>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(el => {
+    if (el.isIntersecting) el.target.classList.add('visible');
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Live card data ────────────────────────────────────────────────────────────
+// Fetches real data from:
+//   GBCC ArcGIS FeatureServer — corridor site count + total planted area
+//   /waystation_coords.json   — waystation count
+//   /api/hnp-plantings        — HNP yard count (proxied; needs node server)
+//   /api/snapshots            — latest iNaturalist harvest for observation count
+//   iNaturalist API (CORS)    — 30-day fallback if no snapshot
+//   WI DNR ArcGIS MapServer   — PFAS sites for live alert (CORS-enabled)
+//
+// All fields degrade silently to "—" or their static placeholder if an API
+// is unreachable (e.g. the page is viewed without the node server running).
+(async function liveStats() {
+  const LAT = 44.5133, LNG = -88.0133, RADIUS_KM = 15;
+
+  // Bounding box matching areas.js BBOX computation
+  const DEG_LAT = 1 / 111.32;
+  const DEG_LNG = 1 / (111.32 * Math.cos(LAT * Math.PI / 180));
+  const bbox = {
+    minX: +(LNG - RADIUS_KM * DEG_LNG).toFixed(5),
+    minY: +(LAT - RADIUS_KM * DEG_LAT).toFixed(5),
+    maxX: +(LNG + RADIUS_KM * DEG_LNG).toFixed(5),
+    maxY: +(LAT + RADIUS_KM * DEG_LAT).toFixed(5),
+  };
+
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  function haversineKm(a, b) {
+    const R = 6371;
+    const d1 = (b[1] - a[1]) * Math.PI / 180;
+    const d2 = (b[0] - a[0]) * Math.PI / 180;
+    const x  = Math.sin(d1 / 2) ** 2
+              + Math.cos(a[1] * Math.PI / 180)
+              * Math.cos(b[1] * Math.PI / 180)
+              * Math.sin(d2 / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+
+  function arcgisBbox(extraParams) {
+    return new URLSearchParams({
+      where:             '1=1',
+      geometry:          `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY}`,
+      geometryType:      'esriGeometryEnvelope',
+      inSR:              '4326',
+      spatialRel:        'esriSpatialRelIntersects',
+      returnGeometry:    'true',
+      outSR:             '4326',
+      f:                 'geojson',
+      resultRecordCount: '1000',
+      ...extraParams,
+    });
+  }
+
+  // ── 1. GBCC Corridor sites — count + total planted area ──────────────────
+  let corridorCentroids = [];
+  try {
+    const params = arcgisBbox({ outFields: 'Park,Area' });
+    const res    = await fetch(
+      `https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services/PollinatorCorridor_gdb/FeatureServer/1/query?${params}`,
+      { signal: AbortSignal.timeout(12000) }
+    );
+    const data = res.ok ? await res.json() : {};
+    const features = data.features ?? [];
+
+    // Sum area (square feet) and convert to acres
+    const totalSqFt  = features.reduce((s, f) => s + (+(f.properties?.Area ?? 0)), 0);
+    const totalAcres = (totalSqFt / 43560).toFixed(1);
+    const count      = features.length;
+
+    if (count > 0) {
+      setVal('stat-val-corridor', count);
+      setVal('stat-val-corridor-area', `${totalAcres} ac`);
+      setVal('guide-val-corridor', count);
+      setVal('guide-val-corridor-area', totalAcres);
+    }
+
+    // Compute centroids for PFAS proximity check below
+    corridorCentroids = features.map(f => {
+      const g = f.geometry;
+      if (!g) return null;
+      if (g.type === 'Point') return g.coordinates;
+      const ring = g.type === 'MultiPolygon'
+        ? g.coordinates[0][0]
+        : g.coordinates[0];
+      if (!ring?.length) return null;
+      return [
+        ring.reduce((s, c) => s + c[0], 0) / ring.length,
+        ring.reduce((s, c) => s + c[1], 0) / ring.length,
+      ];
+    }).filter(Boolean);
+  } catch { /* GBCC service unreachable — keep "—" */ }
+
+  // ── 2. Waystation count ──────────────────────────────────────────────────
+  try {
+    const arr   = await (await fetch('/waystation_coords.json', { signal: AbortSignal.timeout(5000) })).json();
+    const count = Array.isArray(arr) ? arr.length : null;
+    if (count != null) {
+      setVal('stat-val-waystations', count);
+      setVal('guide-val-waystations', count);
+    }
+  } catch { /* node server not running — keep static "56" */ }
+
+  // ── 3. HNP yard count (proxied endpoint) ────────────────────────────────
+  // Uses a manual AbortController + setTimeout for broad browser compatibility.
+  // The entire US HNP dataset is proxied, so allow 30 s for the round-trip.
+  try {
+    const hnpCtrl    = new AbortController();
+    const hnpTimeout = setTimeout(() => hnpCtrl.abort(), 30000);
+    const res = await fetch('/api/hnp-plantings', { signal: hnpCtrl.signal });
+    clearTimeout(hnpTimeout);
+    const data  = res.ok ? await res.json() : {};
+    const count = (data.features ?? []).filter(f => {
+      const [lng, lat] = f.geometry?.coordinates ?? [];
+      return lat >= bbox.minY && lat <= bbox.maxY &&
+             lng >= bbox.minX && lng <= bbox.maxX;
+    }).length;
+    setVal('stat-val-hnp', count);
+    setVal('guide-val-hnp', count);
+  } catch { /* proxy unavailable — keep "—" */ }
+
+  // ── 4. Observation count — snapshot first, iNat live fallback ───────────
+  let obsLoaded = false;
+  try {
+    const idx       = await (await fetch('/api/snapshots', { signal: AbortSignal.timeout(5000) })).json();
+    const inatFiles = (idx.files ?? []).filter(f => f.startsWith('inat-')).sort();
+    const latest    = inatFiles.pop();
+    if (latest) {
+      const snap = await (await fetch(`/api/snapshots/${latest}`, { signal: AbortSignal.timeout(5000) })).json();
+      if (snap.total != null) {
+        setVal('stat-lbl-obs', `Obs (${snap.year} snapshot)`);
+        setVal('stat-val-obs', snap.total.toLocaleString());
+        obsLoaded = true;
+        // Populate the alert row from snapshot unless PFAS replaces it below
+        const top = snap.topSpecies?.[0];
+        let msg = `${snap.total.toLocaleString()} observations · ${snap.speciesRichness} species on record`;
+        if (top) msg += ` · Top: ${top.name} (${top.count})`;
+        setVal('intel-alert-lbl', `↻ iNat ${snap.year} snapshot`);
+        setVal('intel-alert-text', msg);
+      }
+    }
+  } catch { /* snapshot system unavailable */ }
+
+  if (!obsLoaded) {
+    try {
+      const d1 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+      const p  = new URLSearchParams({ lat: LAT, lng: LNG, radius: RADIUS_KM, per_page: '1', order: 'desc', order_by: 'observed_on', d1 });
+      p.append('iconic_taxa[]', 'Insecta');
+      p.append('iconic_taxa[]', 'Aves');
+      p.append('has[]', 'geo');
+      const data = await (await fetch(`https://api.inaturalist.org/v1/observations?${p}`, { signal: AbortSignal.timeout(10000) })).json();
+      if (data.total_results != null) {
+        setVal('stat-lbl-obs', 'Obs (30 d, live)');
+        setVal('stat-val-obs', data.total_results.toLocaleString());
+        const top = data.results?.[0];
+        let msg = `${data.total_results.toLocaleString()} sightings in last 30 days · ${RADIUS_KM} km radius`;
+        if (top?.taxon?.preferred_common_name) msg += ` · Most recent: ${top.taxon.preferred_common_name}`;
+        setVal('intel-alert-lbl', '↻ iNaturalist · live');
+        setVal('intel-alert-text', msg);
+        obsLoaded = true;
+      }
+    } catch { /* iNat unavailable */ }
+  }
+
+  // ── 5. Live PFAS alert — WI DNR ArcGIS (CORS-enabled) ───────────────────
+  // Fetch PFAS sites in the bbox, then check proximity to corridor centroids.
+  // If any are within 1 km, report a genuine field alert; this replaces the
+  // snapshot/iNat message in the Intel card's alert row.
+  try {
+    const pfasParams = arcgisBbox({ outFields: 'PRIMARY_STATION_NAME', resultRecordCount: '200' });
+    const pfasRes    = await fetch(
+      `https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_PFAS_SITES_AND_DATA/MapServer/0/query?${pfasParams}`,
+      { signal: AbortSignal.timeout(12000) }
+    );
+    if (pfasRes.ok) {
+      const pfasData  = await pfasRes.json();
+      const pfasSites = pfasData.features ?? [];
+
+      if (pfasSites.length > 0 && corridorCentroids.length > 0) {
+        // Find PFAS sites within 1 km of any corridor centroid
+        const nearSites = pfasSites.filter(s => {
+          const coord = s.geometry?.coordinates;
+          if (!coord) return false;
+          return corridorCentroids.some(c => haversineKm(coord, c) <= 1.0);
+        });
+
+        if (nearSites.length > 0) {
+          const name = nearSites[0].properties?.PRIMARY_STATION_NAME || 'PFAS sampling site';
+          const extra = nearSites.length > 1 ? ` +${nearSites.length - 1} more` : '';
+          setVal('intel-alert-lbl', `⚑ PFAS Alert · live`);
+          setVal('intel-alert-text',
+            `${nearSites.length} DNR PFAS contamination site${nearSites.length > 1 ? 's' : ''} within 1 km of corridor nodes: "${name}"${extra}. Cross-reference with corridor planting areas recommended.`
+          );
+        } else if (pfasSites.length > 0) {
+          // PFAS sites exist in the study area but none close to corridor — report that
+          setVal('intel-alert-lbl', `⚑ PFAS Sites in Study Area`);
+          setVal('intel-alert-text',
+            `${pfasSites.length} DNR PFAS contamination site${pfasSites.length > 1 ? 's' : ''} detected in the 15 km study area. None within 1 km of a mapped corridor site.`
+          );
+        }
+      }
+    }
+  } catch { /* DNR ArcGIS unreachable — keep obs-based alert text */ }
+})();
+</script>
+</body>
+</html>

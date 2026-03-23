@@ -403,6 +403,38 @@ export const COMMONS_LAYER = {
   defaultOn:   false,
 };
 
+// ── Analysis layers ──────────────────────────────────────────────────────────
+
+/**
+ * Expansion Opportunities — active pollinator zones without nearby formal
+ * habitat, scored green / amber / red by native plant presence, PFAS proximity,
+ * and pesticide pressure.
+ */
+export const EXPANSION_LAYER = [
+  {
+    id:          'expansion-opportunities',
+    label:       'Expansion Opportunities',
+    emoji:       '<i class="ph ph-trend-up"></i>',
+    description: 'Areas with documented pollinator activity and no nearby formal habitat site — scored by native plant diversity, pollution proximity, and pesticide pressure. Green = good suitability, amber = moderate, red = limiting factors present.',
+    defaultOn:   false,
+  },
+];
+
+/**
+ * Problem Areas — corridor sites with inferred issues: PFAS proximity,
+ * isolation, no sightings, poor nesting, high canopy shading, or pesticide pressure.
+ * Severity: red = high, amber = medium, gray = low.
+ */
+export const PROBLEM_AREAS_LAYER = [
+  {
+    id:          'problem-areas',
+    label:       'Problem Areas',
+    emoji:       '<i class="ph ph-warning-circle"></i>',
+    description: 'Habitat sites and zones with inferred problems: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates severity.',
+    defaultOn:   false,
+  },
+];
+
 // ── Establishment means ──────────────────────────────────────────────────────
 
 /**

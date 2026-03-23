@@ -163,7 +163,26 @@ export function computeAlerts({
     const hasSite = habitatSites.some(site =>
       distKm(clusterCoord, centroid(site)) <= OPPORTUNITY_RADIUS_KM
     );
-    if (!hasSite) opportunityClusters.push({ coord: clusterCoord, count });
+    if (!hasSite) {
+      // Suitability factors — weigh nesting potential, native plant presence, and
+      // distance from pollution sources before classifying as an expansion zone.
+      const nativePlantCount = pollinatorSightings.filter(s => {
+        const lid = s.properties?.layer_id;
+        if (lid !== 'native-plants' && lid !== 'gbif-native-plants') return false;
+        const sc = s.geometry?.coordinates;
+        return sc && distKm(clusterCoord, sc) <= OPPORTUNITY_RADIUS_KM;
+      }).length;
+      const pfasNearby = pfasFeatures.some(p => {
+        const pc = centroid(p);
+        return pc && distKm(clusterCoord, pc) <= 1.5;
+      });
+      const pestBand  = _getPesticideBandForCoord(clusterCoord, pesticideCounties);
+      opportunityClusters.push({
+        coord: clusterCoord, count,
+        nativePlantCount, pfasNearby,
+        pesticideHigh: pestBand?.band === 4,
+      });
+    }
   }
   if (opportunityClusters.length > 0) {
     const total = opportunityClusters.reduce((s, c) => s + c.count, 0);
@@ -219,11 +238,18 @@ export function computeAlerts({
       ? ` Nearby: ${zonePhrases.slice(0, 2).join('; ')}.`
       : '';
 
+    // Classify by suitability: weigh native plants, PFAS, and pesticide pressure
+    const highSuit = enrichedClusters.filter(oc => oc.nativePlantCount >= 3 && !oc.pfasNearby && !oc.pesticideHigh);
+    const lowSuit  = enrichedClusters.filter(oc => oc.pfasNearby || oc.pesticideHigh);
+    let suitNote = '';
+    if (highSuit.length)                       suitNote += ` ${highSuit.length} show strong suitability indicators (native plants present, low pollution).`;
+    if (lowSuit.length)                        suitNote += ` ${lowSuit.length} have limiting factors (PFAS proximity or high pesticide pressure) that warrant assessment before investment.`;
+    if (!highSuit.length && !lowSuit.length)   suitNote += ' Nesting suitability, native plant coverage, and pollution levels should be assessed before acting on these areas.';
     alerts.push({
       level:    'opportunity',
       icon:     '<i class="ph ph-plant"></i>',
       key:      'opportunity-zones',
-      text:     `${enrichedClusters.length} area${enrichedClusters.length > 1 ? 's' : ''} with active pollinator sightings (${total.toLocaleString()} records) have no nearby habitat program site — potential expansion zones.${ownerNote}`,
+      text:     `${enrichedClusters.length} area${enrichedClusters.length > 1 ? 's' : ''} with documented pollinator activity (${total.toLocaleString()} records) have no nearby formal habitat program site.${suitNote}${ownerNote}`,
       clusters: enrichedClusters,
       coords:   enrichedClusters.map(c => c.coord),
       layers:   ['pollinators', 'gbif-pollinators'],
@@ -280,7 +306,7 @@ export function computeAlerts({
         level:  'positive',
         icon:   '<i class="ph ph-check-circle"></i>',
         key:    'site-clusters',
-        text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's are' : ' is'} within 300 m of each other — forming connected corridor nodes.`,
+        text:   `${clusterCount} habitat site pair${clusterCount > 1 ? 's sit' : ' sits'} within optimal stepping-stone range (≤300 m) — accessible to all native bee species including small mining bees, sweat bees, and mason bees.`,
         coords: clusteredSiteCoords,
         layers: ['gbcc-corridor', 'waystations'],
       });
@@ -341,7 +367,7 @@ export function computeAlerts({
       level:  'info',
       icon:   '<i class="ph ph-link-simple"></i>',
       key:    'weak-nodes',
-      text:   `${weakNodes.length} corridor site${weakNodes.length > 1 ? 's sit' : ' sits'} in a weak-signal zone — nearest corridor neighbour is 700 m–2 km away, beyond comfortable solitary bee foraging range: ${names.join(', ')}${extra}. A new planting within 700 m of each would restore mesh-level connectivity.`,
+      text:   `${weakNodes.length} corridor site${weakNodes.length > 1 ? 's sit' : ' sits'} at the outer edge of small-bee foraging range — nearest corridor neighbour 700 m–2 km away: ${names.join(', ')}${extra}. Bumble bees reliably traverse this gap; small-bodied species (mining bees, sweat bees, mason bees) may not. A new planting within 700 m of each would bring these pairs into the optimal connectivity tier.`,
       coords: weakNodes.map(n => n.coord),
       layers: ['gbcc-corridor'],
     });
@@ -391,11 +417,25 @@ export function computeAlerts({
     const worst = mstEdges.reduce((max, e) => e.dist > max.dist ? e : max, mstEdges[0]);
     if (worst && worst.dist >= 2.5) {
       const a = cSites[worst.from], b = cSites[worst.to];
+      // Check for pollinator sightings in the gap — their presence suggests
+      // unmapped habitat may already be providing some connectivity.
+      const gapMid = [
+        (a.coord[0] + b.coord[0]) / 2,
+        (a.coord[1] + b.coord[1]) / 2,
+      ];
+      const gapCheckKm = Math.min(worst.dist * 0.45, 1.5);
+      const sightingsInGap = pollinatorSightings.filter(s => {
+        const sc = s.geometry?.coordinates;
+        return sc && distKm(gapMid, sc) <= gapCheckKm;
+      });
+      const gapNote = sightingsInGap.length > 0
+        ? ` ${sightingsInGap.length} pollinator sighting${sightingsInGap.length > 1 ? 's were' : ' was'} recorded in the gap area — possible unmapped habitat may already provide some connectivity. Field verification is recommended before investing in new plantings.`
+        : ' No pollinator activity detected in the gap. A stepping-stone planting here would close the gap and restore functional connectivity for all species.'
       alerts.push({
         level:  'info',
         icon:   '<i class="ph ph-link-simple"></i>',
         key:    'connectivity-gap',
-        text:   `Corridor connectivity gap: the largest gap in the spanning network is ${worst.dist.toFixed(1)} km (between "${a.name}" and "${b.name}"). Most native bees forage < 2 km — a stepping-stone planting here would close the gap.`,
+        text:   `Corridor connectivity gap: ${worst.dist.toFixed(1)} km between "${a.name}" and "${b.name}" — longer than most native bees forage.${gapNote}`,
         coords: [a.coord, b.coord],
         layers: ['gbcc-corridor'],
       });
@@ -759,6 +799,367 @@ function _getPesticideBandForCoord(coord, counties) {
     band_label: best.properties.band_label,
     county:     best.properties.name,
   };
+}
+
+// ── Expansion Opportunities ───────────────────────────────────────────────────
+
+/**
+ * Computes Expansion Opportunity point features — active pollinator zones
+ * with no nearby formal habitat site, scored by habitat suitability.
+ *
+ * Suitability factors (same criteria as the opportunity-zones alert):
+ *   + Native plant sightings nearby      (primary positive signal)
+ *   + Clean environment (no PFAS nearby) (secondary positive)
+ *   + Low pesticide pressure             (secondary positive)
+ *   + Existing habitat within stepping-stone range (connectivity bonus)
+ *
+ * @param {object} ctx  — same shape as computeAlerts ctx
+ * @returns {GeoJSON.FeatureCollection}
+ */
+export function computeExpansionOpportunities({
+  corridorFeatures   = [],
+  waystationFeatures = [],
+  hnpFeatures        = [],
+  pollinatorSightings = [],
+  pfasFeatures       = [],
+  pesticideCounties  = [],
+}) {
+  const habitatSites = [...corridorFeatures, ...waystationFeatures];
+  const OPPORTUNITY_RADIUS_KM = 0.8;
+  const CLUSTER_MIN = 5;
+
+  const buckets = new Map();
+  for (const s of pollinatorSightings) {
+    if (!s.geometry?.coordinates) continue;
+    const [lng, lat] = s.geometry.coordinates;
+    const key = `${(lng * 100 | 0)},${(lat * 100 | 0)}`;
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+
+  const features = [];
+  for (const [key, count] of buckets) {
+    if (count < CLUSTER_MIN) continue;
+    const [lx, ly] = key.split(',').map(Number);
+    const coord = [lx / 100 + 0.005, ly / 100 + 0.005];
+
+    const hasSite = habitatSites.some(s => distKm(coord, centroid(s)) <= OPPORTUNITY_RADIUS_KM);
+    if (hasSite) continue;
+
+    const nativePlantCount = pollinatorSightings.filter(s => {
+      const lid = s.properties?.layer_id;
+      if (lid !== 'native-plants' && lid !== 'gbif-native-plants') return false;
+      const sc = s.geometry?.coordinates;
+      return sc && distKm(coord, sc) <= OPPORTUNITY_RADIUS_KM;
+    }).length;
+
+    const pfasNearby = pfasFeatures.some(p => {
+      const pc = centroid(p);
+      return pc && distKm(coord, pc) <= 1.5;
+    });
+
+    const pestBand     = _getPesticideBandForCoord(coord, pesticideCounties);
+    const highPesticide = pestBand?.band === 4;
+
+    // Stepping-stone bonus: existing habitat 0.8–2.5 km away
+    const goodNeighbors = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures]
+      .filter(s => { const d = distKm(coord, centroid(s)); return d > 0.8 && d <= 2.5; }).length;
+
+    // Composite score 0–100
+    let score = 40;
+    if (nativePlantCount >= 5)      score += 30;
+    else if (nativePlantCount >= 2) score += 15;
+    if (!pfasNearby)                score += 15;
+    if (!highPesticide)             score += 10;
+    if (goodNeighbors > 0)          score += 5;
+    if (pfasNearby)                 score -= 20;
+    if (highPesticide)              score -= 10;
+    score = Math.max(0, Math.min(100, score));
+
+    const suitability = score >= 70 ? 'good' : score >= 45 ? 'moderate' : 'poor';
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: coord },
+      properties: {
+        layer_id:           'expansion-opportunities',
+        est_key:            'expansion',
+        suitability,
+        score,
+        pollinator_count:   count,
+        native_plant_count: nativePlantCount,
+        pfas_nearby:        pfasNearby,
+        high_pesticide:     highPesticide,
+        name:    `Expansion Opportunity \u00b7 ${suitability.charAt(0).toUpperCase() + suitability.slice(1)} Suitability`,
+        common:  `${count} pollinator records \u00b7 ${nativePlantCount} native plant records \u00b7 score ${score}/100`,
+        date:    '', user: '', image: '',
+      },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+// ── Problem Features ──────────────────────────────────────────────────────────
+
+/**
+ * Aggregates all site-level problems inferred from loaded data into a single
+ * GeoJSON FeatureCollection of Point features.
+ *
+ * Problem types:
+ *   pfas-proximity   — corridor site within 1 km of a PFAS detection
+ *   unsupported-site — no pollinator sightings within 500 m
+ *   isolated-site    — no other corridor site within 2 km
+ *   weak-node        — nearest corridor neighbor 700 m–2 km
+ *   poor-nesting     — NLCD nesting score < 25 /100
+ *   shaded-habitat   — >55% tree canopy coverage within 150 m
+ *   pesticide-high   — site in a top-quartile pesticide-pressure county
+ *
+ * @param {object} ctx  — same shape as computeAlerts ctx
+ * @returns {GeoJSON.FeatureCollection}
+ */
+export function computeProblemFeatures({
+  corridorFeatures   = [],
+  waystationFeatures = [],
+  pfasFeatures       = [],
+  pollinatorSightings = [],
+  nestingScores      = new Map(),
+  canopyScores       = new Map(),
+  pesticideCounties  = [],
+}) {
+  const features = [];
+
+  function push(coord, problemType, severity, name, description) {
+    if (!coord) return;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: coord },
+      properties: {
+        layer_id:     'problem-areas',
+        est_key:      'problem',
+        problem_type: problemType,
+        severity,
+        name,
+        common:       description,
+        date: '', user: '', image: '',
+      },
+    });
+  }
+
+  const PFAS_KM      = 1.0;
+  const COVERAGE_KM  = 0.5;
+  const ISOLATION_KM = 2.0;
+  const MESH_KM      = 0.7;
+
+  // 1. PFAS-proximate corridor sites
+  for (const pfas of pfasFeatures) {
+    const pfasCoord = centroid(pfas);
+    if (!pfasCoord) continue;
+    for (const site of corridorFeatures) {
+      const d = distKm(pfasCoord, centroid(site));
+      if (d <= PFAS_KM) {
+        push(centroid(site), 'pfas-proximity', 'high',
+          `PFAS Near Site: ${site.properties?.name || 'Corridor Site'}`,
+          `PFAS site \u201c${pfas.properties?.name || 'Detection'}\u201d is ${(d * 1000).toFixed(0)}\u202fm away`);
+      }
+    }
+  }
+
+  // 2. Unsupported corridor sites (zero sightings within 500 m)
+  for (const site of corridorFeatures) {
+    const siteCoord = centroid(site);
+    const supported = pollinatorSightings.some(s => {
+      const sc = s.geometry?.coordinates;
+      return sc && distKm(siteCoord, sc) <= COVERAGE_KM;
+    });
+    if (!supported) {
+      push(siteCoord, 'unsupported-site', 'medium',
+        `No Sightings: ${site.properties?.name || 'Corridor Site'}`,
+        'No recorded pollinator sightings within 500 m');
+    }
+  }
+
+  // 3. Isolated corridor sites (no neighbor within 2 km)
+  if (corridorFeatures.length >= 2) {
+    for (const site of corridorFeatures) {
+      const siteCoord = centroid(site);
+      const hasNeighbor = corridorFeatures.some(
+        other => other !== site && distKm(siteCoord, centroid(other)) < ISOLATION_KM
+      );
+      if (!hasNeighbor) {
+        push(siteCoord, 'isolated-site', 'high',
+          `Isolated Site: ${site.properties?.name || 'Site'}`,
+          'No other corridor site within 2 km — beyond bumble bee foraging range');
+      }
+    }
+  }
+
+  // 4. Weak-node corridor sites (nearest neighbor 700 m–2 km)
+  for (const site of corridorFeatures) {
+    const siteCoord = centroid(site);
+    let closest = Infinity;
+    for (const other of corridorFeatures) {
+      if (other === site) continue;
+      closest = Math.min(closest, distKm(siteCoord, centroid(other)));
+    }
+    if (closest > MESH_KM && closest <= ISOLATION_KM) {
+      push(siteCoord, 'weak-node', 'medium',
+        `Weak Connection: ${site.properties?.name || 'Site'}`,
+        `Nearest corridor neighbor ${(closest * 1000).toFixed(0)}\u202fm away \u2014 at the outer edge of small-bee foraging range`);
+    }
+  }
+
+  // 5. Poor nesting habitat (NLCD score < 25)
+  if (nestingScores.size > 0) {
+    for (const site of corridorFeatures) {
+      const info = nestingScores.get(site.properties?.name ?? '');
+      if (info?.score < 25) {
+        push(centroid(site), 'poor-nesting', 'medium',
+          `Poor Nesting: ${site.properties?.name || 'Site'}`,
+          `Nesting suitability score ${info.score}/100 \u2014 low bare ground and grassland cover within 300 m`);
+      }
+    }
+  }
+
+  // 6. Shaded habitat (canopy > 55% within 150 m)
+  if (canopyScores.size > 0) {
+    for (const site of corridorFeatures) {
+      const pct = canopyScores.get(site.properties?.name ?? '');
+      if (typeof pct === 'number' && pct > 55) {
+        push(centroid(site), 'shaded-habitat', 'low',
+          `Shaded Habitat: ${site.properties?.name || 'Site'}`,
+          `${pct.toFixed(0)}% tree canopy within 150 m \u2014 may suppress sun-loving pollinator plants`);
+      }
+    }
+  }
+
+  // 7. High pesticide pressure
+  if (pesticideCounties.length > 0) {
+    for (const site of corridorFeatures) {
+      const info = _getPesticideBandForCoord(centroid(site), pesticideCounties);
+      if (info?.band === 4) {
+        push(centroid(site), 'pesticide-high', 'high',
+          `High Pesticide Pressure: ${site.properties?.name || 'Site'}`,
+          `${info.county} county \u2014 top-quartile agricultural pesticide pressure`);
+      }
+    }
+  }
+
+  return { type: 'FeatureCollection', features };
+}
+
+// ── Suitability grid ──────────────────────────────────────────────────────────
+
+/**
+ * Computes a spatial suitability score grid across the study area for the
+ * habitat suitability heatmap.  Each grid point carries a `weight` (0\u20131)
+ * representing how suitable that location is for new pollinator habitat.
+ *
+ * Positive factors (scored independently, then summed):
+ *   native plant sightings nearby    (strongest signal \u2014 biodiversity already present)
+ *   pollinator sighting density       (evidence of use)
+ *   proximity to existing habitat in stepping-stone zone (300 m\u20132 km)
+ *   clean environment (no PFAS site within 1 km)
+ *   low pesticide pressure county
+ *
+ * Negative adjustments:
+ *   PFAS site within 1 km            (\u221220 pts penalty)
+ *   high-pesticide county             (\u221210 pts penalty)
+ *
+ * @param {object} ctx  — same shape as computeAlerts ctx plus centerLng/Lat/radiusKm
+ * @returns {GeoJSON.FeatureCollection}
+ */
+export function computeSuitabilityPoints({
+  corridorFeatures   = [],
+  waystationFeatures = [],
+  hnpFeatures        = [],
+  pollinatorSightings = [],
+  pfasFeatures       = [],
+  pesticideCounties  = [],
+  centerLng = -88.0133,
+  centerLat  = 44.5133,
+  radiusKm   = 15,
+}) {
+  const GRID_STEP = 0.015;   // ~1.7 km between grid points
+  const DEG_LAT   = 1 / 111.32;
+  const DEG_LNG   = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
+
+  const allHabitat = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
+
+  // Pre-bucket sightings into ~2 km cells for fast neighbour lookup
+  const pollBuckets    = new Map();
+  const nativeBuckets  = new Map();
+  for (const s of pollinatorSightings) {
+    if (!s.geometry?.coordinates) continue;
+    const [lng, lat] = s.geometry.coordinates;
+    const key = `${(lng * 50 | 0)},${(lat * 50 | 0)}`;
+    const lid = s.properties?.layer_id;
+    const target = (lid === 'native-plants' || lid === 'gbif-native-plants') ? nativeBuckets : pollBuckets;
+    target.set(key, (target.get(key) ?? 0) + 1);
+  }
+
+  function bucketCount(map, [lng, lat]) {
+    let n = 0;
+    const bx = lng * 50 | 0, by = lat * 50 | 0;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      n += map.get(`${bx + dx},${by + dy}`) ?? 0;
+    }
+    return n;
+  }
+
+  const latMin = centerLat - radiusKm * DEG_LAT;
+  const latMax = centerLat + radiusKm * DEG_LAT;
+  const lngMin = centerLng - radiusKm * DEG_LNG;
+  const lngMax = centerLng + radiusKm * DEG_LNG;
+
+  const features = [];
+  for (let lat = latMin; lat <= latMax; lat += GRID_STEP) {
+    for (let lng = lngMin; lng <= lngMax; lng += GRID_STEP) {
+      const coord = [lng, lat];
+      if (distKm([centerLng, centerLat], coord) > radiusKm) continue;
+
+      const nativeNearby    = bucketCount(nativeBuckets, coord);
+      const pollNearby      = bucketCount(pollBuckets,   coord);
+
+      let nearestHabitat = Infinity;
+      for (const s of allHabitat) {
+        const c = centroid(s);
+        if (c) nearestHabitat = Math.min(nearestHabitat, distKm(coord, c));
+      }
+
+      const pfasNearby    = pfasFeatures.some(p => { const c = centroid(p); return c && distKm(coord, c) <= 1.0; });
+      const pestBand      = _getPesticideBandForCoord(coord, pesticideCounties);
+      const highPesticide = pestBand?.band === 4;
+
+      let score = 0;
+      // Native plants: primary positive signal
+      if (nativeNearby >= 10) score += 0.35;
+      else if (nativeNearby >= 3) score += 0.20;
+      else if (nativeNearby >= 1) score += 0.10;
+      // Pollinator activity
+      if (pollNearby >= 20) score += 0.25;
+      else if (pollNearby >= 5) score += 0.15;
+      else if (pollNearby >= 1) score += 0.08;
+      // Proximity to existing habitat — stepping-stone zone is most valuable
+      if (nearestHabitat <= 0.3)       score += 0.10;
+      else if (nearestHabitat <= 0.8)  score += 0.20;
+      else if (nearestHabitat <= 2.0)  score += 0.25;
+      else if (nearestHabitat <= 3.5)  score += 0.10;
+      // Clean environment
+      if (!pfasNearby)    score += 0.10;
+      if (!highPesticide) score += 0.05;
+      // Penalties
+      if (pfasNearby)     score -= 0.20;
+      if (highPesticide)  score -= 0.10;
+
+      score = Math.max(0, Math.min(1, score));
+      if (score > 0.05) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: coord },
+          properties: { weight: score },
+        });
+      }
+    }
+  }
+  return { type: 'FeatureCollection', features };
 }
 
 // ── DOM rendering ─────────────────────────────────────────────────────────────
