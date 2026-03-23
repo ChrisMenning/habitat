@@ -1482,10 +1482,131 @@ map.on('load', async () => {
     }
   );
 
+  // Wire clicks for analysis layers → intel drawer
+  wireInteractions(
+    ['points-expansion-opportunities', 'points-problem-areas'],
+    (_lngLat, props) => {
+      if (props.layer_id === 'expansion-opportunities') {
+        const score    = props.score ?? 0;
+        const suit     = props.suitability ?? 'moderate';
+        const barColor = suit === 'good' ? '#10b981' : suit === 'moderate' ? '#f59e0b' : '#ef4444';
+        const hdrBg    = suit === 'good' ? '#064e3b' : suit === 'moderate' ? '#451a03' : '#450a0a';
+        const pollCount   = props.pollinator_count ?? 0;
+        const plantCount  = props.native_plant_count ?? 0;
+        const pfas        = props.pfas_nearby    ? '<span class="factor-bad">Yes &#x26A0;</span>'  : '<span class="factor-good">None detected</span>';
+        const pest        = props.high_pesticide ? '<span class="factor-bad">High pressure</span>' : '<span class="factor-good">Low / moderate</span>';
+        const suitLabel   = suit.charAt(0).toUpperCase() + suit.slice(1);
+        const body = `
+          <div class="drawer-score-hero">
+            <div class="drawer-score-ring">
+              <span class="drawer-score-num">${score}</span>
+              <span class="drawer-score-denom">/100</span>
+            </div>
+            <div class="drawer-score-bar-wrap">
+              <div class="drawer-score-bar"><div class="drawer-score-fill" style="width:${score}%;background:${barColor}"></div></div>
+              <span class="drawer-score-tier" style="color:${barColor}">${suitLabel} suitability</span>
+            </div>
+          </div>
+          <div class="drawer-section-label">Ecological Factors</div>
+          <dl class="drawer-meta">
+            <dt>Pollinator Records</dt><dd>${pollCount} sightings in cluster</dd>
+            <dt>Native Plant Records</dt><dd>${plantCount} records within 800 m</dd>
+            <dt>PFAS Contamination</dt><dd>${pfas}</dd>
+            <dt>Pesticide Pressure</dt><dd>${pest}</dd>
+          </dl>
+          <div class="drawer-section-label">Scoring Breakdown</div>
+          <div class="drawer-factor-list">
+            ${_expansionFactorRow('Pollinator activity', pollCount >= 20 ? 30 : pollCount >= 5 ? 18 : pollCount >= 1 ? 8 : 0, 30, barColor)}
+            ${_expansionFactorRow('Native plant presence', plantCount >= 5 ? 30 : plantCount >= 2 ? 15 : 0, 30, barColor)}
+            ${_expansionFactorRow('PFAS-free environment', props.pfas_nearby    ? -20 : 15, 15, barColor)}
+            ${_expansionFactorRow('Pesticide pressure', props.high_pesticide ? -10 : 10, 10, barColor)}
+          </div>
+          <p class="drawer-intel-note" style="margin-top:12px">
+            This location has active pollinator sightings but no nearby registered habitat program within 800 m.
+            Score weighs ecological signals present at this location.
+          </p>`;
+        openIntelDrawer(
+          props.name ?? 'Expansion Opportunity',
+          body,
+          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A1; Expansion Opportunity' }
+        );
+
+      } else if (props.layer_id === 'problem-areas') {
+        const sev      = props.severity ?? 'medium';
+        const sevColor = sev === 'high' ? '#dc2626' : sev === 'medium' ? '#d97706' : '#6b7280';
+        const hdrBg    = sev === 'high' ? '#450a0a'  : sev === 'medium' ? '#451a03'  : '#1f2937';
+        const typeLabel = _problemTypeLabel(props.problem_type ?? '');
+        const body = `
+          <div class="drawer-severity-badge" style="background:${sevColor}22;border-color:${sevColor}66;color:${sevColor}">
+            <span class="drawer-severity-dot" style="background:${sevColor}"></span>
+            ${sev.toUpperCase()} SEVERITY
+          </div>
+          <div class="drawer-section-label">Problem Type</div>
+          <dl class="drawer-meta">
+            <dt>Category</dt><dd>${typeLabel}</dd>
+            <dt>Details</dt><dd>${props.common ?? ''}</dd>
+          </dl>
+          <div class="drawer-section-label">What This Means</div>
+          <p class="drawer-intel-note" style="margin-top:4px">${_problemTypeExplanation(props.problem_type ?? '')}</p>`;
+        openIntelDrawer(
+          props.name ?? 'Problem Area',
+          body,
+          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Problem Area' }
+        );
+      }
+    }
+  );
+
   // Initial data load
   loadObservations();
   // Historical trends — deferred so it never delays the primary render
   setTimeout(() => loadHistoricalTrends(), 0);
 });
+
+// ── Analysis drawer helpers ──────────────────────────────────────────────────
+
+function _expansionFactorRow(label, points, max, barColor) {
+  const pct     = Math.max(0, Math.min(100, (Math.abs(points) / max) * 100));
+  const isNeg   = points < 0;
+  const color   = isNeg ? '#ef4444' : barColor;
+  const sign    = isNeg ? '−' : '+';
+  const abs     = Math.abs(points);
+  return `<div class="drawer-factor-row">
+    <span class="drawer-factor-label">${label}</span>
+    <span class="drawer-factor-pts" style="color:${color}">${sign}${abs}</span>
+    <div class="drawer-factor-bar"><div class="drawer-factor-fill" style="width:${pct}%;background:${color}"></div></div>
+  </div>`;
+}
+
+function _problemTypeLabel(type) {
+  return {
+    'pfas-proximity':   'PFAS Contamination Proximity',
+    'unsupported-site': 'No Pollinator Activity Recorded',
+    'isolated-site':    'Isolated from Corridor Network',
+    'weak-node':        'Weak Network Connection',
+    'poor-nesting':     'Poor Nesting Habitat (NLCD)',
+    'shaded-habitat':   'Excessive Tree Canopy Shading',
+    'pesticide-high':   'High Agricultural Pesticide Pressure',
+  }[type] ?? type;
+}
+
+function _problemTypeExplanation(type) {
+  return {
+    'pfas-proximity':
+      'A PFAS detection site is within 1 km of this habitat. Per- and polyfluoroalkyl substances persist in soil and water and may affect insect physiology and plant uptake. Monitoring and soil testing are recommended.',
+    'unsupported-site':
+      'No pollinator sightings (iNaturalist, GBIF) have been recorded within 500 m of this site. This may indicate low visibility, lack of observation effort, or genuinely poor pollinator visitation. Field surveys would help distinguish.',
+    'isolated-site':
+      'No other corridor site exists within 2 km — beyond the reliable foraging range of even large bumble bees. This site cannot exchange pollinators with the broader network without a new stepping-stone planting.',
+    'weak-node':
+      'The nearest corridor neighbor is 700 m–2 km away, placing this connection at the outer edge of small-bee foraging range. Mining bees, sweat bees, and mason bees may not reliably traverse this gap. A new planting within 700 m would restore optimal connectivity.',
+    'poor-nesting':
+      'NLCD land-cover analysis shows low bare ground and sparse grassland cover within 300 m of this site. Ground-nesting species (70% of native bees) may have limited nesting substrate here.',
+    'shaded-habitat':
+      'More than 55% tree canopy coverage within 150 m shades out sun-loving pollinator plants such as wild bergamot, coneflowers, and milkweeds. Selective canopy thinning or edge planting could improve conditions.',
+    'pesticide-high':
+      'This site is located in a county ranked in the top quartile for agricultural pesticide application pressure (USGS NWQP). Sublethal pesticide exposure can impair bee navigation, reproduction, and foraging efficiency.',
+  }[type] ?? 'Review conditions at this site to understand the potential impact on corridor function.';
+}
 
 

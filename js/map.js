@@ -956,21 +956,23 @@ export function registerSuitabilityHeatmap(visible) {
     layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
       'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
-      'heatmap-intensity': 1.2,
+      'heatmap-intensity': 0.7,
       'heatmap-color': [
         'interpolate', ['linear'], ['heatmap-density'],
         0,    'rgba(0,0,0,0)',
-        0.10, 'rgba(187,247,208,0.18)',
-        0.30, 'rgba(74,222,128,0.42)',
-        0.55, 'rgba(22,163,74,0.68)',
-        0.75, 'rgba(20,83,45,0.86)',
+        0.15, 'rgba(187,247,208,0.20)',
+        0.35, 'rgba(74,222,128,0.50)',
+        0.60, 'rgba(22,163,74,0.72)',
+        0.80, 'rgba(20,83,45,0.90)',
         1.0,  'rgba(6,78,59,1.0)',
       ],
+      // Radius kept close to one grid cell (~1.7 km) so adjacent points
+      // don't merge into a city-wide blob
       'heatmap-radius': [
         'interpolate', ['exponential', 2], ['zoom'],
-        8, 40, 10, 80, 12, 160, 14, 320,
+        8, 12, 10, 26, 12, 52, 14, 95,
       ],
-      'heatmap-opacity': 0.70,
+      'heatmap-opacity': 0.72,
     },
   });
 }

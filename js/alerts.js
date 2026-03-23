@@ -1129,28 +1129,24 @@ export function computeSuitabilityPoints({
       const highPesticide = pestBand?.band === 4;
 
       let score = 0;
-      // Native plants: primary positive signal
-      if (nativeNearby >= 10) score += 0.35;
-      else if (nativeNearby >= 3) score += 0.20;
-      else if (nativeNearby >= 1) score += 0.10;
+      // Native plants: primary ecological signal — must be documented
+      if (nativeNearby >= 10) score += 0.40;
+      else if (nativeNearby >= 3) score += 0.25;
+      else if (nativeNearby >= 1) score += 0.12;
       // Pollinator activity
-      if (pollNearby >= 20) score += 0.25;
-      else if (pollNearby >= 5) score += 0.15;
+      if (pollNearby >= 20) score += 0.30;
+      else if (pollNearby >= 5) score += 0.18;
       else if (pollNearby >= 1) score += 0.08;
-      // Proximity to existing habitat — stepping-stone zone is most valuable
-      if (nearestHabitat <= 0.3)       score += 0.10;
-      else if (nearestHabitat <= 0.8)  score += 0.20;
-      else if (nearestHabitat <= 2.0)  score += 0.25;
-      else if (nearestHabitat <= 3.5)  score += 0.10;
-      // Clean environment
-      if (!pfasNearby)    score += 0.10;
-      if (!highPesticide) score += 0.05;
-      // Penalties
-      if (pfasNearby)     score -= 0.20;
-      if (highPesticide)  score -= 0.10;
+      // Habitat proximity — reward stepping-stone distance (0.5–3 km away);
+      // being right on top of existing habitat is already served, not a new opportunity
+      if (nearestHabitat > 0.5 && nearestHabitat <= 1.5)       score += 0.20;
+      else if (nearestHabitat > 1.5 && nearestHabitat <= 3.0)  score += 0.10;
+      // Penalties only — absence of contamination is not a reward
+      if (pfasNearby)     score -= 0.30;
+      if (highPesticide)  score -= 0.15;
 
       score = Math.max(0, Math.min(1, score));
-      if (score > 0.05) {
+      if (score > 0.30) {  // Require genuine multi-factor ecological support
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: coord },

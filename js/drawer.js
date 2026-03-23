@@ -676,12 +676,13 @@ export function closeDrawer() {
  * @param {string} title    Heading shown at the top of the drawer
  * @param {string} bodyHtml HTML string for the drawer body content
  */
-export function openIntelDrawer(title, bodyHtml) {
+export function openIntelDrawer(title, bodyHtml, { headerStyle = '', labelHtml = '' } = {}) {
   const drawer = document.getElementById('site-drawer');
   const body   = document.getElementById('site-drawer-body');
   if (!drawer || !body) return;
   body.innerHTML =
-    `<div class="drawer-header">` +
+    `<div class="drawer-header"${headerStyle ? ` style="${headerStyle}"` : ''}>` +
+      (labelHtml ? `<div class="drawer-header-label">${labelHtml}</div>` : '') +
       `<h2 class="drawer-title">${title}</h2>` +
     `</div>` +
     `<div class="drawer-body">${bodyHtml}</div>`;
