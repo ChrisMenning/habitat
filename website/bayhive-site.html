@@ -1615,7 +1615,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // Fetches real data from:
 //   GBCC ArcGIS FeatureServer — corridor site count + total planted area
 //   /waystation_coords.json   — waystation count
-//   /api/hnp-plantings        — HNP yard count (proxied; needs node server)
+//   /api/hnp-count            — HNP yard count for local bbox (proxied; needs node server)
 //   /api/snapshots            — latest iNaturalist harvest for observation count
 //   iNaturalist API (CORS)    — 30-day fallback if no snapshot
 //   WI DNR ArcGIS MapServer   — PFAS sites for live alert (CORS-enabled)
@@ -1715,22 +1715,18 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     }
   } catch { /* node server not running — keep static "56" */ }
 
-  // ── 3. HNP yard count (proxied endpoint) ────────────────────────────────
-  // Uses a manual AbortController + setTimeout for broad browser compatibility.
-  // The entire US HNP dataset is proxied, so allow 30 s for the round-trip.
+  // ── 3. HNP yard count (server-side bbox-filtered endpoint) ─────────────
   try {
     const hnpCtrl    = new AbortController();
-    const hnpTimeout = setTimeout(() => hnpCtrl.abort(), 30000);
-    const res = await fetch('/api/hnp-plantings', { signal: hnpCtrl.signal });
+    const hnpTimeout = setTimeout(() => hnpCtrl.abort(), 20000);
+    const res = await fetch('/api/hnp-count', { signal: hnpCtrl.signal });
     clearTimeout(hnpTimeout);
     const data  = res.ok ? await res.json() : {};
-    const count = (data.features ?? []).filter(f => {
-      const [lng, lat] = f.geometry?.coordinates ?? [];
-      return lat >= bbox.minY && lat <= bbox.maxY &&
-             lng >= bbox.minX && lng <= bbox.maxX;
-    }).length;
-    setVal('stat-val-hnp', count);
-    setVal('guide-val-hnp', count);
+    const count = data.count ?? null;
+    if (count != null) {
+      setVal('stat-val-hnp', count);
+      setVal('guide-val-hnp', count);
+    }
   } catch { /* proxy unavailable — keep "—" */ }
 
   // ── 4. Observation count — snapshot first, iNat live fallback ───────────
