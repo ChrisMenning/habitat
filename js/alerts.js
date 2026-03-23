@@ -428,17 +428,40 @@ export function computeAlerts({
         const sc = s.geometry?.coordinates;
         return sc && distKm(gapMid, sc) <= gapCheckKm;
       });
-      const gapNote = sightingsInGap.length > 0
-        ? ` ${sightingsInGap.length} pollinator sighting${sightingsInGap.length > 1 ? 's were' : ' was'} recorded in the gap area — possible unmapped habitat may already provide some connectivity. Field verification is recommended before investing in new plantings.`
-        : ' No pollinator activity detected in the gap. A stepping-stone planting here would close the gap and restore functional connectivity for all species.'
-      alerts.push({
-        level:  'info',
-        icon:   '<i class="ph ph-link-simple"></i>',
-        key:    'connectivity-gap',
-        text:   `Corridor connectivity gap: ${worst.dist.toFixed(1)} km between "${a.name}" and "${b.name}" — longer than most native bees forage.${gapNote}`,
-        coords: [a.coord, b.coord],
-        layers: ['gbcc-corridor'],
-      });
+      const n = sightingsInGap.length;
+
+      // Thresholds: ≥15 sightings = well-documented activity ("handled");
+      //             1–14 sightings = suppress (some activity, not conclusive);
+      //             0 sightings    = fire a warn-level alert urging action.
+      if (n === 0) {
+        alerts.push({
+          level:  'warn',
+          icon:   '<i class="ph ph-link-simple-break"></i>',
+          key:    'connectivity-gap',
+          text:   `Corridor connectivity gap: ${worst.dist.toFixed(1)} km between "${a.name}" and "${b.name}" — longer than most native bees forage. No pollinator activity was detected in the gap. A stepping-stone planting here would close the gap and restore functional connectivity for all species.`,
+          coords: [a.coord, b.coord],
+          layers: ['gbcc-corridor'],
+        });
+      } else if (n >= 15) {
+        alerts.push({
+          level:  'positive',
+          icon:   '<i class="ph ph-link-simple"></i>',
+          key:    'connectivity-gap',
+          text:   `Corridor connectivity gap: ${worst.dist.toFixed(1)} km between "${a.name}" and "${b.name}". ${n} pollinator sightings were recorded in the gap — high activity suggests functional connectivity is likely maintained by unmapped habitat. No immediate action required, but field verification could confirm.`,
+          coords: [a.coord, b.coord],
+          layers: ['gbcc-corridor'],
+        });
+      } else {
+        // 1–14 sightings: some activity present but not enough to confirm connectivity.
+        alerts.push({
+          level:  'info',
+          icon:   '<i class="ph ph-link-simple"></i>',
+          key:    'connectivity-gap',
+          text:   `Corridor gap: ${worst.dist.toFixed(1)} km between "${a.name}" and "${b.name}". ${n} pollinator sighting${n > 1 ? 's were' : ' was'} recorded in the gap — some activity present, but not enough to confirm functional connectivity. A light stepping-stone planting here is worth considering.`,
+          coords: [a.coord, b.coord],
+          layers: ['gbcc-corridor'],
+        });
+      }
     }
   }
 
@@ -476,6 +499,7 @@ export function computeAlerts({
         text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
         coords: [],
         layers: [],
+        heatmaps: ['cdl-fringe-heat'],
       });
     } else if (beePct > 4) {
       const cropNames = topBeeCrops.slice(0, 2).map(c => c.category).join(', ');
@@ -486,6 +510,7 @@ export function computeAlerts({
         text:   `Pollinator leverage opportunity: ${beePct.toFixed(1)}% of the county features bee-dependent crops (${beeOfCropPct.toFixed(0)}% of all cropland; top: ${cropNames}).${colonyNote}${censusNote} Targeted habitat additions near these fields would provide measurable crop yield benefits.`,
         coords: [],
         layers: [],
+        heatmaps: ['cdl-fringe-heat'],
       });
     }
   }
@@ -664,6 +689,7 @@ export function computeAlerts({
 
     if (zoneCentroids.length > 0) {
       const seen = new Set();
+      const publicSubItems = [];
       for (const zoneCoord of zoneCentroids) {
         const nearbyParcels = _queryParcelsNearCoord(zoneCoord, ZONE_RADIUS_M, parcelFeatures);
         for (const p of nearbyParcels) {
@@ -679,17 +705,37 @@ export function computeAlerts({
           if (habitatSites.some(s => distKm(pCoord, centroid(s)) <= HABITAT_RADIUS_KM)) continue;
           seen.add(pid);
           const ownerLabel = cls === 'city' ? 'City of Green Bay' : 'Brown County';
-          const addrNote   = p.norm.address !== '—' ? ` at ${p.norm.address}` : '';
-          alerts.push({
+          const addrNote   = p.norm.address !== '—' ? ` · ${p.norm.address}` : '';
+          publicSubItems.push({
             level:  'warn',
-            icon:   '<i class="ph ph-warning"></i>',
+            icon:   '<i class="ph ph-map-pin"></i>',
             key:    `public-land-gap-${pid}`,
-            text:   `High-Value Public Land Gap: ${acres.toFixed(1)}-acre ${ownerLabel} parcel${addrNote} has no habitat program site within 500 m and sits in an active opportunity zone. Public ownership makes this an actionable outreach target — no private negotiation required.`,
+            text:   `${acres.toFixed(1)} ac — ${ownerLabel}${addrNote}`,
             coords: [pCoord],
             layers: ['gbcc-corridor', 'waystations', 'parcels'],
           });
-          if (alerts.filter(a => a.key.startsWith('public-land-gap-')).length >= 3) break;
         }
+      }
+      if (publicSubItems.length === 1) {
+        const sub = publicSubItems[0];
+        alerts.push({
+          level:  'warn',
+          icon:   '<i class="ph ph-buildings"></i>',
+          key:    sub.key,
+          text:   `High-Value Public Land Gap: ${sub.text} — no habitat program site within 500 m, in an active opportunity zone. Public ownership makes this an actionable outreach target.`,
+          coords: sub.coords,
+          layers: sub.layers,
+        });
+      } else if (publicSubItems.length > 1) {
+        alerts.push({
+          level:    'warn',
+          icon:     '<i class="ph ph-buildings"></i>',
+          key:      'public-land-gap-group',
+          text:     `High-Value Public Land: ${publicSubItems.length} parcels in active opportunity zones have no nearby habitat program. Public ownership makes these actionable outreach targets — no private negotiation required.`,
+          coords:   publicSubItems.flatMap(s => s.coords),
+          layers:   ['gbcc-corridor', 'waystations', 'parcels'],
+          subItems: publicSubItems,
+        });
       }
     }
   }
@@ -1297,7 +1343,48 @@ export function renderAlerts(alerts, onFocus = null) {
   }
 
   for (const alert of alerts) {
-    const hasGeo = alert.coords?.length > 0;
+    // ── Grouped alert (expandable sub-list) ───────────────────────────────────
+    if (alert.subItems?.length > 0) {
+      const details = document.createElement('details');
+      details.className = `alert-item alert-item--${alert.level} alert-item--group`;
+
+      const summary = document.createElement('summary');
+      summary.className = 'alert-item-summary';
+      summary.innerHTML =
+        `<span class="alert-icon" aria-hidden="true">${alert.icon}</span>` +
+        `<span class="alert-text">${alert.text}</span>` +
+        `<span class="alert-group-chevron" aria-hidden="true">›</span>`;
+      details.appendChild(summary);
+
+      const ul = document.createElement('ul');
+      ul.className = 'alert-subitems';
+      for (const sub of alert.subItems) {
+        const li = document.createElement('li');
+        li.className = `alert-subitem${onFocus ? ' alert-subitem--clickable' : ''}`;
+        if (onFocus) {
+          li.setAttribute('role', 'button');
+          li.setAttribute('tabindex', '0');
+          li.title = 'Click to zoom to this parcel';
+          li.innerHTML =
+            `<span>${sub.text}</span>` +
+            `<span class="alert-zoom-hint" aria-hidden="true">🔍</span>`;
+          li.addEventListener('click', () => onFocus(sub));
+          li.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFocus(sub); }
+          });
+        } else {
+          li.textContent = sub.text;
+        }
+        ul.appendChild(li);
+      }
+      details.appendChild(ul);
+      container.appendChild(details);
+      continue;
+    }
+
+    // ── Standard alert item ────────────────────────────────────────────────────
+    // Alerts are clickable if they have map coordinates OR a heatmap to activate.
+    const hasGeo = alert.coords?.length > 0 || alert.heatmaps?.length > 0;
     const clickable = onFocus && hasGeo;
 
     // Use a <button> when the alert is actionable so it gets keyboard focus
@@ -1306,7 +1393,9 @@ export function renderAlerts(alerts, onFocus = null) {
     item.className = `alert-item alert-item--${alert.level}${clickable ? ' alert-item--clickable' : ''}`;
     if (clickable) {
       item.type = 'button';
-      item.title = 'Click to zoom map to these locations';
+      item.title = alert.coords?.length
+        ? 'Click to zoom map to these locations'
+        : 'Click to show this layer on the map';
     }
 
     const hint = clickable

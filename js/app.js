@@ -793,11 +793,17 @@ async function loadObservations() {
     };
     const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
     _alertFocusHandler = alert => {
-      if (!alert.coords?.length) return;
+      // Activate any heatmaps tied to this alert and sync their toggle checkboxes.
+      for (const heatId of alert.heatmaps ?? []) {
+        setHeatmapVisibility(heatId, true);
+        const toggle = document.getElementById(`toggle-${heatId.replace(/-heat$/, '')}`);
+        if (toggle) toggle.checked = true;
+      }
       // Ensure all layers relevant to this alert are visible before zooming.
       for (const layerId of alert.layers ?? []) {
         setLayerActive(layerId, true);
       }
+      if (!alert.coords?.length) return;
       showAlertHighlight(alert.coords, alert.level);
       const isGap = alert.key === 'connectivity-gap';
       fitToCoords(alert.coords, {
