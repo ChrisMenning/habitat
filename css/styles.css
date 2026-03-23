@@ -548,7 +548,7 @@ body {
   position: absolute;
   top: 12px;
   left: 8px;
-  width: 52px;
+  width: 60px;
   height: calc(100% - 24px);
   background: #0d1f12;
   border: 1px solid #1e3a22;
@@ -569,7 +569,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 52px;
   min-height: 48px;
   padding: 5px 4px;
   background: none;
@@ -630,14 +630,15 @@ body {
 #panel-flyout {
   position: absolute;
   top: 12px;
-  left: 68px; /* 8px margin + 52px bar + 8px gap */
+  bottom: 12px;          /* match activity-bar bottom edge */
+  left: 76px; /* 8px margin + 60px bar + 8px gap */
   z-index: 5;
   pointer-events: none; /* transparent when all panes hidden */
 }
 
 .flyout-pane {
   width: 240px;
-  max-height: calc(100vh - 24px);
+  max-height: 100%; /* constrained by #panel-flyout which matches the activity bar */
   display: flex;
   flex-direction: column;
   background: #0d1f12;

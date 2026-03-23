@@ -1144,42 +1144,52 @@ export function computeProblemFeatures({
  * @returns {GeoJSON.FeatureCollection}
  */
 export function computeSuitabilityPoints({
-  corridorFeatures   = [],
-  waystationFeatures = [],
-  hnpFeatures        = [],
+  corridorFeatures    = [],
+  waystationFeatures  = [],
+  hnpFeatures         = [],
   pollinatorSightings = [],
-  pfasFeatures       = [],
-  pesticideCounties  = [],
+  pfasFeatures        = [],
+  pesticideCounties   = [],
+  nestingScores       = new Map(),
   centerLng = -88.0133,
   centerLat  = 44.5133,
   radiusKm   = 15,
 }) {
-  const GRID_STEP = 0.015;   // ~1.7 km between grid points
-  const DEG_LAT   = 1 / 111.32;
-  const DEG_LNG   = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
+  const GRID_STEP    = 0.012;  // ~1.3 km — finer for better resolution
+  const NESTING_KM   = 4.0;   // max radius to borrow a nesting-score proxy
+  const PFAS_BONUS_KM   = 3.0;
+  const PFAS_PENALTY_KM = 1.0;
+  const DEG_LAT = 1 / 111.32;
+  const DEG_LNG = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
 
-  const allHabitat = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
-
-  // Pre-bucket sightings into ~2 km cells for fast neighbour lookup
-  const pollBuckets    = new Map();
-  const nativeBuckets  = new Map();
+  // Pre-bucket native plant sightings (1/50° cells ≈ 2.2 km)
+  const nativeBuckets = new Map();
   for (const s of pollinatorSightings) {
-    if (!s.geometry?.coordinates) continue;
-    const [lng, lat] = s.geometry.coordinates;
-    const key = `${(lng * 50 | 0)},${(lat * 50 | 0)}`;
     const lid = s.properties?.layer_id;
-    const target = (lid === 'native-plants' || lid === 'gbif-native-plants') ? nativeBuckets : pollBuckets;
-    target.set(key, (target.get(key) ?? 0) + 1);
+    if (lid !== 'native-plants' && lid !== 'gbif-native-plants') continue;
+    const c = s.geometry?.coordinates;
+    if (!c) continue;
+    const key = `${(c[0] * 50 | 0)},${(c[1] * 50 | 0)}`;
+    nativeBuckets.set(key, (nativeBuckets.get(key) ?? 0) + 1);
   }
 
-  function bucketCount(map, [lng, lat]) {
+  function nativeCount([lng, lat]) {
     let n = 0;
     const bx = lng * 50 | 0, by = lat * 50 | 0;
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-      n += map.get(`${bx + dx},${by + dy}`) ?? 0;
-    }
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        n += nativeBuckets.get(`${bx + dx},${by + dy}`) ?? 0;
     return n;
   }
+
+  // Build list of corridor sites with NLCD nesting scores for proxy lookup
+  const scoredSites = corridorFeatures
+    .map(f => {
+      const sc   = centroid(f);
+      const info = nestingScores.get(f.properties?.name ?? '');
+      return sc && info?.score != null ? { coord: sc, score: info.score } : null;
+    })
+    .filter(Boolean);
 
   const latMin = centerLat - radiusKm * DEG_LAT;
   const latMax = centerLat + radiusKm * DEG_LAT;
@@ -1192,44 +1202,64 @@ export function computeSuitabilityPoints({
       const coord = [lng, lat];
       if (distKm([centerLng, centerLat], coord) > radiusKm) continue;
 
-      const nativeNearby    = bucketCount(nativeBuckets, coord);
-      const pollNearby      = bucketCount(pollBuckets,   coord);
+      // ── Hard gate: native plant record required ────────────────────────────
+      // Plants don't grow on open water — this exclusion removes bay/lake cells.
+      const nativeNearby = nativeCount(coord);
+      if (nativeNearby < 1) continue;
 
-      let nearestHabitat = Infinity;
-      for (const s of allHabitat) {
-        const c = centroid(s);
-        if (c) nearestHabitat = Math.min(nearestHabitat, distKm(coord, c));
+      // ── Factor 1: Nesting suitability proxy (PRIMARY, 0–0.50) ─────────────
+      let nestingScore = 0;
+      if (scoredSites.length > 0) {
+        let bestDist = Infinity, bestSc = -1;
+        for (const s of scoredSites) {
+          const d = distKm(coord, s.coord);
+          if (d < bestDist && d <= NESTING_KM) { bestDist = d; bestSc = s.score; }
+        }
+        if (bestSc >= 0) {
+          if (bestSc >= 75)      nestingScore = 0.50;
+          else if (bestSc >= 55) nestingScore = 0.38;
+          else if (bestSc >= 35) nestingScore = 0.24;
+          else if (bestSc >= 15) nestingScore = 0.12;
+          else                   nestingScore = 0.04;
+        }
       }
 
-      const pfasNearby    = pfasFeatures.some(p => { const c = centroid(p); return c && distKm(coord, c) <= 1.0; });
-      const pestBand      = _getPesticideBandForCoord(coord, pesticideCounties);
-      const highPesticide = pestBand?.band === 4;
+      // ── Factor 2: Native plant sightings (SECOND, 0–0.35) ─────────────────
+      let nativePlantScore;
+      if (nativeNearby >= 15)     nativePlantScore = 0.35;
+      else if (nativeNearby >= 6) nativePlantScore = 0.25;
+      else if (nativeNearby >= 2) nativePlantScore = 0.16;
+      else                        nativePlantScore = 0.08; // ≥1 already confirmed
 
-      let score = 0;
-      // Native plants: strongest positive signal — documented plant ecology
-      if (nativeNearby >= 10) score += 0.45;
-      else if (nativeNearby >= 3) score += 0.28;
-      else if (nativeNearby >= 1) score += 0.14;
-      // Habitat proximity (stepping-stone zone 0.5–3 km is most valuable for new sites)
-      if (nearestHabitat > 0.5 && nearestHabitat <= 1.5)       score += 0.22;
-      else if (nearestHabitat > 1.5 && nearestHabitat <= 3.0)  score += 0.12;
-      // Pollinator activity: supporting signal, NOT primary (goal is to attract them)
-      if (pollNearby >= 20) score += 0.12;
-      else if (pollNearby >= 5) score += 0.07;
-      else if (pollNearby >= 1) score += 0.03;
-      // Penalties only — absence of contamination is not itself a reward
-      if (pfasNearby)     score -= 0.30;
-      if (highPesticide)  score -= 0.15;
-
-      score = Math.max(0, Math.min(1, score));
-      // Require ecological basis — native plant documentation OR stepping-stone proximity
-      if (score > 0.14 && (nativeNearby >= 1 || (nearestHabitat > 0.5 && nearestHabitat <= 3.0))) {
-        features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: coord },
-          properties: { weight: score },
-        });
+      // ── Factor 3: PFAS distance (THIRD) ───────────────────────────────────
+      let pfasScore = 0;
+      let minPfasDist = Infinity;
+      for (const p of pfasFeatures) {
+        const pc = centroid(p);
+        if (pc) minPfasDist = Math.min(minPfasDist, distKm(coord, pc));
       }
+      if (minPfasDist === Infinity || minPfasDist >= PFAS_BONUS_KM) {
+        pfasScore = 0.10;  // clean / no data — small bonus
+      } else if (minPfasDist >= PFAS_PENALTY_KM) {
+        pfasScore = 0.0;   // caution zone
+      } else {
+        pfasScore = -0.40; // heavy penalty within 1 km
+      }
+
+      // ── Supporting penalty: high-pesticide county ─────────────────────────
+      const pestBand = _getPesticideBandForCoord(coord, pesticideCounties);
+      const pestPenalty = pestBand?.band === 4 ? -0.12 : 0;
+
+      const score = Math.max(0, Math.min(1,
+        nestingScore + nativePlantScore + pfasScore + pestPenalty
+      ));
+      if (score < 0.08) continue;
+
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: coord },
+        properties: { weight: score },
+      });
     }
   }
   return { type: 'FeatureCollection', features };

@@ -825,7 +825,10 @@ async function loadObservations() {
       nestingScores: _nestingScores,
       canopyScores:  _canopyScores,
     }));
-    updateSuitabilityHeatmap(computeSuitabilityPoints(_analysisCtx));
+    updateSuitabilityHeatmap(computeSuitabilityPoints({
+      ..._analysisCtx,
+      nestingScores: _nestingScores,
+    }));
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
