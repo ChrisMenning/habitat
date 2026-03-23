@@ -71,6 +71,12 @@ const MIME = {
 // Proxies GET /api/hnp-plantings → HNP guest API (which has no CORS headers).
 const HNP_UPSTREAM = 'https://map.homegrownnationalpark.org/api/guest/map/plantings?countryCode=US';
 
+// Green Bay region bbox (1.5× margin, matching hnp.js BBOX constants)
+const HNP_BBOX = {
+  minLat: 44.3112, maxLat: 44.7154,
+  minLng: -88.2965, maxLng: -87.7301,
+};
+
 function proxyHnp(res) {
   https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
     const chunks = [];
@@ -106,6 +112,30 @@ function proxyHnp(res) {
     });
   }).on('error', err => {
     res.writeHead(502);
+    res.end(JSON.stringify({ error: err.message }));
+  });
+}
+
+// Returns just the bbox-filtered count — lightweight for the marketing page.
+function proxyHnpCount(res) {
+  https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
+    const chunks = [];
+    upstream.on('data', chunk => chunks.push(chunk));
+    upstream.on('end', () => {
+      let plantings;
+      try { plantings = JSON.parse(Buffer.concat(chunks).toString()); }
+      catch { res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ error: 'invalid JSON' })); return; }
+      if (!Array.isArray(plantings)) { res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ error: 'unexpected format' })); return; }
+      const count = plantings.filter(p =>
+        p.latitude  != null && p.longitude != null &&
+        p.latitude  >= HNP_BBOX.minLat && p.latitude  <= HNP_BBOX.maxLat &&
+        p.longitude >= HNP_BBOX.minLng && p.longitude <= HNP_BBOX.maxLng
+      ).length;
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600' });
+      res.end(JSON.stringify({ count }));
+    });
+  }).on('error', err => {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ error: err.message }));
   });
 }
@@ -1937,6 +1967,12 @@ const server = http.createServer((req, res) => {
   // Proxy: HNP guest API (no CORS headers on their server)
   if (pathname === '/api/hnp-plantings') {
     proxyHnp(res);
+    return;
+  }
+
+  // Lightweight count-only endpoint for marketing page (avoids shipping full US dataset)
+  if (pathname === '/api/hnp-count') {
+    proxyHnpCount(res);
     return;
   }
 

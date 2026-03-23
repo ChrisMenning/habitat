@@ -823,11 +823,17 @@ export function computeExpansionOpportunities({
   pollinatorSightings = [],
   pfasFeatures       = [],
   pesticideCounties  = [],
+  nestingScores      = new Map(),   // site name → {score, ...} — from NLCD analysis of corridor sites
 }) {
-  const habitatSites = [...corridorFeatures, ...waystationFeatures];
-  const OPPORTUNITY_RADIUS_KM = 0.8;
-  const CLUSTER_MIN = 5;
+  // Pollinator sightings are used only as a FILTER (≥5 records → candidate location),
+  // not as a primary suitability driver. The goal of a new site is to ATTRACT pollinators,
+  // so their absence is not disqualifying — ecology (plants, nesting habitat) matters more.
+  const allSites       = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
+  const SITE_EXCLUSION_KM  = 0.8;  // skip if already has a registered site this close
+  const CLUSTER_MIN        = 3;    // lower threshold — detect emerging hotspots
+  const NESTING_PROXY_KM   = 3.0;  // use nearby corridor site's nesting score as proxy
 
+  // Build sighting buckets keyed to ~1 km grid cells
   const buckets = new Map();
   for (const s of pollinatorSightings) {
     if (!s.geometry?.coordinates) continue;
@@ -837,59 +843,123 @@ export function computeExpansionOpportunities({
   }
 
   const features = [];
-  for (const [key, count] of buckets) {
-    if (count < CLUSTER_MIN) continue;
+  for (const [key, pollCount] of buckets) {
+    if (pollCount < CLUSTER_MIN) continue;
     const [lx, ly] = key.split(',').map(Number);
     const coord = [lx / 100 + 0.005, ly / 100 + 0.005];
 
-    const hasSite = habitatSites.some(s => distKm(coord, centroid(s)) <= OPPORTUNITY_RADIUS_KM);
-    if (hasSite) continue;
+    // Skip locations already covered by any registered program
+    if (allSites.some(s => { const c = centroid(s); return c && distKm(coord, c) <= SITE_EXCLUSION_KM; })) continue;
 
+    // ── Ecological signals ──────────────────────────────────────────────────
     const nativePlantCount = pollinatorSightings.filter(s => {
       const lid = s.properties?.layer_id;
       if (lid !== 'native-plants' && lid !== 'gbif-native-plants') return false;
       const sc = s.geometry?.coordinates;
-      return sc && distKm(coord, sc) <= OPPORTUNITY_RADIUS_KM;
+      return sc && distKm(coord, sc) <= SITE_EXCLUSION_KM;
     }).length;
 
-    const pfasNearby = pfasFeatures.some(p => {
-      const pc = centroid(p);
-      return pc && distKm(coord, pc) <= 1.5;
-    });
+    // Nesting habitat proxy: use the nesting score of the nearest scored corridor site
+    let nestingProxy = null;
+    let nestingProxySite = '';
+    let bestNestDist = Infinity;
+    for (const site of corridorFeatures) {
+      const sc  = centroid(site);
+      if (!sc) continue;
+      const d = distKm(coord, sc);
+      const info = nestingScores.get(site.properties?.name ?? '');
+      if (info?.score != null && d < bestNestDist && d <= NESTING_PROXY_KM) {
+        bestNestDist  = d;
+        nestingProxy  = info.score;
+        nestingProxySite = site.properties?.name ?? '';
+      }
+    }
 
-    const pestBand     = _getPesticideBandForCoord(coord, pesticideCounties);
+    // ── Land access classification ──────────────────────────────────────────
+    // Corridor sites can only be placed on public / city-owned land.
+    // Waystations and HNP yards are on private residential land.
+    // Use which site types are near as a proxy for land character.
+    const nearCorridorKm  = corridorFeatures.reduce((min, s) => {
+      const c = centroid(s); return c ? Math.min(min, distKm(coord, c)) : min;
+    }, Infinity);
+    const nearPrivateKm   = [...waystationFeatures, ...hnpFeatures].reduce((min, s) => {
+      const c = centroid(s); return c ? Math.min(min, distKm(coord, c)) : min;
+    }, Infinity);
+
+    // In the corridor stepping-stone zone (0.8–3 km from a corridor site) →
+    // contiguous public land is plausible; recommend Pollinator Corridor expansion.
+    // Near only private habitat programs → site is likely residential; recommend
+    // engaging homeowners about native plantings (Waystations / HNP).
+    // Both or neither → recommend both pathways; note field assessment needed.
+    const corridorCandidate = nearCorridorKm > SITE_EXCLUSION_KM && nearCorridorKm <= 3.0;
+    const communityZone     = nearPrivateKm  <= 2.0;
+    const recommendation    =
+      corridorCandidate && !communityZone ? 'corridor'    :
+      communityZone && !corridorCandidate ? 'community'   : 'both';
+
+    // ── Environmental quality ───────────────────────────────────────────────
+    const pfasNearby    = pfasFeatures.some(p => { const pc = centroid(p); return pc && distKm(coord, pc) <= 1.5; });
+    const pestBand      = _getPesticideBandForCoord(coord, pesticideCounties);
     const highPesticide = pestBand?.band === 4;
 
-    // Stepping-stone bonus: existing habitat 0.8–2.5 km away
-    const goodNeighbors = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures]
-      .filter(s => { const d = distKm(coord, centroid(s)); return d > 0.8 && d <= 2.5; }).length;
+    // ── Composite score 0–100 (NESTING + NATIVE PLANTS are primary) ─────────
+    let score = 0;
 
-    // Composite score 0–100
-    let score = 40;
-    if (nativePlantCount >= 5)      score += 30;
-    else if (nativePlantCount >= 2) score += 15;
-    if (!pfasNearby)                score += 15;
-    if (!highPesticide)             score += 10;
-    if (goodNeighbors > 0)          score += 5;
-    if (pfasNearby)                 score -= 20;
-    if (highPesticide)              score -= 10;
+    // Primary: native plant documentation (strongest ecological signal)
+    if (nativePlantCount >= 8)      score += 35;
+    else if (nativePlantCount >= 3) score += 22;
+    else if (nativePlantCount >= 1) score += 10;
+
+    // Primary: nesting habitat suitability (NLCD land-cover proxy)
+    if (nestingProxy !== null) {
+      if (nestingProxy >= 70)      score += 30;
+      else if (nestingProxy >= 45) score += 20;
+      else if (nestingProxy >= 20) score += 10;
+      else                         score += 2;   // low nesting score still noted
+    }
+
+    // Secondary: corridor stepping-stone proximity (connectivity value)
+    if (nearCorridorKm > SITE_EXCLUSION_KM && nearCorridorKm <= 1.5)     score += 15;
+    else if (nearCorridorKm > 1.5 && nearCorridorKm <= 3.0)              score += 8;
+
+    // Environmental quality (absence of contamination is a bonus here)
+    if (!pfasNearby)    score += 10;
+    if (!highPesticide) score += 5;
+
+    // Pollinator activity as light supporting evidence (not primary driver)
+    if (pollCount >= 20) score += 5;
+    else if (pollCount >= 8) score += 2;
+
+    // Penalties
+    if (pfasNearby)     score -= 20;
+    if (highPesticide)  score -= 10;
+
     score = Math.max(0, Math.min(100, score));
 
-    const suitability = score >= 70 ? 'good' : score >= 45 ? 'moderate' : 'poor';
+    // Require meaningful multi-factor support to surface as an opportunity
+    const hasEcologicalBasis = nativePlantCount >= 1 || nestingProxy != null;
+    if (!hasEcologicalBasis) continue;
+
+    const suitability = score >= 65 ? 'good' : score >= 38 ? 'moderate' : 'poor';
+    const suitLabel   = suitability.charAt(0).toUpperCase() + suitability.slice(1);
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: coord },
       properties: {
-        layer_id:           'expansion-opportunities',
-        est_key:            'expansion',
+        layer_id:            'expansion-opportunities',
+        est_key:             'expansion',
         suitability,
         score,
-        pollinator_count:   count,
-        native_plant_count: nativePlantCount,
-        pfas_nearby:        pfasNearby,
-        high_pesticide:     highPesticide,
-        name:    `Expansion Opportunity \u00b7 ${suitability.charAt(0).toUpperCase() + suitability.slice(1)} Suitability`,
-        common:  `${count} pollinator records \u00b7 ${nativePlantCount} native plant records \u00b7 score ${score}/100`,
+        recommendation,
+        pollinator_count:    pollCount,
+        native_plant_count:  nativePlantCount,
+        nesting_proxy:       nestingProxy,
+        nesting_proxy_site:  nestingProxySite,
+        pfas_nearby:         pfasNearby,
+        high_pesticide:      highPesticide,
+        near_corridor_km:    nearCorridorKm === Infinity ? null : +nearCorridorKm.toFixed(2),
+        name:    `Expansion Opportunity · ${suitLabel} Suitability`,
+        common:  `${nativePlantCount} native plant records · ${pollCount} pollinator sightings · score ${score}/100`,
         date:    '', user: '', image: '',
       },
     });
@@ -918,6 +988,7 @@ export function computeExpansionOpportunities({
 export function computeProblemFeatures({
   corridorFeatures   = [],
   waystationFeatures = [],
+  hnpFeatures        = [],
   pfasFeatures       = [],
   pollinatorSightings = [],
   nestingScores      = new Map(),
@@ -925,6 +996,9 @@ export function computeProblemFeatures({
   pesticideCounties  = [],
 }) {
   const features = [];
+
+  // All registered habitat sites — used for connectivity / isolation checks
+  const allSites = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
 
   function push(coord, problemType, severity, name, description) {
     if (!coord) return;
@@ -976,33 +1050,36 @@ export function computeProblemFeatures({
     }
   }
 
-  // 3. Isolated corridor sites (no neighbor within 2 km)
-  if (corridorFeatures.length >= 2) {
-    for (const site of corridorFeatures) {
-      const siteCoord = centroid(site);
-      const hasNeighbor = corridorFeatures.some(
-        other => other !== site && distKm(siteCoord, centroid(other)) < ISOLATION_KM
-      );
-      if (!hasNeighbor) {
-        push(siteCoord, 'isolated-site', 'high',
-          `Isolated Site: ${site.properties?.name || 'Site'}`,
-          'No other corridor site within 2 km — beyond bumble bee foraging range');
-      }
+  // 3. Isolated corridor sites (no neighbor of ANY site type within 2 km)
+  for (const site of corridorFeatures) {
+    const siteCoord = centroid(site);
+    const hasNeighbor = allSites.some(
+      other => other !== site && distKm(siteCoord, centroid(other)) < ISOLATION_KM
+    );
+    if (!hasNeighbor) {
+      push(siteCoord, 'isolated-site', 'high',
+        `Isolated Site: ${site.properties?.name || 'Site'}`,
+        'No habitat site of any type within 2 km — beyond bumble bee foraging range');
     }
   }
 
-  // 4. Weak-node corridor sites (nearest neighbor 700 m–2 km)
+  // 4. Weak-node corridor sites (nearest neighbor of ANY site type 700 m–2 km)
   for (const site of corridorFeatures) {
     const siteCoord = centroid(site);
     let closest = Infinity;
-    for (const other of corridorFeatures) {
+    let closestName = '';
+    for (const other of allSites) {
       if (other === site) continue;
-      closest = Math.min(closest, distKm(siteCoord, centroid(other)));
+      const d = distKm(siteCoord, centroid(other));
+      if (d < closest) {
+        closest = d;
+        closestName = other.properties?.name || other.properties?.registrant || 'site';
+      }
     }
     if (closest > MESH_KM && closest <= ISOLATION_KM) {
       push(siteCoord, 'weak-node', 'medium',
         `Weak Connection: ${site.properties?.name || 'Site'}`,
-        `Nearest corridor neighbor ${(closest * 1000).toFixed(0)}\u202fm away \u2014 at the outer edge of small-bee foraging range`);
+        `Nearest habitat neighbor (${closestName}) is ${(closest * 1000).toFixed(0)}\u202fm away \u2014 at the outer edge of small-bee foraging range`);
     }
   }
 
@@ -1129,24 +1206,24 @@ export function computeSuitabilityPoints({
       const highPesticide = pestBand?.band === 4;
 
       let score = 0;
-      // Native plants: primary ecological signal — must be documented
-      if (nativeNearby >= 10) score += 0.40;
-      else if (nativeNearby >= 3) score += 0.25;
-      else if (nativeNearby >= 1) score += 0.12;
-      // Pollinator activity
-      if (pollNearby >= 20) score += 0.30;
-      else if (pollNearby >= 5) score += 0.18;
-      else if (pollNearby >= 1) score += 0.08;
-      // Habitat proximity — reward stepping-stone distance (0.5–3 km away);
-      // being right on top of existing habitat is already served, not a new opportunity
-      if (nearestHabitat > 0.5 && nearestHabitat <= 1.5)       score += 0.20;
-      else if (nearestHabitat > 1.5 && nearestHabitat <= 3.0)  score += 0.10;
-      // Penalties only — absence of contamination is not a reward
+      // Native plants: strongest positive signal — documented plant ecology
+      if (nativeNearby >= 10) score += 0.45;
+      else if (nativeNearby >= 3) score += 0.28;
+      else if (nativeNearby >= 1) score += 0.14;
+      // Habitat proximity (stepping-stone zone 0.5–3 km is most valuable for new sites)
+      if (nearestHabitat > 0.5 && nearestHabitat <= 1.5)       score += 0.22;
+      else if (nearestHabitat > 1.5 && nearestHabitat <= 3.0)  score += 0.12;
+      // Pollinator activity: supporting signal, NOT primary (goal is to attract them)
+      if (pollNearby >= 20) score += 0.12;
+      else if (pollNearby >= 5) score += 0.07;
+      else if (pollNearby >= 1) score += 0.03;
+      // Penalties only — absence of contamination is not itself a reward
       if (pfasNearby)     score -= 0.30;
       if (highPesticide)  score -= 0.15;
 
       score = Math.max(0, Math.min(1, score));
-      if (score > 0.30) {  // Require genuine multi-factor ecological support
+      // Require ecological basis — native plant documentation OR stepping-stone proximity
+      if (score > 0.14 && (nativeNearby >= 1 || (nearestHabitat > 0.5 && nearestHabitat <= 3.0))) {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: coord },

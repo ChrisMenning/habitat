@@ -612,6 +612,13 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   display: flex; align-items: center; gap: 0.75rem;
 }
 .guide-block-label::after { content: ''; flex: 1; height: 1px; background: rgba(212,146,26,0.2); }
+.guide-block-intro { font-size: 0.88rem; color: var(--fog); line-height: 1.7; margin-bottom: 1.5rem; }
+.guide-subsection { padding: 1.25rem; border: 1px solid rgba(184,196,160,0.08); background: rgba(20,26,12,0.35); }
+.guide-subsection-title { font-size: 0.95rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.75rem; }
+.guide-subsection p { font-size: 0.82rem; line-height: 1.65; color: var(--mist); margin-bottom: 0.6rem; }
+.guide-list { padding-left: 1.2em; margin: 0.6rem 0; }
+.guide-list li { font-size: 0.82rem; line-height: 1.65; color: var(--mist); margin-bottom: 0.45rem; }
+.guide-list li strong { color: var(--fog); }
 
 .site-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
 .site-type-card {
@@ -1295,6 +1302,80 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
       </div><!-- conn-color-grid -->
 
     </div><!-- connectivity lines -->
+
+    <!-- ── Analysis Layers ───────────────────────────────────────── -->
+    <div class="guide-block" style="margin-top: var(--gap-lg)">
+      <div class="guide-block-label">Analysis Layers</div>
+      <p class="guide-block-intro">
+        The Analysis panel surfaces three computed layers that go beyond raw data to interpret
+        network health and guide action.
+      </p>
+
+      <div class="guide-subsection">
+        <h4 class="guide-subsection-title">&#x26A1; Expansion Opportunities</h4>
+        <p>
+          Locations where ecological conditions support new habitat — but no registered program yet exists within 800 m.
+          <strong>Native plant documentation and nesting habitat suitability are the primary signals;</strong>
+          pollinator sightings serve only as supporting evidence (the goal of a new site is to <em>attract</em> pollinators,
+          not to follow them).
+        </p>
+        <p>
+          Each marker is scored 0–100 across six factors:
+        </p>
+        <ul class="guide-list">
+          <li><strong>Native plant records (primary, 0–35 pts)</strong> — documented native plants within 800 m of the candidate location (iNat, GBIF). The strongest ecological signal: where native plants thrive, pollinator habitat can be established.</li>
+          <li><strong>Nesting habitat suitability (primary, 0–30 pts)</strong> — proxied from the NLCD nesting score of the nearest scored corridor site within 3 km. High grassland and bare-ground cover predicts good ground-nesting conditions.</li>
+          <li><strong>Corridor stepping-stone proximity (0–15 pts)</strong> — located 0.8–3 km from an existing Pollinator Corridor site, maximising connectivity value.</li>
+          <li><strong>PFAS-free environment (0 or −20 pts)</strong> — no known PFAS detection within 1.5 km. Contaminated sites receive a heavy score penalty.</li>
+          <li><strong>Low pesticide pressure (0 or −5 pts)</strong> — county not in the top-quartile agricultural pesticide band.</li>
+          <li><strong>Pollinator activity (0–5 pts)</strong> — active sightings as a light supporting signal only.</li>
+        </ul>
+        <p>
+          Each marker also carries a <strong>Recommendation Type</strong> based on the character of the surrounding land:
+        </p>
+        <ul class="guide-list">
+          <li><strong>Corridor Expansion Candidate</strong> (green) — Within stepping-stone range of an existing Corridor site on public land. Suitable for a formal Pollinator Corridor planting. Coordinate with City of Green Bay Parks.</li>
+          <li><strong>Community Engagement Opportunity</strong> (purple) — Primarily near Waystation or HNP sites, suggesting private residential land. Consider outreach to property owners about Monarch Waystation registration or the Homegrown National Park program.</li>
+          <li><strong>Dual-Pathway Opportunity</strong> (amber) — Mixed or unknown land character. Assess both formal Corridor eligibility and community engagement. A field visit is recommended.</li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">&#x26A0; Problem Areas</h4>
+        <p>
+          Corridor sites with one or more identified issues that may limit their value to the network.
+          Problem areas are detected automatically from loaded data and updated whenever the app refreshes.
+          Seven problem types are tracked:
+        </p>
+        <ul class="guide-list">
+          <li><strong>PFAS Proximity</strong> (high) — Known PFAS detection within 1 km. Soil and water contamination risk for plantings and insects.</li>
+          <li><strong>No Pollinator Activity</strong> (medium) — No recorded sightings within 500 m. May indicate low visibility, lack of observation effort, or genuine poor visitation.</li>
+          <li><strong>Isolated Site</strong> (high) — No registered habitat of any type within 2 km. Beyond reliable bumble bee foraging range; unable to exchange pollinators with the network.</li>
+          <li><strong>Weak Connection</strong> (medium) — Nearest neighbor 700 m–2 km away. Small-bodied bees (mining, sweat, mason) cannot reliably traverse this gap.</li>
+          <li><strong>Poor Nesting Habitat</strong> (medium) — NLCD-derived nesting suitability score below 25/100. Low bare ground and grassland cover within 300 m.</li>
+          <li><strong>Shaded Habitat</strong> (low) — Over 55% tree canopy within 150 m may suppress sun-loving pollinator plants.</li>
+          <li><strong>High Pesticide Pressure</strong> (high) — Site in a top-quartile agricultural pesticide county.</li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">&#x1F331; Habitat Suitability Heatmap</h4>
+        <p>
+          A green-ramp heatmap showing where habitat establishment is most likely to succeed across the full 15 km study area.
+          <strong>Native plant documentation is the primary positive signal;</strong>
+          pollinator activity is a light supporting factor only.
+          Bright green = high suitability; faint or absent = insufficient ecological basis or contamination penalty.
+        </p>
+        <p>Scoring per grid cell (∼1.7 km spacing):</p>
+        <ul class="guide-list">
+          <li><strong>Native plants (0–0.45)</strong> — Dominant factor. Requires at least one native plant record to register.</li>
+          <li><strong>Stepping-stone proximity (0–0.22)</strong> — 0.5–3 km from existing habitat.</li>
+          <li><strong>Pollinator activity (0–0.12)</strong> — Supporting signal only.</li>
+          <li><strong>PFAS penalty (−0.30)</strong> — Contaminated areas are suppressed on the heatmap.</li>
+          <li><strong>Pesticide penalty (−0.15)</strong> — High-pressure counties are scored down.</li>
+        </ul>
+      </div>
+    </div><!-- Analysis Layers -->
 
   </div><!-- guide-inner -->
 </section>

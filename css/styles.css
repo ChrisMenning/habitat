@@ -1629,6 +1629,26 @@ details > summary:focus-visible {
 /* ── Analysis drawer: positive / negative factor labels ─────────────────── */
 .factor-good { color: #6ee7b7; font-weight: 600; }
 .factor-bad  { color: #fca5a5; font-weight: 600; }
+
+/* ── Expansion opportunity recommendation blocks ──────────────────────────── */
+.drawer-rec-block {
+  display: flex;
+  gap: 10px;
+  border-radius: 7px;
+  border: 1px solid;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.drawer-rec-block strong { display: block; margin-bottom: 3px; font-size: 12px; }
+.drawer-rec-block p { margin: 0; color: #d1fae5; }
+.drawer-rec-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; padding-top: 2px; }
+.drawer-rec-corridor  { background: rgba(5,150,105,0.10);  border-color: rgba(52,211,153,0.30);  color: #6ee7b7; }
+.drawer-rec-community { background: rgba(139,92,246,0.10); border-color: rgba(167,139,250,0.30); color: #c4b5fd; }
+.drawer-rec-community p { color: #ddd6fe; }
+.drawer-rec-both      { background: rgba(245,158,11,0.10); border-color: rgba(251,191,36,0.30);  color: #fde68a; }
+.drawer-rec-both p    { color: #fef3c7; }
 .drawer-intel-table {
   width: 100%;
   border-collapse: collapse;

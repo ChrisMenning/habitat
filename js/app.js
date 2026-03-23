@@ -711,6 +711,7 @@ async function loadObservations() {
     _waystationFeats       = waystationGeoJSON().features;
     const corridorFeats    = _corridorFeats;
     const waystationFeats  = _waystationFeats;
+    counts['waystations']  = waystationFeats.length;
     registerTemporalLayer(
       'waystations',
       waystationFeats,
@@ -801,7 +802,10 @@ async function loadObservations() {
       pollinatorSightings: allPollinatorFeatures,
       pesticideCounties,
     };
-    updateExpansionOpportunitiesLayer(computeExpansionOpportunities(_analysisCtx));
+    updateExpansionOpportunitiesLayer(computeExpansionOpportunities({
+      ..._analysisCtx,
+      nestingScores: _nestingScores,
+    }));
     updateProblemAreasLayer(computeProblemFeatures({
       ..._analysisCtx,
       nestingScores: _nestingScores,
@@ -1491,11 +1495,31 @@ map.on('load', async () => {
         const suit     = props.suitability ?? 'moderate';
         const barColor = suit === 'good' ? '#10b981' : suit === 'moderate' ? '#f59e0b' : '#ef4444';
         const hdrBg    = suit === 'good' ? '#064e3b' : suit === 'moderate' ? '#451a03' : '#450a0a';
-        const pollCount   = props.pollinator_count ?? 0;
+        const pollCount   = props.pollinator_count   ?? 0;
         const plantCount  = props.native_plant_count ?? 0;
+        const nestScore   = props.nesting_proxy;
+        const nestSite    = props.nesting_proxy_site ?? '';
+        const nearCorrKm  = props.near_corridor_km;
+        const rec         = props.recommendation ?? 'both';
         const pfas        = props.pfas_nearby    ? '<span class="factor-bad">Yes &#x26A0;</span>'  : '<span class="factor-good">None detected</span>';
         const pest        = props.high_pesticide ? '<span class="factor-bad">High pressure</span>' : '<span class="factor-good">Low / moderate</span>';
         const suitLabel   = suit.charAt(0).toUpperCase() + suit.slice(1);
+
+        const nestingRow  = nestScore != null
+          ? `<dt>Nesting Habitat (proxy)</dt><dd>${nestScore}/100 — from ${nestSite} (${nearCorrKm != null ? (nearCorrKm * 1000).toFixed(0) + '\u202fm' : 'nearby'})</dd>`
+          : `<dt>Nesting Habitat</dt><dd><em>No scored corridor site within 3 km — field assessment recommended</em></dd>`;
+
+        // Recommendation block
+        const recHtml = _expansionRecHtml(rec);
+
+        // Scoring breakdown uses new weights
+        const nestPts  = nestScore != null ? (nestScore >= 70 ? 30 : nestScore >= 45 ? 20 : nestScore >= 20 ? 10 : 2) : 0;
+        const plantPts = plantCount >= 8 ? 35 : plantCount >= 3 ? 22 : plantCount >= 1 ? 10 : 0;
+        const corrPts  = nearCorrKm != null && nearCorrKm > 0.8 && nearCorrKm <= 1.5 ? 15 : nearCorrKm != null && nearCorrKm <= 3.0 ? 8 : 0;
+        const pfasPts  = props.pfas_nearby    ? -20 : 10;
+        const pestPts  = props.high_pesticide ? -10 :  5;
+        const pollPts  = pollCount >= 20 ? 5 : pollCount >= 8 ? 2 : 0;
+
         const body = `
           <div class="drawer-score-hero">
             <div class="drawer-score-ring">
@@ -1507,24 +1531,24 @@ map.on('load', async () => {
               <span class="drawer-score-tier" style="color:${barColor}">${suitLabel} suitability</span>
             </div>
           </div>
-          <div class="drawer-section-label">Ecological Factors</div>
+          ${recHtml}
+          <div class="drawer-section-label">Ecological Signals</div>
           <dl class="drawer-meta">
-            <dt>Pollinator Records</dt><dd>${pollCount} sightings in cluster</dd>
             <dt>Native Plant Records</dt><dd>${plantCount} records within 800 m</dd>
+            ${nestingRow}
+            <dt>Pollinator Records</dt><dd>${pollCount} sightings nearby (supporting evidence)</dd>
             <dt>PFAS Contamination</dt><dd>${pfas}</dd>
             <dt>Pesticide Pressure</dt><dd>${pest}</dd>
           </dl>
           <div class="drawer-section-label">Scoring Breakdown</div>
           <div class="drawer-factor-list">
-            ${_expansionFactorRow('Pollinator activity', pollCount >= 20 ? 30 : pollCount >= 5 ? 18 : pollCount >= 1 ? 8 : 0, 30, barColor)}
-            ${_expansionFactorRow('Native plant presence', plantCount >= 5 ? 30 : plantCount >= 2 ? 15 : 0, 30, barColor)}
-            ${_expansionFactorRow('PFAS-free environment', props.pfas_nearby    ? -20 : 15, 15, barColor)}
-            ${_expansionFactorRow('Pesticide pressure', props.high_pesticide ? -10 : 10, 10, barColor)}
-          </div>
-          <p class="drawer-intel-note" style="margin-top:12px">
-            This location has active pollinator sightings but no nearby registered habitat program within 800 m.
-            Score weighs ecological signals present at this location.
-          </p>`;
+            ${_expansionFactorRow('Native plant presence (primary)', plantPts, 35, barColor)}
+            ${_expansionFactorRow('Nesting habitat suitability (primary)', nestPts, 30, barColor)}
+            ${_expansionFactorRow('Corridor stepping-stone proximity', corrPts, 15, barColor)}
+            ${_expansionFactorRow('PFAS-free environment', pfasPts, 10, barColor)}
+            ${_expansionFactorRow('Low pesticide pressure', pestPts, 5, barColor)}
+            ${_expansionFactorRow('Pollinator activity (supporting)', pollPts, 5, barColor)}
+          </div>`;
         openIntelDrawer(
           props.name ?? 'Expansion Opportunity',
           body,
@@ -1575,6 +1599,41 @@ function _expansionFactorRow(label, points, max, barColor) {
     <span class="drawer-factor-label">${label}</span>
     <span class="drawer-factor-pts" style="color:${color}">${sign}${abs}</span>
     <div class="drawer-factor-bar"><div class="drawer-factor-fill" style="width:${pct}%;background:${color}"></div></div>
+  </div>`;
+}
+
+function _expansionRecHtml(rec) {
+  if (rec === 'corridor') {
+    return `<div class="drawer-rec-block drawer-rec-corridor">
+      <div class="drawer-rec-icon">&#x1F3DB;</div>
+      <div>
+        <strong>Corridor Expansion Candidate</strong>
+        <p>This location is within stepping-stone range of an existing Pollinator Corridor site on public or city-managed land.
+        It is a candidate for a new formal Corridor planting. Verify parcel ownership and coordinate with the City of Green Bay Parks division.</p>
+      </div>
+    </div>`;
+  }
+  if (rec === 'community') {
+    return `<div class="drawer-rec-block drawer-rec-community">
+      <div class="drawer-rec-icon">&#x1F3E0;</div>
+      <div>
+        <strong>Community Engagement Opportunity</strong>
+        <p>This area appears to be primarily private residential land (nearby Waystations or HNP yards rather than Corridor sites).
+        Rather than a formal Corridor planting, consider engaging nearby property owners about the benefits of native plants and pollinators.
+        Residents can register their yards as a <strong>Monarch Waystation</strong> or join the <strong>Homegrown National Park</strong> program.</p>
+      </div>
+    </div>`;
+  }
+  // 'both'
+  return `<div class="drawer-rec-block drawer-rec-both">
+    <div class="drawer-rec-icon">&#x1F4CD;</div>
+    <div>
+      <strong>Dual-Pathway Opportunity</strong>
+      <p>Both public and private land access may be present here. Consider two parallel approaches:
+      (1) assess nearby parcels for Pollinator Corridor eligibility with the City; and
+      (2) engage residents about Monarch Waystation and Homegrown National Park registration.
+      A field visit is recommended to determine land character.</p>
+    </div>
   </div>`;
 }
 
