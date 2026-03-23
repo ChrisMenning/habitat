@@ -198,6 +198,27 @@ export async function fetchParcels() {
   return fetchParcelsForBbox([-88.07, 44.47, -87.89, 44.57]);
 }
 
+/**
+ * Pre-populates the in-memory feature store from externally cached data
+ * (e.g. browser Cache API restored on page load) without triggering tile
+ * fetches.  Existing features are deduped by PARCELID so this is safe to
+ * call before fetchParcelsForBbox — subsequent viewport loads will skip
+ * already-seen IDs.  Tile fetch tracking is intentionally not modified:
+ * the viewport loader can still warm additional tiles as the user pans.
+ *
+ * @param {GeoJSON.Feature[]} cachedFeatures
+ */
+export function hydrate(cachedFeatures) {
+  if (!Array.isArray(cachedFeatures) || cachedFeatures.length === 0) return;
+  for (const f of cachedFeatures) {
+    const pid = f.properties?.PARCELID;
+    if (pid && _seenIds.has(pid)) continue;
+    if (pid) _seenIds.add(pid);
+    _features.push(f);
+  }
+  if (_features.length > 0 && _state === 'idle') _state = 'ready';
+}
+
 // ── Spatial query ─────────────────────────────────────────────────────────────
 
 /**

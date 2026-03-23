@@ -92,7 +92,7 @@ import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
 import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores } from './nesting.js';
-import { fetchParcelsForBbox, classifyOwnership }         from './parcels.js';
+import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
          availableYears, renderTrendChart }            from './history.js';
@@ -405,6 +405,20 @@ async function loadObservations() {
   setLoading(true);
   closePopup();
   setStatus('Loading…');
+
+  // ── Restore cached parcel data so alerts run with ownership context immediately
+  // without waiting for the user to enable the Parcel Ownership layer.
+  // The cache is populated by the background prefetch at the end of this function.
+  try {
+    const cachedParcels = await cacheGet('parcels/alert-region');
+    if (Array.isArray(cachedParcels) && cachedParcels.length > 0) {
+      hydrateParcelCache(cachedParcels);
+      _parcelFeatures = cachedParcels;
+      _parcelLoaded   = true;
+      setDrawerParcelFeatures(cachedParcels);
+      console.log(`[parcels] restored ${cachedParcels.length} features from cache`);
+    }
+  } catch { /* cache miss or unavailable — continue without */ }
 
   // TTL constants
   const OBS_TTL  =      60 * 60 * 1000;  // 1 h  — re-fetch when dates change
@@ -927,6 +941,52 @@ async function loadObservations() {
   } finally {
     setLoading(false);
   }
+
+  // ── Background parcel prefetch for alert-region coverage ─────────────────────
+  // Runs after the UI is unblocked.  Fetches all tiles that cover the
+  // full 15 km study area (the same region the server pre-warms) so
+  // parcel ownership data is available for alerting on every page load
+  // — even before the user enables the Parcel Ownership map layer.
+  //
+  // The server pre-warms all 300 tiles over ~12 min on startup, so by
+  // the time a typical user interacts with the app each tile request is
+  // an in-memory cache hit and returns in milliseconds.
+  //
+  // The result is persisted in the browser Cache API (12 h TTL) and
+  // will be restored by the cacheGet block at the top of this function
+  // on the next page load.
+  const PARCEL_TTL = 12 * 60 * 60 * 1000; // 12 h
+  setTimeout(async () => {
+    // Bbox covering the full tile grid (slightly wider than 15 km radius)
+    const FULL_BBOX = [-88.20, 44.40, -87.80, 44.70];
+    try {
+      const feats = await fetchParcelsForBbox(FULL_BBOX);
+      if (feats.length === 0) return;
+
+      // Update live alert state if alerts have already been computed
+      const changed = feats.length > _parcelFeatures.length;
+      _parcelFeatures = feats;
+      _parcelLoaded   = true;
+      setDrawerParcelFeatures(feats);
+      setMapParcelFeatures({ type: 'FeatureCollection', features: feats }, classifyOwnership);
+
+      if (changed && _lastAlertArgs) {
+        _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
+        const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
+        if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
+        document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+        document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+        _updateAlertBadge(updatedAlerts.length);
+        setExportData({ alerts: updatedAlerts });
+      }
+
+      // Persist for next page load
+      await cacheSet('parcels/alert-region', feats, PARCEL_TTL);
+      console.log(`[parcels] background prefetch complete — ${feats.length} features cached`);
+    } catch (err) {
+      console.warn('[parcels] background prefetch failed:', err.message);
+    }
+  }, 3000); // 3 s delay — let the main render settle first
 }
 // ── Historical trends ─────────────────────────────────────────────────────────────────
 
