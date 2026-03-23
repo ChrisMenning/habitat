@@ -1370,7 +1370,7 @@ details > summary:focus-visible {
   transition: background 0.12s;
   padding: 6px 4px;
 }
-.alert-item--clickable:hover  { background: #f1f5f9; }
+.alert-item--clickable:hover  { background: rgba(255,255,255,0.07); }
 .alert-item--clickable:focus-visible { outline: 2px solid #16a34a; outline-offset: 1px; }
 
 /* Zoom hint icon on right edge */
@@ -1388,6 +1388,12 @@ details > summary:focus-visible {
 .alert-item--info        .alert-text { color: #93c5fd; }
 .alert-item--opportunity .alert-text { color: #6ee7b7; }
 .alert-item--positive    .alert-text { color: #34d399; }
+
+/* Brighten text on hover so it stays legible against the highlighted background */
+.alert-item--clickable:hover.alert-item--warn        .alert-text { color: #fef3c7; }
+.alert-item--clickable:hover.alert-item--info        .alert-text { color: #dbeafe; }
+.alert-item--clickable:hover.alert-item--opportunity .alert-text { color: #d1fae5; }
+.alert-item--clickable:hover.alert-item--positive    .alert-text { color: #a7f3d0; }
 
 /* Coloured left border on alert items to convey severity at a glance */
 .alert-item--warn        { border-left: 2px solid #f59e0b; padding-left: 6px; }
