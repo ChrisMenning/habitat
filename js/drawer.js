@@ -471,7 +471,6 @@ export function openDrawer(feature) {
   const add = (k, v) => { if (v) metaRows.push([k, v]); };
 
   if (src === 'waystation') {
-    add('Registrant',    p.registrant);
     add('Registered',    p.registered);
     add('Habitat size',  p.size);
     add('Setting',       p.type);

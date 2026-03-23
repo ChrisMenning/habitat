@@ -203,7 +203,7 @@ export function exportReport() {
       const p     = f.properties ?? {};
       const approx = p.approximate ? ' <em>(approx)</em>' : '';
       return `<tr>
-        <td>${escHtml(p.name || p.registrant || '—')}${approx}</td>
+        <td>${escHtml(p.name || '—')}${approx}</td>
         <td>${escHtml(p.registered ?? '—')}</td>
         <td>${escHtml(p.size ?? '—')}</td>
       </tr>`;
@@ -218,7 +218,7 @@ export function exportReport() {
       <tbody>${corrRows || `<tr><td colspan="3" class="empty">No corridor data</td></tr>`}</tbody>
     </table>
     <table>
-      <thead><tr><th>Waystation / Registrant</th><th>Registered</th><th>Size</th></tr></thead>
+      <thead><tr><th>Waystation</th><th>Registered</th><th>Size</th></tr></thead>
       <tbody>${wsRows || `<tr><td colspan="3" class="empty">No waystation data</td></tr>`}</tbody>
     </table>`;
   }
