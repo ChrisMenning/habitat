@@ -242,9 +242,10 @@ let _timelineEndYear   = new Date().getFullYear();
 
 // Habitat node caches — kept module-level so setLayerActive can re-run the mesh
 // without a full data reload.
-let _corridorFeats   = [];
-let _waystationFeats = [];
-let _hnpFeats        = [];
+let _corridorFeats            = [];
+let _waystationFeats          = [];
+let _confirmedWaystationFeats = [];  // approximate sites excluded
+let _hnpFeats                 = [];
 // Full unfiltered eBird features — retained for filter re-application without a network refetch.
 let _ebirdAllFeats      = [];
 // Active site-layer set — reflects current toggle state for the three site-layer types.
@@ -303,13 +304,12 @@ function _coordsToFeatures(coords) {
  * When fully expanded (zoom ≥ clusterMaxZoom), individual points are used.
  */
 function refreshConnectivityMesh() {
-  const wsCoords  = getEffectiveClusteredCoords('waystations');
+  // Foraging-range mesh uses confirmed-location waystations only — approximate
+  // sites have no known address and would create false connectivity signals.
   const hnpCoords = getEffectiveClusteredCoords('hnp');
+  const hnpFeats  = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
 
-  const wsFeats  = wsCoords  ? _coordsToFeatures(wsCoords)  : _waystationFeats;
-  const hnpFeats = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
-
-  updateConnectivityMesh(_corridorFeats, wsFeats, hnpFeats, _activeSiteLayers);
+  updateConnectivityMesh(_corridorFeats, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
 }
 
 // ── Lazy data loaders (parcel + commons) ──────────────────────────────────────
@@ -722,9 +722,11 @@ async function loadObservations() {
     ];
 
     _corridorFeats         = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
-    _waystationFeats       = waystationGeoJSON().features;
-    const corridorFeats    = _corridorFeats;
-    const waystationFeats  = _waystationFeats;
+    _waystationFeats          = waystationGeoJSON().features;
+    _confirmedWaystationFeats = _waystationFeats.filter(f => !f.properties.approximate);
+    const corridorFeats       = _corridorFeats;
+    const waystationFeats     = _waystationFeats;
+    const confirmedWaystationFeats = _confirmedWaystationFeats;
     counts['waystations']  = waystationFeats.length;
     registerTemporalLayer(
       'waystations',
@@ -778,10 +780,11 @@ async function loadObservations() {
       console.warn('Pesticide county data unavailable:', pesticideResult.reason);
     }
 
-    // Alerts
+    // Alerts — approximate waystations are excluded from connectivity calculations
+    // because their location is not known at address precision.
     _lastAlertArgs = {
       corridorFeatures:    corridorFeats,
-      waystationFeatures:  waystationFeats,
+      waystationFeatures:  confirmedWaystationFeats,
       pfasFeatures:        pfasFeats,
       pollinatorSightings: allPollinatorFeatures,
       hnpFeatures:         hnpFeats,
@@ -816,7 +819,7 @@ async function loadObservations() {
     // ── Analysis layers — expansion, problems, suitability ───────────────────
     const _analysisCtx = {
       corridorFeatures:    corridorFeats,
-      waystationFeatures:  waystationFeats,
+      waystationFeatures:  confirmedWaystationFeats,
       hnpFeatures:         hnpFeats,
       pfasFeatures:        pfasFeats,
       pollinatorSightings: allPollinatorFeatures,

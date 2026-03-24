@@ -32,30 +32,93 @@
  * Coordinates are the Census geocoded midpoint of the address range segment.
  * Private residential coordinates are deliberately shown at address-range
  * precision (±50 m), not exact parcel centroids.
+ *
+ * Approximate-location waystations (no confirmed parcel match):
+ *   Placed on a ~350 m radius ring centred on a representative point for their
+ *   zip code.  Sites in the same zip are evenly spaced around the ring so they
+ *   cluster together visually, making their approximate nature obvious.
+ *   These sites are excluded from foraging-range connectivity calculations.
  */
+
+// ── Ring-placement helpers for approximate waystations ────────────────────────
+
+/** Radius (km) of the per-zip placement ring for approximate waystations. */
+const _RING_RADIUS_KM = 0.35;
+
+/**
+ * Representative centre [lat, lon] for each zip code area.
+ * Chosen to fall within residential areas where most waystations are registered.
+ */
+const _ZIP_CENTERS = {
+  '54301': [44.491, -88.012],   // core south Green Bay
+  '54302': [44.518, -87.968],   // east Green Bay
+  '54303': [44.517, -88.053],   // west Green Bay
+  '54304': [44.508, -88.041],   // southwest Green Bay
+  '54311': [44.513, -87.931],   // southeast Green Bay / Bellevue
+  '54313': [44.590, -88.096],   // north Green Bay / Suamico
+};
+
+/**
+ * Places approximate waystations on evenly-spaced ring positions grouped by
+ * zip code.  Within each zip the ring starts at the northernmost point and
+ * proceeds clockwise.
+ *
+ * @param {object[]} waystations  APPROX_WAYSTATIONS entries
+ * @returns {Map<number, [number, number]>}  id → [lon, lat]
+ */
+function _ringPositions(waystations) {
+  const byZip = new Map();
+  for (const w of waystations) {
+    const zip = (w.address.match(/\d{5}/) ?? [])[0] ?? '';
+    if (!byZip.has(zip)) byZip.set(zip, []);
+    byZip.get(zip).push(w);
+  }
+  const out = new Map();
+  for (const [zip, group] of byZip) {
+    const center = _ZIP_CENTERS[zip];
+    if (!center) continue;
+    const [clat, clon] = center;
+    const n    = group.length;
+    const latR = _RING_RADIUS_KM / 111.0;
+    const lonR = _RING_RADIUS_KM / (111.0 * Math.cos(clat * Math.PI / 180));
+    for (let i = 0; i < n; i++) {
+      const angle = (2 * Math.PI * i / n) - Math.PI / 2; // north first, clockwise
+      out.set(group[i].id, [
+        +(clon + lonR * Math.cos(angle)).toFixed(6),
+        +(clat + latR * Math.sin(angle)).toFixed(6),
+      ]);
+    }
+  }
+  return out;
+}
 
 /** @returns {GeoJSON.FeatureCollection} */
 export function waystationGeoJSON() {
+  const approxPos = _ringPositions(APPROX_WAYSTATIONS);
   return {
     type: 'FeatureCollection',
-    features: [...WAYSTATIONS, ...APPROX_WAYSTATIONS].map(w => ({
-      type:     'Feature',
-      geometry: { type: 'Point', coordinates: [w.lon, w.lat] },
-      properties: {
-        data_source:  'waystation',
-        layer_id:     'waystations',
-        est_key:      'waystation',
-        ws_id:        w.id,
-        name:         w.habitat  || `Waystation #${w.id}`,
-        registrant:   w.registrant,
-        registered:   w.registered,
-        size:         w.size,
-        location:     w.location,
-        type:         w.type,
-        address:      w.address,
-        approximate:  w.approximate ?? false,
-      },
-    })),
+    features: [...WAYSTATIONS, ...APPROX_WAYSTATIONS].map(w => {
+      const isApprox  = w.approximate ?? false;
+      const [lon, lat] = isApprox ? approxPos.get(w.id) : [w.lon, w.lat];
+      return {
+        type:     'Feature',
+        geometry: { type: 'Point', coordinates: [lon, lat] },
+        properties: {
+          data_source:  'waystation',
+          layer_id:     'waystations',
+          est_key:      'waystation',
+          ws_id:        w.id,
+          name:         w.habitat  || `Waystation #${w.id}`,
+          registrant:   w.registrant,
+          registered:   w.registered,
+          size:         w.size,
+          location:     w.location,
+          type:         w.type,
+          address:      w.address,
+          approximate:  isApprox,
+        },
+      };
+    }),
   };
 }
 
@@ -296,10 +359,12 @@ const WAYSTATIONS = [
 ];
 
 // ── Approximate-location entries ──────────────────────────────────────────────
-// These waystations are placed at a position within their zip code area because
-// no parcel match could be confirmed (surname not found, common name with no
-// first-name match, or only a wrongly-named record). Coordinates are spread
-// across each zip code to avoid stacking, but are NOT precise addresses.
+// These waystations could not be matched to a parcel record (surname not found,
+// common name with no first-name confirmation, or a wrongly-named record).
+// Their street address is unknown.  No lat/lon is stored here — positions are
+// computed by _ringPositions() which places each zip-code group on an evenly-
+// spaced ~350 m ring so their approximate nature is visually obvious on the map.
+// These entries are also excluded from foraging-range connectivity calculations.
 const APPROX_WAYSTATIONS = [
 
   // ── zip 54301 · core south Green Bay ────────────────────────────────────
@@ -308,14 +373,14 @@ const APPROX_WAYSTATIONS = [
     registrant: 'Toni Weiss', habitat: 'Shelter From The Storm',
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.499, lon: -88.003,
+    approximate: true,
   },
   {
     id: 5305, registered: '11/30/11',
     registrant: 'Lisa Kay & Michael Peters', habitat: '',
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.494, lon: -88.015,
+    approximate: true,
   },
   {
     id: 5733, registered: '6/13/12',
@@ -323,7 +388,7 @@ const APPROX_WAYSTATIONS = [
     habitat: 'Valentine Butterfly Garden',
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.502, lon: -88.009,
+    approximate: true,
   },
   {
     id: 22507, registered: '11/22/18',
@@ -331,42 +396,42 @@ const APPROX_WAYSTATIONS = [
     habitat: 'Darryl R. Beers Butterfly and Bee Habitat',
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.489, lon: -88.006,
+    approximate: true,
   },
   {
     id: 30354, registered: '8/12/20',
     registrant: 'Jenny Kuehl', habitat: 'Sunny Haven Gardens',
     size: 'X-Large (1,000–4,999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.497, lon: -88.021,
+    approximate: true,
   },
   {
     id: 32268, registered: '3/12/21',
     registrant: 'Jaime Howarth', habitat: 'Butterfly Sanctuary',
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.483, lon: -88.012,
+    approximate: true,
   },
   {
     id: 42099, registered: '12/29/22',
     registrant: 'Amanda Lowther', habitat: 'Anandamide',
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.493, lon: -88.025,
+    approximate: true,
   },
   {
     id: 52043, registered: '7/7/25',
     registrant: 'Sarah Scott', habitat: 'Whispering Wings',
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.480, lon: -88.005,
+    approximate: true,
   },
   {
     id: 55034, registered: '3/4/26',
     registrant: 'Leah Charles', habitat: "Leah's Monarch Waystation",
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54301',
-    approximate: true, lat: 44.486, lon: -88.018,
+    approximate: true,
   },
 
   // ── zip 54302 · east Green Bay ───────────────────────────────────────────
@@ -375,7 +440,7 @@ const APPROX_WAYSTATIONS = [
     registrant: 'Debi & Charlie Nitka', habitat: 'My Backyard',
     size: 'Colossal (5,000 sq ft or more)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54302',
-    approximate: true, lat: 44.523, lon: -87.974,
+    approximate: true,
   },
   {
     id: 38989, registered: '5/22/22',
@@ -383,7 +448,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54302',
     // Parcel PEARL JADIN found — first name mismatch (Pearl ≠ Michelle)
-    approximate: true, lat: 44.514, lon: -87.963,
+    approximate: true,
   },
 
   // ── zip 54303 · west Green Bay ───────────────────────────────────────────
@@ -392,7 +457,7 @@ const APPROX_WAYSTATIONS = [
     registrant: 'Lisa Bowen', habitat: "Mom's Garden Oasis",
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54303',
-    approximate: true, lat: 44.521, lon: -88.059,
+    approximate: true,
   },
   {
     id: 46819, registered: '3/11/24',
@@ -400,7 +465,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54303',
     // Parcel VICTOR R GABRIS found — first name mismatch (Victor ≠ Julie)
-    approximate: true, lat: 44.514, lon: -88.048,
+    approximate: true,
   },
 
   // ── zip 54304 · southwest Green Bay ─────────────────────────────────────
@@ -409,7 +474,7 @@ const APPROX_WAYSTATIONS = [
     registrant: "Ben's Backyard Monarch Waystation", habitat: 'Backyard',
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54304',
-    approximate: true, lat: 44.509, lon: -88.041,
+    approximate: true,
   },
   {
     id: 4215, registered: '9/3/10',
@@ -418,7 +483,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54304',
     // Parcel BRADLEY KLEIN found — first name mismatch (Bradley ≠ Scott/Connie)
-    approximate: true, lat: 44.503, lon: -88.047,
+    approximate: true,
   },
   {
     id: 51389, registered: '6/12/25',
@@ -426,7 +491,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54304',
     // Parcel COADY L HUTSON found — first name mismatch (Coady ≠ Cristi)
-    approximate: true, lat: 44.514, lon: -88.036,
+    approximate: true,
   },
 
   // ── zip 54311 · southeast Green Bay / Bellevue ───────────────────────────
@@ -436,14 +501,14 @@ const APPROX_WAYSTATIONS = [
     habitat: "Mosholder's Monarchs",
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Bellevue, WI 54311',
-    approximate: true, lat: 44.510, lon: -87.932,
+    approximate: true,
   },
   {
     id: 4059, registered: '8/8/10',
     registrant: 'Barb Nelson', habitat: 'Danaus Digs',
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
-    approximate: true, lat: 44.520, lon: -87.918,
+    approximate: true,
   },
   {
     id: 25714, registered: '8/5/19',
@@ -451,7 +516,7 @@ const APPROX_WAYSTATIONS = [
     habitat: "GMA HoHo's Butterfly Bungalow",
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
-    approximate: true, lat: 44.515, lon: -87.941,
+    approximate: true,
   },
   {
     id: 31894, registered: '1/27/21',
@@ -459,7 +524,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Bellevue, WI 54311',
     // Parcel JARED MCLEOD found — no name match (Miranda Paul)
-    approximate: true, lat: 44.505, lon: -87.928,
+    approximate: true,
   },
   {
     id: 36461, registered: '8/21/21',
@@ -468,7 +533,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Colossal (5,000 sq ft or more)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
     // Parcel PORT CITY BAKERY INC found — commercial entity, not a match
-    approximate: true, lat: 44.523, lon: -87.908,
+    approximate: true,
   },
   {
     id: 37068, registered: '9/27/21',
@@ -476,14 +541,14 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
     // Parcel JOSEPH W LANCELLE found — different surname (Lancelle ≠ Lance)
-    approximate: true, lat: 44.516, lon: -87.948,
+    approximate: true,
   },
   {
     id: 44374, registered: '6/20/23',
     registrant: 'Elizabeth DeLamater', habitat: 'Blue Door Prairie',
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
-    approximate: true, lat: 44.511, lon: -87.921,
+    approximate: true,
   },
   {
     id: 44741, registered: '7/7/23',
@@ -491,7 +556,7 @@ const APPROX_WAYSTATIONS = [
     size: 'X-Large (1,000–4,999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54311',
     // Parcel GRANT DEAN L & MICHELLE M TRUST found — name reversed, Stephanie not present
-    approximate: true, lat: 44.508, lon: -87.955,
+    approximate: true,
   },
 
   // ── zip 54313 · north Green Bay / Suamico ────────────────────────────────
@@ -501,14 +566,14 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel JEFFREY R MULLOY found — first name mismatch (Jeffrey ≠ David)
-    approximate: true, lat: 44.585, lon: -88.093,
+    approximate: true,
   },
   {
     id: 3880, registered: '6/15/10',
     registrant: 'Emily J. Dinatale', habitat: "Emily's Butterfly B & B",
     size: 'Large (500–999 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
-    approximate: true, lat: 44.594, lon: -88.101,
+    approximate: true,
   },
   {
     id: 4237, registered: '9/7/10',
@@ -516,7 +581,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel RUSSELL W JOACHIM found — likely spouse, but first name unconfirmed
-    approximate: true, lat: 44.600, lon: -88.087,
+    approximate: true,
   },
   {
     id: 20647, registered: '7/11/18',
@@ -524,7 +589,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Colossal (5,000 sq ft or more)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel TODD J GEURTS found — first name mismatch (Todd ≠ Leslie/Lee)
-    approximate: true, lat: 44.579, lon: -88.097,
+    approximate: true,
   },
   {
     id: 22096, registered: '9/24/18',
@@ -532,7 +597,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel MITCHELL L TARLTON found — Mitchell is first name of Tarlton, not a match
-    approximate: true, lat: 44.590, lon: -88.110,
+    approximate: true,
   },
   {
     id: 35333, registered: '7/11/21',
@@ -541,7 +606,7 @@ const APPROX_WAYSTATIONS = [
     size: 'Medium (200–499 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel DARRIN J ALBERS ETAL found — first name mismatch (Darrin ≠ Melissa)
-    approximate: true, lat: 44.597, lon: -88.079,
+    approximate: true,
   },
   {
     id: 53989, registered: '9/29/25',
@@ -549,6 +614,6 @@ const APPROX_WAYSTATIONS = [
     size: 'Small (less than 200 sq ft)', location: 'Home', type: 'home',
     address: 'Green Bay, WI 54313',
     // Parcel MARK A GARRIGAN found — first name mismatch (Mark ≠ Michelle)
-    approximate: true, lat: 44.583, lon: -88.107,
+    approximate: true,
   },
 ];
