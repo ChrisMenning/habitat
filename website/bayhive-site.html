@@ -11,6 +11,26 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; font-size: 16px; }
 
+/* ─── SKIP LINK ─────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3.5rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--field);
+  color: var(--wax);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--honey);
+  z-index: 500;
+  transition: top 0.15s;
+  white-space: nowrap;
+}
+.skip-link:focus { top: 0.5rem; outline: 2px solid var(--honey); outline-offset: 2px; }
+
 :root {
   --honey:      #D4921A;
   --amber:      #B8780F;
@@ -96,6 +116,9 @@ nav {
   transition: background 0.2s, transform 0.15s !important;
 }
 .nav-cta:hover { background: var(--gold) !important; transform: translateY(-1px); }
+
+/* Hamburger button is hidden on desktop; shown via responsive block below */
+.nav-hamburger { display: none; }
 
 /* ─── HERO ───────────────────────────────────────────────────── */
 .hero {
@@ -547,7 +570,7 @@ p { color: var(--fog); }
   display: flex; gap: 3rem; align-items: center; flex-wrap: wrap;
 }
 .tech-item { display: flex; flex-direction: column; gap: 0.2rem; }
-.tech-item-lbl { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--honey); opacity: 0.7; }
+.tech-item-lbl { font-family: var(--font-mono); font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--honey); }
 .tech-item-val { font-family: var(--font-mono); font-size: 0.72rem; color: var(--fog); }
 
 /* ─── FOOTER ─────────────────────────────────────────────────── */
@@ -680,8 +703,29 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
 
 /* ─── RESPONSIVE ─────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  nav { padding: 1rem 1.5rem; }
-  .nav-links { display: none; }
+  nav { padding: 1rem 1.5rem; position: relative; }
+  .nav-hamburger {
+    display: flex; flex-direction: column; justify-content: center; gap: 5px;
+    background: transparent; border: none; cursor: pointer; padding: 6px;
+    min-width: 44px; min-height: 44px; align-items: center;
+  }
+  .nav-hamburger span {
+    display: block; width: 22px; height: 2px;
+    background: var(--fog); border-radius: 1px;
+    transition: background 0.2s;
+  }
+  .nav-hamburger:hover span { background: var(--wax); }
+  .nav-hamburger:focus-visible { outline: 2px solid var(--honey); outline-offset: 2px; }
+  .nav-links {
+    display: none;
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 199;
+    flex-direction: column; align-items: flex-start;
+    background: rgba(20, 26, 12, 0.97);
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid rgba(212,146,26,0.15);
+    gap: 1rem;
+  }
+  .nav-links.is-open { display: flex; }
   .hero { grid-template-columns: 1fr; }
   .hero-content { padding: 7rem 1.5rem 3rem; }
   .hero-right { display: none; }
@@ -704,9 +748,22 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   .conn-tier { grid-template-columns: 60px 1fr; gap: 1rem; }
   .conn-color-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ─── REDUCED MOTION ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  h1, .h1-tagline, .hero-desc, .hero-actions,
+  .hero-eyebrow, .intel-card, .scroll-cue { opacity: 1 !important; }
+}
 </style>
 </head>
 <body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
 <nav role="navigation" aria-label="Main navigation">
@@ -715,7 +772,12 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
     <span class="w2">Hive</span>
     <span class="wh">⬡</span>
   </a>
-  <ul class="nav-links">
+  <button class="nav-hamburger" id="nav-toggle"
+          aria-label="Open navigation menu" aria-expanded="false"
+          aria-controls="nav-links-list">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="nav-links-list">
     <li><a href="#problem">The Problem</a></li>
     <li><a href="#tool">The Tool</a></li>
     <li><a href="#alerts">Alerts</a></li>
@@ -725,6 +787,8 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
     <li><a href="#contribute" class="nav-cta">Get Involved</a></li>
   </ul>
 </nav>
+
+<main id="main-content">
 
 <!-- HERO -->
 <section class="hero" aria-labelledby="hero-h1">
@@ -769,7 +833,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
     </div>
   </div>
 
-  <div class="hero-right" aria-hidden="true">
+  <div class="hero-right">
     <div class="intel-card">
       <div class="card-header">Intelligence Summary · Live</div>
       <div class="stat-row">
@@ -870,7 +934,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
     <div class="feature-cell">
       <div class="feature-num">01</div>
       <h3>Multi-source sightings</h3>
-      <p>iNaturalist (up to 2,000 obs), GBIF records (up to 600), eBird, and Wikimedia Commons photos — filterable by research grade, native species, and proximity to habitat.</p>
+      <p>iNaturalist (historical observations back to 2010 — up to 2,000 per calendar year), GBIF records (up to 600), eBird, and Wikimedia Commons photos — filterable by research grade, native species, and proximity to habitat.</p>
     </div>
     <div class="feature-cell">
       <div class="feature-num">02</div>
@@ -1041,7 +1105,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   </div>
   <div class="sources-grid reveal">
     <div class="source-item"><div class="source-cat">Corridor</div><div class="source-name">GBCC ArcGIS Feature Service</div></div>
-    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · up to 2,000 obs</div></div>
+    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · historical back to 2010</div></div>
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">GBIF Occurrence API v1 · up to 600</div></div>
     <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">FWS Dataset · All 6 Bee Families</div></div>
     <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">USGS PAD-US v3.0</div></div>
@@ -1053,7 +1117,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
     <div class="source-item"><div class="source-cat">Waystations</div><div class="source-name">Monarch Watch · 56 curated sites</div></div>
     <div class="source-item"><div class="source-cat">Habitat Program</div><div class="source-name">Homegrown National Park API</div></div>
     <div class="source-item"><div class="source-cat">Photos</div><div class="source-name">Wikimedia Commons · Proximity filtered</div></div>
-    <div class="source-item"><div class="source-cat">Birds · Optional</div><div class="source-name">Cornell eBird API</div></div>
+    <div class="source-item"><div class="source-cat">Birds</div><div class="source-name">Cornell eBird API</div></div>
     <div class="source-item"><div class="source-cat">Crops · Optional</div><div class="source-name">USDA NASS QuickStats API</div></div>
     <div class="source-item"><div class="source-cat">Climate · Optional</div><div class="source-name">NOAA CDO / NCEI</div></div>
   </div>
@@ -1562,6 +1626,8 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
 </div>
 
 <!-- FOOTER -->
+</main>
+
 <footer role="contentinfo">
   <div class="footer-inner">
     <div class="footer-brand">
@@ -1585,7 +1651,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
         <li><a href="#users">Who It Serves</a></li>
         <li><a href="#governance">Governance</a></li>
         <li><a href="#contribute">Get Involved</a></li>
-        <li><a href="#">GitHub Repository</a></li>
+        <li><a href="https://github.com/ChrisMenning/habitat" target="_blank" rel="noopener">GitHub Repository</a></li>
       </ul>
     </div>
   </div>
@@ -1607,13 +1673,15 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // ── Live card data ────────────────────────────────────────────────────────────
 // Fetches real data from:
 //   GBCC ArcGIS FeatureServer — corridor site count + total planted area
-//   /waystation_coords.json   — waystation count
 //   /api/hnp-count            — HNP yard count for local bbox (proxied; needs node server)
 //   /api/snapshots            — latest iNaturalist harvest for observation count
 //   iNaturalist API (CORS)    — 30-day fallback if no snapshot
 //   WI DNR ArcGIS MapServer   — PFAS sites for live alert (CORS-enabled)
 //
-// All fields degrade silently to "—" or their static placeholder if an API
+// Waystation count uses the static "56" placeholder (authoritative — maintained
+// in js/waystations.js; waystation_coords.json is a legacy file with fewer entries).
+//
+// All other fields degrade silently to "—" or their static placeholder if an API
 // is unreachable (e.g. the page is viewed without the node server running).
 (async function liveStats() {
   const LAT = 44.5133, LNG = -88.0133, RADIUS_KM = 15;
@@ -1699,14 +1767,9 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   } catch { /* GBCC service unreachable — keep "—" */ }
 
   // ── 2. Waystation count ──────────────────────────────────────────────────
-  try {
-    const arr   = await (await fetch('/waystation_coords.json', { signal: AbortSignal.timeout(5000) })).json();
-    const count = Array.isArray(arr) ? arr.length : null;
-    if (count != null) {
-      setVal('stat-val-waystations', count);
-      setVal('guide-val-waystations', count);
-    }
-  } catch { /* node server not running — keep static "56" */ }
+  // waystation_coords.json is a legacy file (15 entries); the actual app now
+  // uses 56 waystations managed in waystations.js.  The static placeholder
+  // "56" in the HTML is accurate — no fetch needed.
 
   // ── 3. HNP yard count (server-side bbox-filtered endpoint) ─────────────
   try {
@@ -1805,6 +1868,36 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     }
   } catch { /* DNR ArcGIS unreachable — keep obs-based alert text */ }
 })();
+</script>
+
+<script>
+// ── Mobile navigation hamburger ───────────────────────────────────────────
+const navToggle = document.getElementById('nav-toggle');
+const navList   = document.getElementById('nav-links-list');
+if (navToggle && navList) {
+  navToggle.addEventListener('click', () => {
+    const isOpen = navList.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+  });
+  // Close when any nav link is activated (smooth-scroll target)
+  navList.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      navList.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+      navToggle.setAttribute('aria-label', 'Open navigation menu');
+    });
+  });
+  // Close on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
+      navList.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+      navToggle.setAttribute('aria-label', 'Open navigation menu');
+      navToggle.focus();
+    }
+  });
+}
 </script>
 </body>
 </html>
