@@ -526,6 +526,10 @@ async function _getNlcdTileData(z, tx, ty) {
   const result  = { palMap, indices, width: ihdr.width, height: ihdr.height };
   _nestingTileCache.set(key, result);
   _nestingTileCacheAge.set(key, now);
+  _saveToDisk(
+    path.join(_DISK_CACHE_DIR, 'nlcd-nesting', `${key.replace(/\//g, '_')}.json`),
+    { palMap: [...result.palMap], indices: Buffer.from(result.indices).toString('base64'), width: result.width, height: result.height, age: now }
+  );
   return result;
 }
 
@@ -733,6 +737,10 @@ async function _getCanopyPixels(lng, lat) {
   const result = { treeCount, total };
   _canopyCache.set(bboxStr, result);
   _canopyCacheAge.set(bboxStr, now);
+  _saveToDisk(
+    path.join(_DISK_CACHE_DIR, 'canopy', `${bboxStr.replace(/,/g, '_')}.json`),
+    { bboxKey: bboxStr, treeCount: result.treeCount, total: result.total, age: now }
+  );
   return result;
 }
 
@@ -894,6 +902,7 @@ async function _fetchInatYear(year) {
 
   _inatHistCache.set(year, all);
   _inatHistCacheAge.set(year, Date.now());
+  _saveToDisk(path.join(_DISK_CACHE_DIR, 'inat', `${year}.json`), { obs: all, age: _inatHistCacheAge.get(year) });
   return all;
 }
 
@@ -1136,7 +1145,9 @@ function _fetchParcelTile(xi, yi) {
           } catch (err) { reject(err); return; }
 
           const body = JSON.stringify(geojson);
-          _parcelTileCache.set(key, { body, age: Date.now() });
+          const parcelAge = Date.now();
+          _parcelTileCache.set(key, { body, age: parcelAge });
+          _saveToDisk(path.join(_DISK_CACHE_DIR, 'parcels', `${key.replace(',', '_')}.json`), { body, age: parcelAge });
           resolve(body);
         });
       }
@@ -1432,6 +1443,7 @@ async function proxyCdlFringe(res) {
     const features    = await computeCdlFringe();
     cdlFringeCache     = JSON.stringify({ type: 'FeatureCollection', features });
     cdlFringeCacheTime = Date.now();
+    _saveToDisk(path.join(_DISK_CACHE_DIR, 'cdl-fringe.json'), { body: cdlFringeCache, age: cdlFringeCacheTime });
     res.writeHead(200, { 'Content-Type': 'application/json',
                          'Access-Control-Allow-Origin': '*',
                          'Cache-Control': 'public, max-age=86400' });
@@ -1556,6 +1568,7 @@ function proxyQuickStats(res) {
     const combined = combineNassData(coloniesData, cropsData);
     nassCache     = JSON.stringify(combined);
     nassCacheTime = Date.now();
+    _saveToDisk(path.join(_DISK_CACHE_DIR, 'nass.json'), { body: nassCache, age: nassCacheTime });
     res.writeHead(200, { 'Content-Type': 'application/json',
                          'Access-Control-Allow-Origin': '*',
                          'Cache-Control': 'public, max-age=86400' });
@@ -1726,6 +1739,110 @@ const SNAPSHOTS_DIR = path.join(ROOT, 'snapshots');
 
 // Ensure the directory exists at startup without crashing if it already does.
 try { fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true }); } catch { /* already exists */ }
+
+// ── Disk-backed cache persistence ─────────────────────────────────────────────
+// All server-side in-memory caches are mirrored to snapshots/cache/ as flat JSON
+// files so they survive server restarts. Writes are atomic (tmp → rename).
+
+const _DISK_CACHE_DIR = path.join(SNAPSHOTS_DIR, 'cache');
+for (const sub of ['inat', 'parcels', 'nlcd-nesting', 'canopy']) {
+  try { fs.mkdirSync(path.join(_DISK_CACHE_DIR, sub), { recursive: true }); } catch { /* ok */ }
+}
+
+function _saveToDisk(filePath, data) {
+  const tmp = filePath + '.tmp';
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data));
+    fs.renameSync(tmp, filePath);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+    console.warn('[cache] _saveToDisk failed:', filePath, e.message);
+  }
+}
+
+function _loadFromDisk(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch { return null; }
+}
+
+function _loadPersistedCaches() {
+  let count = 0;
+
+  // iNat history: snapshots/cache/inat/{year}.json
+  let inatFiles = [];
+  try { inatFiles = fs.readdirSync(path.join(_DISK_CACHE_DIR, 'inat')); } catch { /* empty */ }
+  for (const f of inatFiles) {
+    const m = f.match(/^(\d{4})\.json$/);
+    if (!m) continue;
+    const rec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'inat', f));
+    if (rec && Array.isArray(rec.obs)) {
+      _inatHistCache.set(parseInt(m[1], 10), rec.obs);
+      _inatHistCacheAge.set(parseInt(m[1], 10), rec.age);
+      count++;
+    }
+  }
+
+  // Parcel tiles: snapshots/cache/parcels/{xi}_{yi}.json
+  let parcelFiles = [];
+  try { parcelFiles = fs.readdirSync(path.join(_DISK_CACHE_DIR, 'parcels')); } catch { /* empty */ }
+  for (const f of parcelFiles) {
+    if (!f.endsWith('.json')) continue;
+    const rec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'parcels', f));
+    if (rec && rec.body) {
+      const key = f.slice(0, -5).replace('_', ',');
+      _parcelTileCache.set(key, { body: rec.body, age: rec.age });
+      count++;
+    }
+  }
+
+  // NLCD nesting tiles: snapshots/cache/nlcd-nesting/{z}_{tx}_{ty}.json
+  let nestFiles = [];
+  try { nestFiles = fs.readdirSync(path.join(_DISK_CACHE_DIR, 'nlcd-nesting')); } catch { /* empty */ }
+  for (const f of nestFiles) {
+    if (!f.endsWith('.json')) continue;
+    const rec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'nlcd-nesting', f));
+    if (rec && rec.indices && rec.palMap) {
+      const key     = f.slice(0, -5).replace(/_/g, '/');
+      const palMap  = new Map(rec.palMap);
+      const indices = Uint8Array.from(Buffer.from(rec.indices, 'base64'));
+      _nestingTileCache.set(key, { palMap, indices, width: rec.width, height: rec.height });
+      _nestingTileCacheAge.set(key, rec.age);
+      count++;
+    }
+  }
+
+  // Canopy tiles: snapshots/cache/canopy/{bboxKey}.json
+  let canopyFiles = [];
+  try { canopyFiles = fs.readdirSync(path.join(_DISK_CACHE_DIR, 'canopy')); } catch { /* empty */ }
+  for (const f of canopyFiles) {
+    if (!f.endsWith('.json')) continue;
+    const rec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'canopy', f));
+    if (rec && rec.bboxKey) {
+      _canopyCache.set(rec.bboxKey, { treeCount: rec.treeCount, total: rec.total });
+      _canopyCacheAge.set(rec.bboxKey, rec.age);
+      count++;
+    }
+  }
+
+  // CDL fringe: snapshots/cache/cdl-fringe.json
+  const cdlRec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'cdl-fringe.json'));
+  if (cdlRec && cdlRec.body) {
+    cdlFringeCache     = cdlRec.body;
+    cdlFringeCacheTime = cdlRec.age;
+    count++;
+  }
+
+  // NASS: snapshots/cache/nass.json
+  const nassRec = _loadFromDisk(path.join(_DISK_CACHE_DIR, 'nass.json'));
+  if (nassRec && nassRec.body) {
+    nassCache     = nassRec.body;
+    nassCacheTime = nassRec.age;
+    count++;
+  }
+
+  if (count > 0) console.log(`[cache] Restored ${count} persisted cache entries.`);
+}
 
 // ── iNat classification helpers (mirrors js/classify.js without ES modules) ──
 const INSECT_POLLINATOR_RE = /\bbee(s)?\b|bumblebee|bumble\s+bee|honey\s+bee|mason\s+bee|sweat\s+bee|leafcutter|miner\s+bee|butterfly|butterflies|\bskipper(s)?\b|\bmoth(s)?\b|hoverfly|hover[\s-]fl(y|ies)|flower\s+fl(y|ies)/i;
@@ -2242,6 +2359,8 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
+  // Restore all in-memory caches from disk before warming.
+  _loadPersistedCaches();
   // Pre-warm the parcel tile cache in the background.
   // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
   setTimeout(_warmParcelCache, 5000);
