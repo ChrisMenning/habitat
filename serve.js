@@ -77,40 +77,51 @@ const HNP_BBOX = {
   minLng: -88.2965, maxLng: -87.7301,
 };
 
-function proxyHnp(res) {
-  https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
-    const chunks = [];
-    upstream.on('data', chunk => chunks.push(chunk));
-    upstream.on('end', () => {
-      let plantings;
-      try {
-        plantings = JSON.parse(Buffer.concat(chunks).toString());
-      } catch (e) {
-        res.writeHead(502);
-        res.end(JSON.stringify({ error: 'HNP API returned invalid JSON' }));
-        return;
-      }
-      if (!Array.isArray(plantings)) {
-        res.writeHead(502);
-        res.end(JSON.stringify({ error: 'HNP API returned unexpected format' }));
-        return;
-      }
-      const features = plantings
-        .filter(p => p.latitude != null && p.longitude != null)
-        .map(p => ({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
-          properties: { id: p.id, org_type: p.type },
-        }));
-      const geojson = JSON.stringify({ type: 'FeatureCollection', features });
-      res.writeHead(upstream.statusCode, {
-        'Content-Type':                'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control':               'no-cache',
+// Shared upstream cache — both /api/hnp-plantings and /api/hnp-count use this
+// so a single upstream fetch per TTL window serves both endpoints.
+let _hnpUpstreamCache    = null;  // raw plantings array
+let _hnpUpstreamCacheAge = 0;
+const _HNP_UPSTREAM_TTL  = 60 * 60 * 1000; // 1 hour
+
+function _fetchHnpUpstream() {
+  const now = Date.now();
+  if (_hnpUpstreamCache && now - _hnpUpstreamCacheAge < _HNP_UPSTREAM_TTL) {
+    return Promise.resolve(_hnpUpstreamCache);
+  }
+  return new Promise((resolve, reject) => {
+    https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
+      const chunks = [];
+      upstream.on('data', c => chunks.push(c));
+      upstream.on('end', () => {
+        let parsed;
+        try { parsed = JSON.parse(Buffer.concat(chunks).toString()); }
+        catch { reject(new Error('HNP API returned invalid JSON')); return; }
+        if (!Array.isArray(parsed)) { reject(new Error('HNP API returned unexpected format')); return; }
+        _hnpUpstreamCache    = parsed;
+        _hnpUpstreamCacheAge = Date.now();
+        resolve(parsed);
       });
-      res.end(geojson);
+    }).on('error', reject);
+  });
+}
+
+function proxyHnp(res) {
+  _fetchHnpUpstream().then(plantings => {
+    const features = plantings
+      .filter(p => p.latitude != null && p.longitude != null)
+      .map(p => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
+        properties: { id: p.id, org_type: p.type },
+      }));
+    const geojson = JSON.stringify({ type: 'FeatureCollection', features });
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control':               'no-cache',
     });
-  }).on('error', err => {
+    res.end(geojson);
+  }).catch(err => {
     res.writeHead(502);
     res.end(JSON.stringify({ error: err.message }));
   });
@@ -118,23 +129,15 @@ function proxyHnp(res) {
 
 // Returns just the bbox-filtered count — lightweight for the marketing page.
 function proxyHnpCount(res) {
-  https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
-    const chunks = [];
-    upstream.on('data', chunk => chunks.push(chunk));
-    upstream.on('end', () => {
-      let plantings;
-      try { plantings = JSON.parse(Buffer.concat(chunks).toString()); }
-      catch { res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ error: 'invalid JSON' })); return; }
-      if (!Array.isArray(plantings)) { res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(JSON.stringify({ error: 'unexpected format' })); return; }
-      const count = plantings.filter(p =>
-        p.latitude  != null && p.longitude != null &&
-        p.latitude  >= HNP_BBOX.minLat && p.latitude  <= HNP_BBOX.maxLat &&
-        p.longitude >= HNP_BBOX.minLng && p.longitude <= HNP_BBOX.maxLng
-      ).length;
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600' });
-      res.end(JSON.stringify({ count }));
-    });
-  }).on('error', err => {
+  _fetchHnpUpstream().then(plantings => {
+    const count = plantings.filter(p =>
+      p.latitude  != null && p.longitude != null &&
+      p.latitude  >= HNP_BBOX.minLat && p.latitude  <= HNP_BBOX.maxLat &&
+      p.longitude >= HNP_BBOX.minLng && p.longitude <= HNP_BBOX.maxLng
+    ).length;
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600' });
+    res.end(JSON.stringify({ count }));
+  }).catch(err => {
     res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ error: err.message }));
   });

@@ -807,6 +807,10 @@ async function loadObservations() {
     const cdlStats   = cdlStatsResult.status   === 'fulfilled' ? cdlStatsResult.value   : null;
     const quickStats  = quickStatsResult.status  === 'fulfilled' ? quickStatsResult.value  : null;
     if (!cdlStats) console.warn('CDL stats unavailable (API returned null or failed)');
+    // Waystations are static/synchronous — count them now so the badge is included
+    // in the single updateCounts() call below (they were previously set too late).
+    _waystationFeats = waystationGeoJSON().features;
+    counts['waystations'] = _waystationFeats.length;
     updateCounts(counts);
 
     const capped     = inatObs < inatTotal;
@@ -828,13 +832,11 @@ async function loadObservations() {
       ...(gbifPlantResult.status === 'fulfilled' ? gbifPlantResult.value.nonNative   : []),
     ];
 
-    _corridorFeats         = corridorResult.status  === 'fulfilled' ? corridorResult.value.features  : [];
-    _waystationFeats          = waystationGeoJSON().features;
+    _corridorFeats            = corridorResult.status === 'fulfilled' ? corridorResult.value.features : [];
     _confirmedWaystationFeats = _waystationFeats.filter(f => !f.properties.approximate);
     const corridorFeats       = _corridorFeats;
     const waystationFeats     = _waystationFeats;
     const confirmedWaystationFeats = _confirmedWaystationFeats;
-    counts['waystations']  = waystationFeats.length;
     registerTemporalLayer(
       'waystations',
       waystationFeats,
