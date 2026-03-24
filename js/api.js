@@ -73,6 +73,35 @@ export async function fetchObservations(d1, d2, onProgress) {
   return { observations: all, total };
 }
 
+/**
+ * Fetches observations for a single calendar year, using the server-side
+ * history proxy (/api/inat-history/:year) when available.  The proxy
+ * pre-warms its cache on server startup, so most requests are instant.
+ * Falls back to direct iNaturalist API if the proxy is unreachable.
+ *
+ * The returned observations are in the same format as fetchObservations() and
+ * are ready to be passed to observationsToGeoJSON().
+ *
+ * @param {number} year
+ * @returns {Promise<{observations: object[], total: number}>}
+ */
+export async function fetchObservationsForYear(year) {
+  try {
+    const resp = await fetch(`/api/inat-history/${year}`);
+    if (resp.ok) {
+      const observations = await resp.json();
+      if (Array.isArray(observations)) {
+        return { observations, total: observations.length };
+      }
+    }
+  } catch { /* proxy not available — fall through to direct API */ }
+
+  // Direct fallback: query iNat with date bounds for this year
+  const d1 = `${year}-01-01`;
+  const d2 = `${year}-12-31`;
+  return fetchObservations(d1, d2);
+}
+
 // ── GeoJSON conversion ───────────────────────────────────────────────────────
 
 /**

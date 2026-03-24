@@ -10,8 +10,8 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER } from './config.js';
-import { fetchObservations, observationsToGeoJSON,
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INAT_HISTORY_START_YEAR } from './config.js';
+import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
          gbifToGeoJSON, resolveOccurrenceEstKeys,
@@ -240,6 +240,10 @@ function setLayerActive(id, visible) {
 let _timelineStartYear = new Date().getFullYear() - 1;
 let _timelineEndYear   = new Date().getFullYear();
 
+// iNaturalist observation deduplication — prevents the same observation from
+// appearing twice when the initial 'all' fetch overlaps with year-based history.
+const _inatLoadedIds = new Set();
+
 // Habitat node caches — kept module-level so setLayerActive can re-run the mesh
 // without a full data reload.
 let _corridorFeats            = [];
@@ -310,6 +314,107 @@ function refreshConnectivityMesh() {
   const hnpFeats  = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
 
   updateConnectivityMesh(_corridorFeats, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
+}
+
+// ── Background iNaturalist historical loader ───────────────────────────────────
+//
+// Fetches each calendar year from INAT_HISTORY_START_YEAR through last year
+// using the server-side proxy (/api/inat-history/:year), which pre-caches
+// results at startup.  Browser Cache API stores processed results with long
+// TTLs (30 days for past years, 7 days for the previous year) so subsequent
+// page loads serve history from disk instantly without any network request.
+//
+// Observations are deduplicated against _inatLoadedIds before being merged
+// into _inatByLayer, so no sighting ever appears twice.
+//
+// Long-TTL browser cache means:
+//   • 1st visit: fetches each year from server (server serves from memory)
+//   • 2nd+ visits: served instantly from browser cache (zero network)
+
+/**
+ * Background-loads and merges iNaturalist observations year-by-year from
+ * INAT_HISTORY_START_YEAR to last year, extending the timeline as data arrives.
+ *
+ * Designed to run entirely in the background — any individual year failure is
+ * caught, logged, and skipped without affecting the rest of the load.
+ */
+async function _loadHistoricalInat() {
+  const currentYear   = new Date().getFullYear();
+  const HIST_TTL_OLD  = 30 * 24 * 60 * 60 * 1000;  // 30 days — historical data is final
+  const HIST_TTL_PREV =  7 * 24 * 60 * 60 * 1000;  // 7 days  — previous year may still grow
+
+  const layerIds = LAYERS.map(l => l.id);
+  let totalAdded = 0;
+  const newSightings = [];  // accumulate for timeline bound update
+
+  // Process newest-first so users see recent history appear before older data
+  for (let year = currentYear - 1; year >= INAT_HISTORY_START_YEAR; year--) {
+    const cacheKey = `obs/inat/year-${year}`;
+    const ttl      = year < currentYear - 1 ? HIST_TTL_OLD : HIST_TTL_PREV;
+
+    try {
+      // Try browser cache first (will be warm after first visit)
+      let byLayer = await cacheGet(cacheKey);
+
+      if (byLayer === null) {
+        // Not cached — fetch from server proxy (pre-warmed) or direct iNat fallback
+        const { observations } = await fetchObservationsForYear(year);
+        const geojson  = observationsToGeoJSON(observations);
+        byLayer        = partitionByLayer(geojson, layerIds);
+        await cacheSet(cacheKey, byLayer, ttl);
+      }
+
+      // Merge, deduplicating by observation id
+      let yearAdded = 0;
+      for (const layerId of layerIds) {
+        const newFeats = (byLayer[layerId] ?? []).filter(f => {
+          const id = f.properties?.id;
+          if (id == null || _inatLoadedIds.has(id)) return false;
+          _inatLoadedIds.add(id);
+          return true;
+        });
+        if (newFeats.length === 0) continue;
+
+        _inatByLayer[layerId] = [...(_inatByLayer[layerId] ?? []), ...newFeats];
+        setBaseFeatures(layerId, _inatByLayer[layerId]);
+        yearAdded += newFeats.length;
+
+        if (layerId === 'pollinators') newSightings.push(...newFeats);
+      }
+
+      if (yearAdded > 0) {
+        totalAdded += yearAdded;
+        applyFilters();
+
+        // Update layer count badges in the panel
+        const countPatch = {};
+        for (const lid of layerIds) countPatch[lid] = _inatByLayer[lid]?.length ?? 0;
+        updateCounts(countPatch);
+
+        // Update intel bar pollinator count
+        const pollinatorEl = document.getElementById('intel-val-inat');
+        if (pollinatorEl) {
+          const inatPolls = _inatByLayer['pollinators']?.length ?? 0;
+          pollinatorEl.textContent = (inatPolls + _gbifPollinators.length).toLocaleString();
+        }
+      }
+    } catch (err) {
+      console.warn(`[inat-history] ${year} failed:`, err.message);
+    }
+
+    // Tiny yield between years — gives the browser a chance to paint and keeps
+    // the apparent "loading" from spinning the event loop.
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  // Extend the timeline scrubber back to cover newly-loaded historical dates
+  if (newSightings.length > 0) {
+    updateTimelineBounds(newSightings);
+  }
+
+  if (totalAdded > 0) {
+    console.log(`[inat-history] +${totalAdded} historical observations merged`);
+  }
 }
 
 // ── Lazy data loaders (parcel + commons) ──────────────────────────────────────
@@ -522,6 +627,8 @@ async function loadObservations() {
         setLayerFeatures(layer.id, feats);
         counts[layer.id] = feats.length;
         inatObs += feats.length;
+        // Seed deduplication set so the background historical loader skips these
+        for (const f of feats) { const id = f.properties?.id; if (id != null) _inatLoadedIds.add(id); }
       }
     } else {
       console.error('iNaturalist failed:', inatResult.reason);
@@ -1654,7 +1761,13 @@ map.on('load', async () => {
   );
 
   // Initial data load
-  loadObservations();
+  loadObservations().then(() => {
+    // Start background historical iNat loading 2 s after the map renders.
+    // Each previous year is fetched (or served from its long-TTL browser cache)
+    // and merged into the live dataset, extending the timeline back to
+    // INAT_HISTORY_START_YEAR without blocking the initial display.
+    setTimeout(() => _loadHistoricalInat().catch(err => console.warn('[inat-history]', err.message)), 2000);
+  });
   // Historical trends — deferred so it never delays the primary render
   setTimeout(() => loadHistoricalTrends(), 0);
 });

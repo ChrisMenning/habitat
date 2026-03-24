@@ -29,6 +29,15 @@ export const MAX_OBS      = 2000;
  */
 export const GBIF_MAX_OBS = 600;
 
+/**
+ * Earliest year for background historical iNaturalist data loading.
+ * The app fetches each year from INAT_HISTORY_START_YEAR through last year
+ * in the background after the initial load, caching each with a long TTL
+ * so the full sighting history accumulates automatically over time.
+ * Years before 2010 have very few observations for the Green Bay area.
+ */
+export const INAT_HISTORY_START_YEAR = 2010;
+
 // ── Layer definitions ────────────────────────────────────────────────────────
 
 /**

@@ -786,6 +786,173 @@ async function proxyCanopyCheck(req, res) {
   }
 }
 
+// ── iNaturalist historical observations proxy ─────────────────────────────────
+// Fetches and caches all observations for a single calendar year near Green Bay.
+// The client calls /api/inat-history/:year; the server returns the stripped
+// observation array that client-side observationsToGeoJSON() can process.
+//
+// Only the fields required by the client (classifyObs + observationsToGeoJSON)
+// are retained — reduces server memory from ~3 KB/obs to ~250 bytes/obs.
+//
+// Server-side TTL:
+//   Years older than (currentYear − 1): 30 days  — data is final
+//   Previous year:                        12 hours — may still receive late obs
+//
+// Background warmer at startup: fetches all years from INAT_HIST_START to
+// currentYear−1, newest first, with 3 s between years.  Subsequent browser
+// requests are served from server memory (instant).  After the warmer runs
+// once, server restarts re-warm quickly from their own in-memory state.
+//
+// Browser Cache API (cache.js) stores the processed GeoJSON result for each
+// year with a 7–30 day TTL, so most users only need to fetch from the server
+// once per year before falling back entirely to client-side cache.
+
+const INAT_HIST_START    = 2010;
+const INAT_HIST_LAT      = 44.5133;
+const INAT_HIST_LNG      = -88.0133;
+const INAT_HIST_RADIUS   = 15;         // km, matches client config.js RADIUS_KM
+const INAT_HIST_PLACE_ID = 59;         // Wisconsin preferred_place_id
+const INAT_HIST_PER_PAGE = 200;
+const INAT_HIST_MAX      = 2000;       // per-year cap; same as client MAX_OBS
+
+const _inatHistCache    = new Map(); // year (number) → observations[]
+const _inatHistCacheAge = new Map(); // year (number) → timestamp (ms)
+
+/**
+ * Strips an iNaturalist observation down to the fields that
+ * observationsToGeoJSON() and classifyObs() actually need.
+ * Reduces payload from ~3 KB/obs to ~200 bytes/obs.
+ */
+function _stripInatObs(obs) {
+  const t = obs.taxon;
+  return {
+    id:          obs.id,
+    location:    obs.location,
+    observed_on: obs.observed_on,
+    user:        obs.user ? { login: obs.user.login } : null,
+    taxon: t ? {
+      name:                  t.name,
+      preferred_common_name: t.preferred_common_name,
+      iconic_taxon_name:     t.iconic_taxon_name,
+      endemic:               t.endemic,
+      native:                t.native,
+      introduced:            t.introduced,
+      establishment_means:   t.establishment_means,
+      default_photo:         t.default_photo ? { medium_url: t.default_photo.medium_url } : null,
+    } : null,
+  };
+}
+
+/**
+ * Fetches (or serves from cache) all observations for the given calendar year
+ * using iNaturalist cursor pagination.  Returns the stripped observation array.
+ */
+async function _fetchInatYear(year) {
+  const now        = Date.now();
+  const currentYear = new Date().getFullYear();
+  const ttl        = year < currentYear - 1
+    ? 30 * 24 * 60 * 60 * 1000   // 30 days for historical years
+    : 12 * 60 * 60 * 1000;       // 12 hours for previous year
+
+  const cached = _inatHistCache.get(year);
+  if (cached && now - (_inatHistCacheAge.get(year) ?? 0) < ttl) return cached;
+
+  const d1  = `${year}-01-01`;
+  const d2  = `${year}-12-31`;
+  const all = [];
+  let idBelow = null;
+
+  while (all.length < INAT_HIST_MAX) {
+    const params = new URLSearchParams({
+      lat:                INAT_HIST_LAT,
+      lng:                INAT_HIST_LNG,
+      radius:             INAT_HIST_RADIUS,
+      per_page:           INAT_HIST_PER_PAGE,
+      order:              'desc',
+      order_by:           'id',
+      preferred_place_id: INAT_HIST_PLACE_ID,
+      d1, d2,
+    });
+    params.append('has[]', 'geo');
+    if (idBelow) params.set('id_below', String(idBelow));
+
+    const resp = await fetch(`https://api.inaturalist.org/v1/observations?${params}`, {
+      headers: { 'User-Agent': 'habitat-map/1.0' },
+    });
+    if (!resp.ok) throw new Error(`iNat API ${resp.status} for year ${year}`);
+
+    const data    = await resp.json();
+    const results = data.results ?? [];
+    if (results.length === 0) break;
+
+    for (const obs of results) {
+      if (obs.location) all.push(_stripInatObs(obs));
+    }
+    if (results.length < INAT_HIST_PER_PAGE) break;
+    idBelow = Math.min(...results.map(r => r.id));
+  }
+
+  _inatHistCache.set(year, all);
+  _inatHistCacheAge.set(year, Date.now());
+  return all;
+}
+
+/** Handle GET /api/inat-history/:year */
+async function proxyInatHistory(yearStr, res) {
+  const year = parseInt(yearStr, 10);
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(year) || year < 2008 || year >= currentYear) {
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'year out of range' }));
+    return;
+  }
+  try {
+    const obs = await _fetchInatYear(year);
+    res.writeHead(200, {
+      'Content-Type':                'application/json',
+      'Access-Control-Allow-Origin': '*',
+      // Tell browsers to cache for 1 hour; the server's own TTL is longer
+      'Cache-Control':               'public, max-age=3600',
+    });
+    res.end(JSON.stringify(obs));
+  } catch (err) {
+    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
+/**
+ * Background warmer — fetches all years from INAT_HIST_START to currentYear−1,
+ * newest first, pausing 3 s between years to stay within iNat rate limits.
+ * Already-cached (and still-fresh) years are skipped instantly.
+ */
+async function _warmInatHistory() {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear - 1; y >= INAT_HIST_START; y--) years.push(y);
+  const total = years.length;
+  console.log(`[inat-warm] pre-fetching ${total} years of iNat history (${INAT_HIST_START}–${currentYear - 1})`);
+
+  let warmed = 0, skipped = 0;
+  for (const year of years) {
+    const now     = Date.now();
+    const ttl     = year < currentYear - 1 ? 30 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
+    const cached  = _inatHistCache.get(year);
+    if (cached && now - (_inatHistCacheAge.get(year) ?? 0) < ttl) { skipped++; continue; }
+
+    await new Promise(r => setTimeout(r, 3000)); // 3 s between years
+
+    try {
+      const obs = await _fetchInatYear(year);
+      warmed++;
+      console.log(`[inat-warm] ${year}: ${obs.length} obs (${warmed + skipped}/${total})`);
+    } catch (err) {
+      console.warn(`[inat-warm] ${year} failed: ${err.message}`);
+    }
+  }
+  console.log(`[inat-warm] complete — ${warmed} fetched, ${skipped} from cache`);
+}
+
 // ── Brown County parcel ownership proxy ──────────────────────────────────────
 // Brown County, WI publishes parcel data through their ArcGIS REST Feature
 // Service.  The server does not send CORS headers so requests must be proxied.
@@ -2034,6 +2201,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // iNaturalist historical observations (proxied + pre-cached server-side)
+  const inatHistMatch = pathname.match(/^\/api\/inat-history\/(\d{4})$/);
+  if (inatHistMatch) {
+    proxyInatHistory(inatHistMatch[1], res);
+    return;
+  }
+
   // Proxy: NLCD per-class filtered tile
   const nlcdMatch = pathname.match(/^\/api\/nlcd-tile\/(\d+)\/(\d+)\/(\d+)\/(\d+)$/);
   if (nlcdMatch) {
@@ -2071,4 +2245,8 @@ server.listen(PORT, () => {
   // Pre-warm the parcel tile cache in the background.
   // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
   setTimeout(_warmParcelCache, 5000);
+  // Pre-warm iNaturalist historical observation cache.
+  // Years fetch newest-first; each year takes a few seconds + 3 s pause.
+  // Already-cached years are skipped; TTL: 30 days (old years), 12 h (prev year).
+  setTimeout(_warmInatHistory, 10000);
 });
