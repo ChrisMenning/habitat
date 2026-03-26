@@ -832,6 +832,30 @@ details > summary:focus-visible {
   font-weight: 700;
 }
 
+.layer-vintage-badge {
+  font-size: 9px;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  white-space: nowrap;
+  line-height: 1.6;
+  flex-shrink: 0;
+}
+
+.layer-stale-note {
+  font-size: 10px;
+  color: #6b7280;
+  font-style: italic;
+  padding-left: 40px;
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
 .layer-desc {
   font-size: 11px;
   color: #9ca3af;
@@ -1098,6 +1122,22 @@ details > summary:focus-visible {
   border-left: 3px solid #f59e0b;
   border-radius: 2px;
 }
+/* Prominent banner inside the drawer (replaces inline note) */
+.approx-banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #fef3c7;
+  background: rgba(245,158,11,0.13);
+  border-left: 4px solid #f59e0b;
+  border-radius: 3px;
+}
+.approx-banner i { font-size: 18px; flex-shrink: 0; margin-top: 1px; color: #fbbf24; }
+.approx-banner strong { display: block; font-size: 12.5px; margin-bottom: 2px; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    INTELLIGENCE COMMAND CENTER COMPONENTS
@@ -1890,6 +1930,19 @@ details[open] .alert-group-chevron { transform: rotate(90deg); }
 .drawer-link:hover         { background: rgba(52,211,153,0.18); border-color: #34d399; color: #6ee7b7; text-decoration: none; }
 .drawer-link:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
 
+/* Inline links inside drawer meta tables and note paragraphs */
+.drawer-meta a,
+.drawer-intel-note a {
+  color: #34d399;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(52,211,153,0.35);
+  transition: color 0.12s, border-color 0.12s;
+}
+.drawer-meta a:hover,
+.drawer-intel-note a:hover { color: #6ee7b7; border-bottom-color: #6ee7b7; }
+.drawer-meta a:focus-visible,
+.drawer-intel-note a:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; border-radius: 2px; }
+
 /* ── Timeline scrubber ─────────────────────────────────────────────────────── */
 #timeline {
   position: fixed;
@@ -2211,6 +2264,72 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
 .layer-opacity-slider:focus-visible {
   outline: 2px solid #34d399;
   outline-offset: 2px;
+}
+
+/* ── Mobile layout ─────────────────────────────────────────────────────────── */
+/*
+ * Narrow-screen overrides for the app UI.
+ * 640 px is chosen as the breakpoint because it reliably covers portrait phones
+ * without clashing with typical 768 px tablet targets.
+ *
+ * Key rules:
+ *   1. Timeline hides when a flyout pane is open (body.flyout-open).
+ *   2. Flyout panes expand closer to full-width on narrow screens.
+ *   3. The timeline itself gets a tighter width/padding for thumb-friendly use.
+ */
+@media (max-width: 640px) {
+  /* Auto-hide the timeline scrubber when any flyout panel is open */
+  body.flyout-open #timeline {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  /* Restore when panel closes */
+  #timeline {
+    transition: opacity 0.18s ease;
+    width: min(580px, calc(100vw - 80px));
+    padding: 7px 12px 11px;
+    bottom: 18px;
+  }
+
+  /* Flyout panels stretch toward full width on narrow screens */
+  .flyout-pane {
+    width: calc(100vw - 84px);
+    min-width: 220px;
+  }
+
+  /* Activity bar stays fixed-width; reduce its padding slightly */
+  #activity-bar {
+    top: 8px;
+    left: 4px;
+    height: calc(100% - 16px);
+    width: 56px;
+    border-radius: 8px;
+  }
+
+  /* Flyout panel shifts to match bar */
+  #panel-flyout {
+    top: 8px;
+    bottom: 8px;
+    left: 68px;
+  }
+
+  /* Intel bar scrolls horizontally — no layout changes needed, just tighter min-width */
+  .intel-stat {
+    min-width: 68px;
+  }
+
+  /* Hide the header tagline on narrow screens — it wraps awkwardly */
+  #header p {
+    display: none;
+  }
+
+  /* Site detail drawer uses full width on mobile */
+  #site-drawer {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #1e3a22;
+  }
 }
 
 /* ── Climate panel ─────────────────────────────────────────────────────────── */

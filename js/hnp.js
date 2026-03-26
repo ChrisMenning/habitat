@@ -56,20 +56,24 @@ export async function fetchHnpYards() {
         lng >= BBOX.minLng && lng <= BBOX.maxLng
       );
     })
-    .map(f => ({
-      type: 'Feature',
-      geometry: f.geometry,
-      properties: {
-        data_source: 'hnp',
-        layer_id:    'hnp',
-        est_key:     'hnp',
-        name:        f.properties.org_type === 'ORGANIZATIONS'
-          ? 'HNP Member Organization'
-          : 'Homegrown National Park Yard',
-        org_type:    f.properties.org_type,
-        hnp_id:      f.properties.id,
-      },
-    }));
+    .map(f => {
+      const p = f.properties;
+      const isOrg = p.org_type === 'ORGANIZATIONS';
+      return {
+        type: 'Feature',
+        geometry: f.geometry,
+        properties: {
+          ...p,                        // all raw API fields (area_sqft, website, socials, etc.)
+          data_source: 'hnp',
+          layer_id:    'hnp',
+          est_key:     'hnp',
+          hnp_id:      p.id,
+          name:        p.name || p.org_name ||
+                         (isOrg ? 'HNP Member Organization' : 'Homegrown National Park Yard'),
+          hnp_map_url: `https://homegrownnationalpark.org/map/?id=${p.id}`,
+        },
+      };
+    });
 
   return { type: 'FeatureCollection', features };
 }

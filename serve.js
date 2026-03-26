@@ -109,11 +109,15 @@ function proxyHnp(res) {
   _fetchHnpUpstream().then(plantings => {
     const features = plantings
       .filter(p => p.latitude != null && p.longitude != null)
-      .map(p => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
-        properties: { id: p.id, org_type: p.type },
-      }));
+      .map(p => {
+        // eslint-disable-next-line no-unused-vars
+        const { latitude, longitude, ...rawProps } = p;
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
+          properties: { ...rawProps, org_type: rawProps.type },
+        };
+      });
     const geojson = JSON.stringify({ type: 'FeatureCollection', features });
     res.writeHead(200, {
       'Content-Type':                'application/json',
@@ -430,11 +434,14 @@ function tileToBbox3857(z, x, y) {
 // within a 300m radius, and returns a 0–100 nesting suitability score.
 //
 // Nesting weights:
-//   31  Barren Land         — bare soil/sand, prime ground-nesting substrate  (weight 3)
+//   11  Open Water          — tracked to detect water-dominant cells (excluded from score)
+//   31  Barren Land         — bare soil/sand, prime ground-nesting substrate  (weight 7)
+//                             ~70% of native bee species nest in bare/sparse ground
 //   52  Shrub/Scrub         — stem-nesting; also ground-nesting               (weight 2)
 //   71  Grassland/Herbaceous — ground-nesting bees                            (weight 3)
 
-const NESTING_CODES   = { 31: 3, 52: 2, 71: 3 };
+const NESTING_CODES   = { 31: 7, 52: 2, 71: 3 };
+const TRACKED_CODES   = new Set([11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
 const NESTING_Z       = 13;
 const NESTING_RADIUS  = 300; // metres
 const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
@@ -477,7 +484,7 @@ function _buildNestingPaletteMap(plte) {
     const r = plte[i * 3], g = plte[i * 3 + 1], b = plte[i * 3 + 2];
     for (const [codeStr, [tr, tg, tb]] of Object.entries(NLCD_COLORS)) {
       const code = Number(codeStr);
-      if (NESTING_CODES[code] === undefined) continue;
+      if (!TRACKED_CODES.has(code)) continue;
       if (Math.abs(r - tr) <= TOL && Math.abs(g - tg) <= TOL && Math.abs(b - tb) <= TOL) {
         map.set(i, code);
         break;
@@ -542,7 +549,7 @@ async function _getNlcdTileData(z, tx, ty) {
  */
 function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
   const { palMap, indices, width, height } = tile;
-  const counts = { 31: 0, 52: 0, 71: 0 };
+  const counts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
   let total = 0;
   const latR    = lat * Math.PI / 180;
   const cosLat  = Math.cos(latR);
@@ -583,9 +590,9 @@ function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
  */
 function _nestingRawToScore(counts, total) {
   if (!total) return 0;
-  const raw = (counts[31] || 0) * 3 + (counts[52] || 0) * 2 + (counts[71] || 0) * 3;
-  // raw / (total * 3) = weighted proportion; × 500 scales so 20% → 100
-  return Math.min(100, Math.round(raw / (total * 3) * 500));
+  const raw = (counts[31] || 0) * 7 + (counts[52] || 0) * 2 + (counts[71] || 0) * 3;
+  // raw / (total * 7) = weighted proportion; × 500 scales so 20% → 100
+  return Math.min(100, Math.round(raw / (total * 7) * 500));
 }
 
 /** Compute nesting scores for a batch of {id, lng, lat} sites. */
@@ -608,16 +615,16 @@ async function _computeNestingBatch(sites) {
   );
   // Score each site
   return sites.map(s => {
-    const aggCounts = { 31: 0, 52: 0, 71: 0 };
+    const aggCounts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
     let aggTotal = 0;
     for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
       const k = `${NESTING_Z}/${tx}/${ty}`;
       const t = fetched.get(k);
       if (!t) continue;
       const { counts, total } = _countNestingPixels(t.data, NESTING_Z, tx, ty, s.lng, s.lat, NESTING_RADIUS);
-      aggCounts[31] += counts[31] || 0;
-      aggCounts[52] += counts[52] || 0;
-      aggCounts[71] += counts[71] || 0;
+      for (const code of [11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]) {
+        aggCounts[code] += counts[code] || 0;
+      }
       aggTotal += total;
     }
     const score = _nestingRawToScore(aggCounts, aggTotal);
@@ -641,9 +648,9 @@ async function proxyNlcdNesting(req, res) {
     return;
   }
   // Limit batch size to prevent abuse
-  if (sites.length > 200) {
+  if (sites.length > 600) {
     res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify({ error: 'batch too large (max 200 sites)' }));
+    res.end(JSON.stringify({ error: 'batch too large (max 600 sites)' }));
     return;
   }
   try {

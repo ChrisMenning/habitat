@@ -360,13 +360,19 @@ export function openDrawer(feature) {
   const p    = feature.properties;
   const coord = featureCentroid(feature);
 
+  // Approximate waystations are placed at zip-code centroid, not true GPS.
+  // Use a much wider radius for sighting data and skip precision-dependent sections.
+  const isApprox       = Boolean(p.approximate);
+  const SIGHTING_KM    = isApprox ? 5.0 : NEARBY_KM;
+  const sightingLabel  = isApprox ? '5 km area (approximate location)' : `${NEARBY_KM * 1000 | 0} m`;
+
   // ── Nearby sightings + seasonal histogram ────────────────────────────────
   let nearbySightingsCount = 0;
   const nearbySightingsAll = [];
   if (coord) {
     for (const s of _sightings) {
       const sc = s.geometry?.coordinates;
-      if (sc && distKm(coord, sc) <= NEARBY_KM) {
+      if (sc && distKm(coord, sc) <= SIGHTING_KM) {
         nearbySightingsCount++;
         nearbySightingsAll.push(s);
       }
@@ -391,10 +397,12 @@ export function openDrawer(feature) {
   }
   const uniqueSpeciesCount = [...speciesByGroup.values()]
     .reduce((sum, m) => sum + m.size, 0);
-  const monthCounts = coord ? computeMonthHistogram(coord, nearbySightingsAll, NEARBY_KM) : new Array(12).fill(0);
+  const monthCounts = coord ? computeMonthHistogram(coord, nearbySightingsAll, SIGHTING_KM) : new Array(12).fill(0);
 
   // ── Nearby habitat sites ──────────────────────────────────────────────────
-  const nearbySites = coord
+  // Skipped for approximate waystations — the zip-code pin is not meaningful
+  // at sub-kilometre resolution.
+  const nearbySites = (!isApprox && coord)
     ? _habitatSites.filter(s => {
         const sc = featureCentroid(s);
         return sc && s !== feature && distKm(coord, sc) <= NEARBY_KM;
@@ -497,14 +505,21 @@ export function openDrawer(feature) {
     : '';
 
   const approxHtml = p.approximate
-    ? `<p class="popup-approx" style="margin:8px 0 0;">ⓘ Approximate location — placed within zip code area only.</p>`
+    ? `<div class="popup-approx approx-banner" style="margin:0 0 8px;">
+        <i class="ph ph-map-pin-simple-slash" aria-hidden="true"></i>
+        <div>
+          <strong>Approximate location</strong> — coordinates placed at zip code centroid, not exact site address.
+          Site-specific metrics (nesting score, nearby parcels, adjacent habitat sites) are not shown.
+          Sighting data covers a 5&thinsp;km radius around the approximate pin.
+        </div>
+      </div>`
     : '';
 
   const nearbySightingsHtml = `
     <div class="drawer-stat-row">
       <div class="drawer-stat">
         <span class="drawer-stat-value">${nearbySightingsCount.toLocaleString()}</span>
-        <span class="drawer-stat-label">Pollinator sightings within ${NEARBY_KM * 1000 | 0} m</span>
+        <span class="drawer-stat-label">Pollinator sightings within ${sightingLabel}</span>
       </div>
       <div class="drawer-stat">
         <span class="drawer-stat-value">${uniqueSpeciesCount}</span>
@@ -534,7 +549,10 @@ export function openDrawer(feature) {
   })();
 
   // ── Nesting suitability score ─────────────────────────────────────────────
+  // Suppressed for approximate waystations — NLCD lookup within 300 m of a
+  // zip-code centroid is not representative of the actual site conditions.
   const nestingHtml = (() => {
+    if (isApprox) return '';
     const key  = p.name || p.registrant || '';
     const info = _nestingScores.get(key);
     if (!info) return '';
@@ -609,7 +627,7 @@ export function openDrawer(feature) {
         </div>
       </div>`;
   })();
-  const nearbyParcelsHtml = _buildNearbyParcelsSection(coord);
+  const nearbyParcelsHtml = isApprox ? '' : _buildNearbyParcelsSection(coord);
   const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
 
   body.innerHTML = `

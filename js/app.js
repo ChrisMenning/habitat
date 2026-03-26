@@ -10,7 +10,9 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INAT_HISTORY_START_YEAR } from './config.js';
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INAT_HISTORY_START_YEAR,
+         LAYER_VINTAGES, LAYER_LABELS, STALENESS_THRESHOLD_YEARS, TEMPORAL_MISMATCH_THRESHOLD_YEARS,
+         CENTER, RADIUS_KM } from './config.js';
 import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
@@ -34,6 +36,8 @@ import { initMap, registerLayer, registerAreaLayer,
          updateConnectivityMesh,
          registerPollinatorTrafficHeatmap,
          updatePollinatorTrafficHeatmap,
+         registerNativePlantHeatmap,
+         updateNativePlantHeatmap,
          setHeatmapVisibility,
          registerCdlFringeHeatmap,
          updateCdlFringeHeatmap,
@@ -55,15 +59,16 @@ import { initMap, registerLayer, registerAreaLayer,
          updateExpansionOpportunitiesLayer,
          registerProblemAreasLayer,
          updateProblemAreasLayer,
-         registerSuitabilityHeatmap,
-         updateSuitabilityHeatmap,
+         registerInVESTHeatmap,
+         updateInVESTHeatmap,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
-         showPopup, closePopup, wireInteractions,
+         showPopup, closePopup, wireInteractions, wireParcelClick,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
+         setWaystationApproxStyle,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
          setLoading, setStatus, initActivityBar,
@@ -72,8 +77,7 @@ import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend,
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts,
          computeExpansionOpportunities,
-         computeProblemFeatures,
-         computeSuitabilityPoints }            from './alerts.js';
+         computeProblemFeatures }             from './alerts.js';
 import { initFilters, setBaseFeatures, setHabitatCoords,
          setDatePredicate, buildFilterChips, applyFilters } from './filters.js';
 import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
@@ -91,8 +95,8 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
-import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores } from './nesting.js';
-import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache } from './parcels.js';
+import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap } from './nesting.js';
+import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache, queryParcelsNear, OWNERSHIP_META } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
          availableYears, renderTrendChart }            from './history.js';
@@ -128,7 +132,7 @@ function _updateAlertBadge(n) {
 }
 
 /** Populates the intel-bar summary strip with current data counts. */
-function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
+function updateIntelBar({ corridorSqFt, hnpCount, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
   document.getElementById('intel-val-corridor').textContent  = formatArea(corridorSqFt);
   document.getElementById('intel-val-habitat').textContent   = habitatNodeCount > 0 ? habitatNodeCount : '—';
   document.getElementById('intel-val-inat').textContent      = pollinatorCount.toLocaleString();
@@ -156,6 +160,22 @@ const _rasterLayerIds = new Set([
   ...NLCD_LAYERS.map(l => l.id),
   ...TREE_CANOPY_LAYERS.map(l => l.id),
 ]);
+
+/**
+ * Dims any raster layer whose vintage year is older than STALENESS_THRESHOLD_YEARS
+ * by reducing its opacity from the default 0.65 to 0.50.
+ * Called once after all raster layers are registered.
+ */
+function _applyStaleRasterOpacity() {
+  const currentYear = new Date().getFullYear();
+  for (const layer of [...NLCD_LAYERS, ...TREE_CANOPY_LAYERS]) {
+    const vintage = layer.vintage ?? LAYER_VINTAGES.get(layer.id);
+    if (!vintage) continue;
+    if ((currentYear - vintage.year) >= STALENESS_THRESHOLD_YEARS) {
+      setRasterOpacity(layer.id, 0.50);
+    }
+  }
+}
 
 // ── Tree Canopy year-sync ────────────────────────────────────────────────────
 let _treeCanopyOn = false;
@@ -188,6 +208,7 @@ function areaOrPointVisibility(id, visible) {
   else if (id === 'parcels')              setParcelLayerVisibility(visible);
   else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
   else if (id === 'bees-richness')        setHeatmapVisibility('bees-richness', visible);
+  else if (id === 'invest-heat')          setHeatmapVisibility('invest-heat', visible);
   else                                    setLayerVisibility(id, visible);
 }
 
@@ -201,6 +222,10 @@ function areaOrPointVisibility(id, visible) {
  */
 function setLayerActive(id, visible) {
   areaOrPointVisibility(id, visible);
+
+  // Track active layer set for temporal-mismatch alert
+  if (visible) _activeLayerIds.add(id);
+  else         _activeLayerIds.delete(id);
 
   // Connectivity mesh re-renders when any of the three site-layer types changes
   if (id === 'gbcc-corridor' || id === 'waystations' || id === 'hnp') {
@@ -237,8 +262,9 @@ function setLayerActive(id, visible) {
 // ── Map setup ─────────────────────────────────────────────────────────────────
 
 // Timeline year-range state (shared with permalink)
-let _timelineStartYear = new Date().getFullYear() - 1;
-let _timelineEndYear   = new Date().getFullYear();
+let _timelineStartYear   = new Date().getFullYear() - 1;
+let _timelineEndYear     = new Date().getFullYear();
+let _timelineActiveMonths = new Set();  // mirrors the Set from timeline.js; updated each scrubber change
 
 // iNaturalist observation deduplication — prevents the same observation from
 // appearing twice when the initial 'all' fetch overlaps with year-based history.
@@ -255,8 +281,13 @@ let _ebirdAllFeats      = [];
 // Active site-layer set — reflects current toggle state for the three site-layer types.
 const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
 
+// Tracks all currently-visible layer ids — used for temporal-mismatch alert detection.
+// Initialised from defaultOn values after panels are built; updated on every toggle.
+const _activeLayerIds = new Set();
+
 // Nesting score state — populated async after corridor data loads
 let _nestingScores    = new Map();   // site name → {score, counts, total}
+let _gridNlcdScores   = new Map();   // nlcdGridKey → {score, counts, total}
 let _nestingLoaded    = false;        // true once first fetch completes
 let _canopyScores     = new Map();   // site name → canopyPct (0–100)
 let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
@@ -272,6 +303,30 @@ let _commonsLoaded  = false;
 let _inatByLayer      = {};    // layerId → Feature[]  (raw iNat features)
 let _gbifPollinators  = [];    // GBIF pollinator features
 let _gbifNativePlants = [];    // GBIF native plant features
+let _allSightings     = [];    // combined pollinator sightings for heatmap — refreshed on full load
+let _allNativePlants  = [];    // combined native plant observations (iNat + GBIF, deduped) — refreshed on full load
+let _hnpCount         = 0;     // count of HNP yards in bbox — refreshed on full load
+let _lastAlertCount   = 0;     // most-recently rendered alert count for timeline-driven intel-bar updates
+
+/**
+ * Filters sighting features to the current timeline year+month window.
+ * @param {GeoJSON.Feature[]} feats
+ * @param {number}           startYear
+ * @param {number}           endYear
+ * @param {Set<number>}      activeMonths  (0=Jan…11=Dec; empty = all pass)
+ * @returns {GeoJSON.Feature[]}
+ */
+function _filterSightingsByYear(feats, startYear, endYear, activeMonths) {
+  return feats.filter(f => {
+    const raw = f.properties?.date;
+    if (!raw) return true;
+    const d = new Date(raw);
+    const y = d.getFullYear();
+    if (y < startYear || y > endYear) return false;
+    if (activeMonths.size > 0 && !activeMonths.has(d.getMonth())) return false;
+    return true;
+  });
+}
 
 /** Show/hide nesting badges based on whether any NLCD layer is currently on. */
 function syncNestingBadgeVisibility() {
@@ -379,12 +434,26 @@ async function _loadHistoricalInat() {
         setBaseFeatures(layerId, _inatByLayer[layerId]);
         yearAdded += newFeats.length;
 
-        if (layerId === 'pollinators') newSightings.push(...newFeats);
+        if (layerId === 'pollinators') {
+          newSightings.push(...newFeats);
+          _allSightings.push(...newFeats);     // extend heatmap cache incrementally
+        }
+        if (layerId === 'native-plants') {
+          _allNativePlants.push(...newFeats);  // extend native plant heatmap cache
+        }
       }
 
       if (yearAdded > 0) {
         totalAdded += yearAdded;
         applyFilters();
+
+        // Re-render both heatmaps with the current timeline window applied
+        updatePollinatorTrafficHeatmap(
+          _filterSightingsByYear(_allSightings, _timelineStartYear, _timelineEndYear, _timelineActiveMonths)
+        );
+        updateNativePlantHeatmap(
+          _filterSightingsByYear(_allNativePlants, _timelineStartYear, _timelineEndYear, _timelineActiveMonths)
+        );
 
         // Update layer count badges in the panel
         const countPatch = {};
@@ -571,7 +640,7 @@ async function loadObservations() {
 
       // Caches the final GeoJSON features array — resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/v2`, OBS_TTL, async () => {
+      withCache(`obs/gbif-poll/v3`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
@@ -733,6 +802,7 @@ async function loadObservations() {
           const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           // Sync ribbon and export snapshot so all counts agree
+          _lastAlertCount = updatedAlerts.length;
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
           _updateAlertBadge(updatedAlerts.length);
@@ -747,12 +817,19 @@ async function loadObservations() {
         if (_lastAlertArgs) {
           const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores });
           renderAlerts(updatedAlerts, _alertFocusHandler);
+          _lastAlertCount = updatedAlerts.length;
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
           _updateAlertBadge(updatedAlerts.length);
           setExportData({ alerts: updatedAlerts });
         }
       }).catch(() => { /* canopy scores unavailable — silent degradation */ });
+
+      // Async: fetch per-cell NLCD scores for the full analysis grid
+      fetchGridNlcdScores(CENTER[0], CENTER[1], RADIUS_KM).then(scores => {
+        _gridNlcdScores = scores;
+        updateInVESTHeatmap(computeInVESTHeatmap(_gridNlcdScores, CENTER[0], CENTER[1], RADIUS_KM));
+      }).catch(() => { /* grid NLCD unavailable — silent degradation */ });
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -837,14 +914,9 @@ async function loadObservations() {
     const corridorFeats       = _corridorFeats;
     const waystationFeats     = _waystationFeats;
     const confirmedWaystationFeats = _confirmedWaystationFeats;
-    registerTemporalLayer(
-      'waystations',
-      waystationFeats,
-      f => f.properties?.registered,
-      filtered => setLayerFeatures('waystation', filtered),
-    );
     const pfasFeats        = pfasResult.status      === 'fulfilled' ? pfasResult.value.features     : [];
     _hnpFeats              = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
+    _hnpCount              = _hnpFeats.length;
     const hnpFeats         = _hnpFeats;
     const allHabitatFeats  = [...corridorFeats, ...waystationFeats, ...hnpFeats];
 
@@ -902,6 +974,8 @@ async function loadObservations() {
       climateData:         getClimateState(),
       pesticideCounties,
       parcelFeatures:      _parcelFeatures,
+      activeLayerIds:      [..._activeLayerIds],
+      layerVintages:       LAYER_VINTAGES,
     };
     const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
     _alertFocusHandler = alert => {
@@ -943,28 +1017,41 @@ async function loadObservations() {
       nestingScores: _nestingScores,
       canopyScores:  _canopyScores,
     }));
-    updateSuitabilityHeatmap(computeSuitabilityPoints({
-      ..._analysisCtx,
-      nestingScores: _nestingScores,
-    }));
 
     // Timeline bounds
     updateTimelineBounds(allPollinatorFeatures);
 
     // Heatmaps — update with latest habitat node data
     refreshConnectivityMesh();
-    const allSightings = [
+    // UUID for the iNaturalist Research-grade Observations dataset on GBIF.
+    // Records carrying this key are already included via the direct iNat API
+    // fetch; excluding them from the GBIF contribution prevents double-counting.
+    const INAT_DATASET_KEY = '50c9509d-22c7-4a22-a47d-8c48425ef4a7';
+
+    _allSightings = [
       // iNat pollinators only (butterflies, bees, etc.) — exclude plants and non-pollinator wildlife
       ...(inatResult.status === 'fulfilled' ? (inatResult.value['pollinators'] ?? []) : []),
-      // GBIF pollinators only
-      ...(gbifPollResult.status === 'fulfilled' ? gbifPollResult.value : []),
+      // GBIF pollinators — exclude records that originated on iNaturalist (already in the iNat slice)
+      ...(gbifPollResult.status === 'fulfilled'
+        ? gbifPollResult.value.filter(f => f.properties?.datasetKey !== INAT_DATASET_KEY)
+        : []),
       // eBird: hummingbirds only (the only reliable pollinator birds in Green Bay area)
       ...(ebirdResult.status === 'fulfilled'
         ? (ebirdResult.value.features ?? []).filter(f =>
             f.properties?.common?.toLowerCase().includes('hummingbird'))
         : []),
     ];
-    updatePollinatorTrafficHeatmap(allSightings);
+    updatePollinatorTrafficHeatmap(_allSightings);
+
+    // Native plant density heatmap — iNat native plants + GBIF native plants,
+    // with iNaturalist-sourced GBIF records stripped to avoid double-counting.
+    _allNativePlants = [
+      ...(inatResult.status === 'fulfilled' ? (inatResult.value['native-plants'] ?? []) : []),
+      ...(gbifPlantResult.status === 'fulfilled'
+        ? gbifPlantResult.value.native.filter(f => f.properties?.datasetKey !== INAT_DATASET_KEY)
+        : []),
+    ];
+    updateNativePlantHeatmap(_allNativePlants);
 
     // CDL fringe — static per-load; update source data once available
     if (cdlFringeResult.status === 'fulfilled' && cdlFringeResult.value) {
@@ -991,6 +1078,7 @@ async function loadObservations() {
     // Intel bar
     updateIntelBar({
       corridorSqFt,
+      hnpCount:          _hnpCount,
       habitatNodeCount,
       pollinatorCount,
       gddStat:           getGddIntelStat(),
@@ -998,6 +1086,7 @@ async function loadObservations() {
       nativeSpeciesCount,
       alertCount:        alerts.length,
     });
+    _lastAlertCount = alerts.length;
 
     // Export snapshot
     const _topSpecies = (() => {
@@ -1207,7 +1296,14 @@ map.on('load', async () => {
   // 0c. WI DNR tree canopy layers — all 3 survey years, all initially hidden
   for (const layer of TREE_CANOPY_LAYERS) {
     registerRasterLayer(layer.id, false, layer.tileUrl, layer.attribution);
-  }  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
+  }
+
+  // Dim any raster layers whose vintage is older than STALENESS_THRESHOLD_YEARS.
+  // Called once after all rasters are registered; the user-controlled opacity slider
+  // can still override this at any time via handleOpacity().
+  _applyStaleRasterOpacity();
+
+  // 0c. Pesticide pressure choropleth — registered beneath all vector area layers
   registerPesticideLayer('pesticide', PESTICIDE_LAYER.defaultOn);
   // 0d. Parcel ownership fill — beneath area polygon layers; lazy data loaded on first toggle
   registerParcelLayer(false);
@@ -1218,12 +1314,13 @@ map.on('load', async () => {
   // Visibility matches the corridor layer's defaultOn; no separate toggle.
   registerConnectivityMesh(true);
   registerPollinatorTrafficHeatmap(true);
+  registerNativePlantHeatmap(false);
   // 0d. CDL fringe heatmap — agricultural field edges near the corridor
   registerCdlFringeHeatmap(true);
   // 0e. Analysis layers — expansion opportunities, problem areas, suitability heatmap
   registerExpansionOpportunitiesLayer(false);
   registerProblemAreasLayer(false);
-  registerSuitabilityHeatmap(false);
+  registerInVESTHeatmap(false);
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -1316,6 +1413,7 @@ map.on('load', async () => {
   buildLayerPanel(
     [
       { groupLabel: 'Opportunity & Risk', layers: [...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER] },
+      { groupLabel: 'Pollinator Modeling', layers: [INVEST_LAYER] },
     ],
     setLayerActive,
     document.getElementById('panel-analysis-inner'),
@@ -1376,7 +1474,11 @@ map.on('load', async () => {
     handleOpacity,
   );
 
-  // ── Sightings (pane-sightings) ────────────────────────────────────────────────
+  // Stale-data note beneath NLCD group
+  const _nlcdStaleNote = document.createElement('p');
+  _nlcdStaleNote.className = 'layer-stale-note';
+  _nlcdStaleNote.textContent = 'Layers from data vintages \u2265 3\u00a0years old are shown at reduced opacity.';
+  document.getElementById('panel-landcover-inner')?.appendChild(_nlcdStaleNote);
   buildLayerPanel(
     [
       { groupLabel: 'iNaturalist',         layers: LAYERS          },
@@ -1401,6 +1503,17 @@ map.on('load', async () => {
   buildEstLegend();
   buildAreaLegend(setLayerActive);
 
+  // Seed _activeLayerIds from all layers that are on by default.
+  // setLayerActive() keeps the set updated on subsequent toggles.
+  for (const layer of [
+    ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
+    PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+  ]) {
+    if (layer.defaultOn) _activeLayerIds.add(layer.id);
+  }
+
   // Initialise the activity bar (opens/closes flyout panes)
   const activityBar = initActivityBar();
 
@@ -1412,6 +1525,9 @@ map.on('load', async () => {
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
   });
+  document.getElementById('toggle-heatmap-native-plants')?.addEventListener('change', e => {
+    setHeatmapVisibility('native-plant-heat', e.target.checked);
+  });
   document.getElementById('toggle-bees-richness')?.addEventListener('change', e => {
     setHeatmapVisibility('bees-richness', e.target.checked);
   });
@@ -1421,9 +1537,6 @@ map.on('load', async () => {
   });
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
-  });
-  document.getElementById('toggle-suitability-heat')?.addEventListener('change', e => {
-    setHeatmapVisibility('suitability-heat', e.target.checked);
   });
   // "All layers off" button — unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
@@ -1460,6 +1573,8 @@ map.on('load', async () => {
 
   // Load static waystation GeoJSON immediately (no async fetch needed)
   setLayerFeatures('waystations', waystationGeoJSON().features);
+  // Apply data-driven paint for approximate-location markers (faded ghost style)
+  setWaystationApproxStyle();
 
   // API key health check — shows a dismissible banner if any keys are missing
   initHealthCheck();
@@ -1480,10 +1595,11 @@ map.on('load', async () => {
   initFilters((layerId, features) => setLayerFeatures(layerId, features));
 
   // Timeline scrubber + month filter — range goes back to earliest recorded sighting (~2009
-  // for iNaturalist; GBIF records can go further).  Default window is last 1 yr.
+  // for iNaturalist; GBIF records can go further).  Default window is last 5 years.
   initTimeline((startYear, endYear, activeMonths) => {
-    _timelineStartYear = startYear;
-    _timelineEndYear   = endYear;
+    _timelineStartYear    = startYear;
+    _timelineEndYear      = endYear;
+    _timelineActiveMonths = activeMonths;
     _syncTreeCanopyYear(endYear);
     setDatePredicate(dateStr => {
       if (!dateStr) return true;
@@ -1493,6 +1609,63 @@ map.on('load', async () => {
       if (activeMonths.size > 0 && !activeMonths.has(d.getMonth())) return false;
       return true;
     });
+    applyFilters();
+
+    // ── Reactive heatmap update ───────────────────────────────────────────────
+    if (_allSightings.length > 0) {
+      const filteredSightings = _filterSightingsByYear(_allSightings, startYear, endYear, activeMonths);
+      updatePollinatorTrafficHeatmap(filteredSightings);
+      setDrawerSightings(filteredSightings);
+    }
+    if (_allNativePlants.length > 0) {
+      updateNativePlantHeatmap(_filterSightingsByYear(_allNativePlants, startYear, endYear, activeMonths));
+    }
+
+    // ── Reactive waystation cumulative filter (show if registered ≤ endYear) ─
+    if (_waystationFeats.length > 0) {
+      const wsFiltered = _waystationFeats.filter(f => {
+        const raw = f.properties?.registered;
+        if (!raw) return true;
+        const parts = String(raw).trim().split('/');
+        if (parts.length < 3) return true;
+        const yy = parseInt(parts[2], 10);
+        if (isNaN(yy)) return true;
+        const registeredYear = yy <= 30 ? 2000 + yy : 1900 + yy;
+        return registeredYear <= endYear;
+      });
+      setLayerFeatures('waystations', wsFiltered);
+      _confirmedWaystationFeats = wsFiltered.filter(f => !f.properties.approximate);
+      refreshConnectivityMesh();
+    }
+
+    // ── Reactive intel bar update ─────────────────────────────────────────────
+    if (_inatByLayer && Object.keys(_inatByLayer).length > 0) {
+      const passDate = f => {
+        const raw = f.properties?.date;
+        if (!raw) return true;
+        const d = new Date(raw);
+        const y = d.getFullYear();
+        if (y < startYear || y > endYear) return false;
+        if (activeMonths.size > 0 && !activeMonths.has(d.getMonth())) return false;
+        return true;
+      };
+      const pollinatorCount     = [...(_inatByLayer['pollinators'] ?? []), ..._gbifPollinators].filter(passDate).length;
+      const ebirdCount          = _ebirdAllFeats.filter(passDate).length;
+      const nativeSpeciesCount  = new Set([
+        ...(_inatByLayer['native-plants'] ?? []).filter(passDate).map(f => f.properties?.name).filter(Boolean),
+        ..._gbifNativePlants.filter(passDate).map(f => f.properties?.name).filter(Boolean),
+      ]).size;
+      updateIntelBar({
+        corridorSqFt:     _corridorFeats.reduce((s, f) => s + (+(f.properties?.area_sqft ?? 0)), 0),
+        hnpCount:         _hnpCount,
+        habitatNodeCount: _corridorFeats.length + _waystationFeats.length + _hnpFeats.length,
+        pollinatorCount,
+        gddStat:          getGddIntelStat(),
+        ebirdCount,
+        nativeSpeciesCount,
+        alertCount:       _lastAlertCount,
+      });
+    }
   }, 2009);
   mountTimelineDrag();
 
@@ -1729,7 +1902,8 @@ map.on('load', async () => {
             ${_expansionFactorRow('PFAS-free environment', pfasPts, 10, barColor)}
             ${_expansionFactorRow('Low pesticide pressure', pestPts, 5, barColor)}
             ${_expansionFactorRow('Pollinator activity (supporting)', pollPts, 5, barColor)}
-          </div>`;
+          </div>
+          ${_buildExpansionPublicLandSection(_lngLat)}`;
         openIntelDrawer(
           props.name ?? 'Expansion Opportunity',
           body,
@@ -1762,6 +1936,46 @@ map.on('load', async () => {
     }
   );
 
+  // Wire clicks on public land parcels → contact info drawer
+  wireParcelClick((_lngLat, props) => {
+    const own   = props.own_class ?? 'private';
+    if (own === 'private') return; // private parcels don't get a contact drawer
+
+    const muni     = String(props.Municipality ?? '').trim();
+    const muniTC   = muni ? muni.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : '';
+    const area     = props.MapAreaTxt ? ` · ${props.MapAreaTxt}` : '';
+    const parcelId = String(props.PARCELID ?? '').trim();
+
+    // Contact info by ownership class
+    const c = _PUBLIC_CONTACTS[own] ?? _PUBLIC_CONTACTS.institutional;
+    const resolvedAgency = c.agency ?? (muniTC || 'Municipal / Institutional');
+    const phoneHtml = c.phone ? `<dt>Phone</dt><dd><a href="tel:${c.phone.replace(/[^+\d]/g,'')}">${c.phone}</a></dd>` : '';
+    const emailHtml = c.email ? `<dt>Email</dt><dd><a href="mailto:${c.email}">${c.email}</a></dd>` : '';
+    const webHtml   = c.web   ? `<dt>Website</dt><dd><a href="${c.web}" target="_blank" rel="noopener">${c.webLabel} ↗</a></dd>` : '';
+    const idHtml    = parcelId ? `<dt>Parcel ID</dt><dd>${parcelId}</dd>` : '';
+
+    const body = `
+      <dl class="drawer-meta" style="margin-top:8px">
+        <dt>Owner</dt><dd>${resolvedAgency}</dd>
+        <dt>Department</dt><dd>${c.dept}</dd>
+        ${idHtml}
+        <dt>Municipality</dt><dd>${muniTC || '—'}${area}</dd>
+      </dl>
+      <div class="drawer-section-label" style="margin-top:14px">Contact for Habitat Inquiries</div>
+      <dl class="drawer-meta">
+        ${phoneHtml}
+        ${emailHtml}
+        ${webHtml}
+      </dl>
+      <p class="drawer-intel-note" style="margin-top:10px">${c.note}</p>`;
+
+    openIntelDrawer(
+      resolvedAgency,
+      body,
+      { headerStyle: `background:${c.hdrBg}`, labelHtml: 'Public Land' }
+    );
+  });
+
   // Initial data load
   loadObservations().then(() => {
     // Start background historical iNat loading 2 s after the map renders.
@@ -1775,6 +1989,52 @@ map.on('load', async () => {
 });
 
 // ── Analysis drawer helpers ──────────────────────────────────────────────────
+
+// Public land contact info — used both by the parcel click drawer and the
+// expansion opportunity drawer.  `institutional.agency` is null and must be
+// resolved from the specific parcel's norm.owner at render time.
+const _PUBLIC_CONTACTS = {
+  city: {
+    hdrBg:    '#0d9488',
+    agency:   'City of Green Bay',
+    dept:     'Parks, Recreation &amp; Forestry',
+    phone:    '(920) 448-3365',
+    email:    'parksrec@greenbaywi.gov',
+    web:      'https://www.greenbaywi.gov/departments/parks/',
+    webLabel: 'greenbaywi.gov/parks',
+    note:     'Contact the Parks, Recreation &amp; Forestry Department to inquire about native planting, habitat partnerships, or land-use permissions on City of Green Bay parcels.',
+  },
+  county: {
+    hdrBg:    '#65a30d',
+    agency:   'Brown County',
+    dept:     'Parks &amp; Recreation Department',
+    phone:    '(920) 448-4466',
+    email:    '',
+    web:      'https://www.browncountywi.gov/departments/parks-and-recreation/',
+    webLabel: 'browncountywi.gov/parks',
+    note:     'Contact Brown County Parks &amp; Recreation for inquiries about county-owned natural areas, trail corridors, and partnership opportunities for habitat restoration on county land.',
+  },
+  state: {
+    hdrBg:    '#166534',
+    agency:   'State of Wisconsin',
+    dept:     'WI Department of Natural Resources',
+    phone:    '1-888-936-7463',
+    email:    '',
+    web:      'https://dnr.wisconsin.gov',
+    webLabel: 'dnr.wisconsin.gov',
+    note:     'Wisconsin DNR owns or co-manages this parcel. Contact the DNR Northeast Region (Green Bay) to learn about permitted habitat projects, restoration partnerships, or volunteering on state natural areas.',
+  },
+  institutional: {
+    hdrBg:    '#b45309',
+    agency:   null,   // resolved from parcel norm.owner at render time
+    dept:     'Municipal Offices',
+    phone:    '',
+    email:    '',
+    web:      '',
+    webLabel: '',
+    note:     'This parcel is publicly owned by a municipality, town, village, or institutional entity. Contact the relevant local government office or agency directly to inquire about habitat projects or land access.',
+  },
+};
 
 function _expansionFactorRow(label, points, max, barColor) {
   const pct     = Math.max(0, Math.min(100, (Math.abs(points) / max) * 100));
@@ -1822,6 +2082,55 @@ function _expansionRecHtml(rec) {
       A field visit is recommended to determine land character.</p>
     </div>
   </div>`;
+}
+
+/**
+ * Queries _parcelFeatures within 800 m of lngLat and returns an HTML block
+ * of public-land contact cards for use in the expansion opportunity drawer.
+ * Returns an empty string when parcels aren't loaded or no public land is nearby.
+ * @param {{ lng: number, lat: number }} lngLat
+ * @returns {string}
+ */
+function _buildExpansionPublicLandSection(lngLat) {
+  if (!_parcelFeatures.length) return '';
+
+  const coord = [lngLat.lng, lngLat.lat];
+  const nearbyPublic = queryParcelsNear(coord, 800, _parcelFeatures)
+    .filter(p => p.ownerClass !== 'private');
+  if (!nearbyPublic.length) return '';
+
+  // One card per unique ownership class, taking the largest / closest parcel
+  // as representative (queryParcelsNear already sorts public first, then by acres desc).
+  const seenClasses = new Set();
+  const cards = nearbyPublic
+    .filter(p => { if (seenClasses.has(p.ownerClass)) return false; seenClasses.add(p.ownerClass); return true; })
+    .map(p => {
+      const c      = _PUBLIC_CONTACTS[p.ownerClass] ?? _PUBLIC_CONTACTS.institutional;
+      const agency = c.agency ?? p.norm.owner ?? 'Municipal / Institutional';
+      const meta   = OWNERSHIP_META[p.ownerClass];
+      const bg     = meta?.color    ?? '#6b7280';
+      const fg     = meta?.textColor ?? '#fff';
+      const phoneHtml = c.phone ? `<dt>Phone</dt><dd><a href="tel:${c.phone.replace(/[^+\d]/g,'')}">${c.phone}</a></dd>` : '';
+      const emailHtml = c.email ? `<dt>Email</dt><dd><a href="mailto:${c.email}">${c.email}</a></dd>` : '';
+      const webHtml   = c.web   ? `<dt>Website</dt><dd><a href="${c.web}" target="_blank" rel="noopener">${c.webLabel} ↗</a></dd>` : '';
+      const acresLabel = p.norm.acres > 0 ? ` · ${p.norm.acres.toFixed(2)}\u202fac` : '';
+      return `
+        <div style="border-left:3px solid ${bg};padding-left:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="background:${bg};color:${fg};border-radius:3px;padding:1px 6px;font-size:0.7rem;font-weight:600">${agency}</span>
+            <span style="font-size:0.72rem;color:#9ca3af">${p.distM}\u202fm away${acresLabel}</span>
+          </div>
+          <dl class="drawer-meta" style="margin:0">
+            <dt>Department</dt><dd>${c.dept}</dd>
+            ${phoneHtml}
+            ${emailHtml}
+            ${webHtml}
+          </dl>
+          <p class="drawer-intel-note" style="margin:4px 0 0">${c.note}</p>
+        </div>`;
+    }).join('');
+
+  return `<div class="drawer-section-label" style="margin-top:14px">Nearby Public Land — Contact for Habitat Inquiries</div>${cards}`;
 }
 
 function _problemTypeLabel(type) {

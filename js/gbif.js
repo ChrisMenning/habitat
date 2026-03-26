@@ -566,8 +566,9 @@ export function gbifToGeoJSON(occurrences, layerId, estKeyMap = null) {
             est_key:   estKey,
             est_label: estLabel,
             // GBIF-specific — used by buildPopupHTML for source attribution
-            source:    'gbif',
-            dataset:   o.datasetName ?? o.institutionCode ?? 'GBIF',
+            source:      'gbif',
+            dataset:     o.datasetName ?? o.institutionCode ?? 'GBIF',
+            datasetKey:  o.datasetKey ?? '',
           },
         };
       }),

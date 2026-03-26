@@ -6,7 +6,8 @@
  */
 
 import { ESTABLISHMENT, LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS,
-         WAYSTATION_LAYER, HNP_LAYER, EBIRD_LAYER, BEE_LAYERS } from './config.js';
+         WAYSTATION_LAYER, HNP_LAYER, EBIRD_LAYER, BEE_LAYERS,
+         LAYER_VINTAGES } from './config.js';
 
 // ── Pesticide legend ──────────────────────────────────────────────────────────
 
@@ -109,9 +110,17 @@ export function buildLayerPanel(groups, onToggle, container = null, onOpacity = 
       const storedOpacity = parseFloat(localStorage.getItem(`opacity:${layer.id}`));
       const initOpacity   = isNaN(storedOpacity) ? 1.0 : storedOpacity;
 
+      const _vintage = layer.vintage ?? LAYER_VINTAGES.get(layer.id) ?? null;
+      const _vintageTitle = _vintage
+        ? `title="Data vintage: ${_vintage.year}. This layer does not update automatically. Comparisons with live observations may be inaccurate."`
+        : '';
+      const _vintageBadge = _vintage
+        ? `<span class="layer-vintage-badge" aria-label="Data vintage ${_vintage.year}">${_vintage.year}</span>`
+        : '';
+
       const wrap = document.createElement('div');
       wrap.innerHTML = `
-        <label class="layer-row" for="toggle-${esc(layer.id)}">
+        <label class="layer-row" for="toggle-${esc(layer.id)}" ${_vintageTitle}>
           <div class="toggle">
             <input type="checkbox"
                    id="toggle-${esc(layer.id)}"
@@ -120,7 +129,7 @@ export function buildLayerPanel(groups, onToggle, container = null, onOpacity = 
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
           <span class="layer-emoji" aria-hidden="true">${layer.emoji}</span>
-          <span class="layer-label">${esc(layer.label)}</span>
+          <span class="layer-label">${esc(layer.label)}</span>${_vintageBadge}
           <span class="layer-count" id="count-${esc(layer.id)}" aria-live="polite">—</span>
         </label>
         <p class="layer-desc">${esc(layer.description)}</p>
@@ -711,14 +720,16 @@ export function buildAreaPopupHTML(props) {
   }
 
   if (src === 'hnp') {
-    const isOrg = props.org_type === 'ORGANIZATIONS';
+    const isOrg    = props.org_type === 'ORGANIZATIONS';
+    const typeLabel = isOrg ? 'Member Organization' : 'Registered Yard';
+    const mapUrl   = props.hnp_map_url
+      ? `<a class="popup-link" href="${esc(props.hnp_map_url)}" target="_blank" rel="noopener noreferrer">View on HNP map ↗</a>`
+      : `<a class="popup-link" href="https://homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">Homegrown National Park ↗</a>`;
     return `
       <div class="popup-body">
         <strong class="popup-name">${esc(props.name)}</strong>
-        <span class="popup-source">🌿 Homegrown National Park${isOrg ? ' · Organization' : ''}</span>
-        <a class="popup-link"
-           href="https://homegrownnationalpark.org/"
-           target="_blank" rel="noopener noreferrer">About HNP →</a>
+        <span class="popup-source">🌿 HNP · ${typeLabel}</span>
+        ${mapUrl}
       </div>`;
   }
 

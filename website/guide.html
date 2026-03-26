@@ -1,0 +1,421 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Guide &middot; Bay Hive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="bayhive-styles.css">
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- NAV -->
+<nav role="navigation" aria-label="Main navigation">
+  <a href="bayhive-site.html" class="nav-wordmark" aria-label="Bay Hive home">
+    <span class="w1">Bay</span>
+    <span class="w2">Hive</span>
+    <span class="wh">&#x2B21;</span>
+  </a>
+  <button class="nav-hamburger" id="nav-toggle"
+          aria-label="Open navigation menu" aria-expanded="false"
+          aria-controls="nav-links-list">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links" id="nav-links-list">
+    <li><a href="bayhive-site.html">Overview</a></li>
+    <li><a href="#map-guide">Map Guide</a></li>
+    <li><a href="reference.html">Reference</a></li>
+    <li><a href="https://bay-hive-pollinator-intelligence.onrender.com/" class="nav-cta">Launch &#x2197;</a></li>
+  </ul>
+</nav>
+
+<main id="main-content">
+
+<!-- MAP GUIDE -->
+<section id="map-guide" aria-labelledby="guide-h2">
+  <div class="guide-inner">
+
+    <div class="guide-header reveal">
+      <div>
+        <div class="sec-label">Reading the Map</div>
+        <h2 id="guide-h2">Three kinds of site.<br><em>One connected corridor.</em></h2>
+      </div>
+      <div>
+        <p>
+          The map draws three overlapping habitat networks simultaneously: formally managed planting
+          sites, registered private waystations, and native-planting yards enrolled in the national
+          biodiversity program. Lines between nearby sites visualize whether pollinators of different
+          size classes can actually traverse the gaps between them.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Habitat site types ──────────────────────────────────────────── -->
+    <div class="guide-block reveal">
+      <div class="guide-block-label">Habitat Site Types</div>
+      <div class="site-type-grid">
+
+        <div class="site-type-card site-corridor">
+          <div class="site-type-dot dot-corridor"></div>
+          <div class="site-source">GBCC · ArcGIS Feature Service</div>
+          <h3>Pollinator Corridor Sites</h3>
+          <p>
+            Managed planting areas mapped by the Green Bay Conservation Corps as part of the NE Wisconsin
+            Pollinator Corridor Project. Each site has a documented plant list, mapped area, and a named
+            park or public property. These are the formal backbone of the regional habitat network and the
+            primary targets of the app's alert engine — unsupported sites, weak nodes, and connectivity
+            gaps are all measured relative to this layer.
+          </p>
+          <p class="site-count" id="guide-val-corridor">—</p>
+          <p class="site-count-sub">sites in 15 km radius · <span id="guide-val-corridor-area">—</span> ac total</p>
+        </div>
+
+        <div class="site-type-card site-waystation">
+          <div class="site-type-dot dot-waystation"></div>
+          <div class="site-source">Monarch Watch · Waystation Registry</div>
+          <h3>Monarch Waystations</h3>
+          <p>
+            Registered habitat sites — home gardens, schoolyards, nature centers, community gardens,
+            and places of worship — enrolled in the Monarch Watch Waystation Program. Each provides
+            certified milkweed and nectar plants for monarchs and other pollinators. Locations were
+            verified against Brown County parcel records by address and registrant name; approximate
+            positions are flagged in the drawer and shown at address-range precision (± 50 m).
+          </p>
+          <p class="site-count" id="guide-val-waystations">56</p>
+          <p class="site-count-sub">registered sites in 15 km radius</p>
+        </div>
+
+        <div class="site-type-card site-hnp">
+          <div class="site-type-dot dot-hnp"></div>
+          <div class="site-source">Homegrown National Park · Guest API</div>
+          <h3>HNP Native Planting Yards</h3>
+          <p>
+            Yards and organizational properties enrolled in Doug Tallamy's Homegrown National Park
+            initiative, indicating committed native plantings. While not formally mapped as managed
+            habitat, HNP registrations reveal the latent network of private landowners already engaged
+            in biodiversity restoration — an existing base of potential partners for formal corridor
+            extension and restoration outreach.
+          </p>
+          <p class="site-count" id="guide-val-hnp">—</p>
+          <p class="site-count-sub">enrolled yards in region</p>
+        </div>
+
+      </div>
+    </div><!-- site types -->
+
+    <!-- ── The site dossier ────────────────────────────────────────────── -->
+    <div class="guide-block reveal d1">
+      <div class="guide-block-label">The Site Dossier</div>
+      <div class="drawer-preview">
+        <div>
+          <p style="font-size:0.95rem;line-height:1.8;color:var(--fog);margin-bottom:1.25rem">
+            Clicking any habitat site marker opens a persistent side drawer showing a full dossier
+            for that location — assembled in real time from the data loaded into memory, with no
+            additional network requests.
+          </p>
+          <p style="font-size:0.82rem;line-height:1.7;color:var(--mist)">
+            Dossiers are only available for active habitat program site markers —
+            Corridor, Waystation, and HNP. Observation points (iNaturalist, GBIF) use a
+            smaller popup instead.
+          </p>
+        </div>
+        <ul class="drawer-field-list" aria-label="Site dossier fields">
+          <li class="drawer-field">
+            <span class="drawer-field-key">Name &amp; Source</span>
+            <span class="drawer-field-val">Site name, data source (GBCC, Monarch Watch, or HNP), and registration date if available.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Sighting Count</span>
+            <span class="drawer-field-val">Total pollinator sightings within 750 m across all loaded layers (iNat + GBIF), shown as a live count.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Seasonal Activity</span>
+            <span class="drawer-field-val">12-bar histogram of sighting counts by calendar month — immediately shows which months have documented activity gaps.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Observed Species</span>
+            <span class="drawer-field-val">Species list grouped by data source (iNat, GBIF), sorted by observation count. Groups with more than 5 species have an expandable overflow.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nesting Score</span>
+            <span class="drawer-field-val">NLCD-derived 0–100 index scoring bare ground, shrubland, and grassland within 300 m. Scores below 25 trigger the Poor Nesting Habitat alert.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Canopy Cover</span>
+            <span class="drawer-field-val">WI DNR 2022 urban tree canopy percentage within 150 m. Sites above 55% canopy may be too shaded for sun-loving pollinator plants.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nearby Sites</span>
+            <span class="drawer-field-val">Other habitat sites within 750 m — types, distances, and names — giving an immediate read of local corridor density.</span>
+          </li>
+          <li class="drawer-field">
+            <span class="drawer-field-key">Nearby Parcels</span>
+            <span class="drawer-field-val">Brown County parcel records within 400 m, grouped by ownership (City, County, State, institutional, private) and linked to the assessor database.</span>
+          </li>
+        </ul>
+      </div>
+    </div><!-- dossier -->
+
+    <!-- ── Connectivity lines & foraging ranges ────────────────────────── -->
+    <div class="guide-block reveal d2">
+      <div class="guide-block-label">Connectivity Lines &amp; Foraging Ranges</div>
+      <p style="font-size:0.97rem;line-height:1.8;color:var(--fog);max-width:680px;margin-bottom:2rem">
+        A line is drawn between any two habitat sites within 2 km of each other. The line's
+        visual weight and style encode whether pollinators of different size classes can
+        realistically traverse that gap — grounded in published foraging-range data for
+        Midwestern native bee families.
+      </p>
+
+      <div class="conn-legend">
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Optimal · ≤ 300 m · solid thick</div>
+            <h4>Connected — accessible to all native bee species</h4>
+            <p>
+              Includes sweat bees (Halictidae), small mining bees (Andrenidae), mason bees (Osmia),
+              and leafcutter bees (Megachile) — species whose foraging radius rarely exceeds
+              300–400 m. A solid thick line signals these two sites are within reach of even the
+              shortest-ranging foragers. Dense clusters of optimal-range connections indicate a
+              well-functioning corridor node.
+            </p>
+          </div>
+        </div>
+
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Fair · 300–700 m · solid medium</div>
+            <h4>Connected — accessible to bumble bees and large solitary bees</h4>
+            <p>
+              Accessible to bumble bees (Bombus spp.) and larger solitary species such as carpenter
+              bees (Xylocopa) and large mason bees, whose comfortable foraging range extends to
+              roughly 700 m. A medium-weight solid line signals a genuine functional connection,
+              though small-bodied species may not reliably traverse the gap. These pairs are
+              candidates for stepping-stone plantings that would bring them into the optimal tier.
+            </p>
+          </div>
+        </div>
+
+        <div class="conn-tier">
+          <div class="conn-line-vis" aria-hidden="true">
+            <svg width="80" height="8" viewBox="0 0 80 8" xmlns="http://www.w3.org/2000/svg">
+              <line x1="4" y1="4" x2="76" y2="4" stroke="#f59e0b" stroke-width="1.5"
+                    stroke-dasharray="7 6" stroke-linecap="butt" opacity="0.45"/>
+            </svg>
+          </div>
+          <div class="conn-tier-text">
+            <div class="conn-range">Extended · 700 m–2 km · dashed thin</div>
+            <h4>Connected — but with reduced species support</h4>
+            <p>
+              These sites are connected, but only larger-ranging bumble bees (<em>Bombus pensylvanicus</em>,
+              <em>B. griseocollis</em>) reliably traverse this distance during foraging bouts, with a
+              practical upper limit near 1.5–2 km. Small-bodied species — mining bees, sweat bees,
+              and mason bees — may not cross this gap unaided. A dashed thin line reflects the
+              reduced breadth of species supported. The app's Weak Node and Connectivity Gap alerts
+              flag these pairs as priority candidates for stepping-stone restoration plantings.
+            </p>
+          </div>
+        </div>
+      </div><!-- conn-legend -->
+
+      <div class="guide-block-label" style="margin-top:var(--gap-md)">Line Colors — Connected Site Types</div>
+      <div class="conn-color-grid">
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#f59e0b"></div>
+          <div class="conn-color-label">Corridor ↔ Corridor</div>
+          <div class="conn-color-desc">Both endpoints are GBCC-managed corridor planting sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#8b5cf6"></div>
+          <div class="conn-color-label">Waystation ↔ Waystation</div>
+          <div class="conn-color-desc">Both endpoints are Monarch Watch registered sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#10b981"></div>
+          <div class="conn-color-label">HNP ↔ HNP</div>
+          <div class="conn-color-desc">Both endpoints are Homegrown National Park yards.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#c07ad6"></div>
+          <div class="conn-color-label">Corridor ↔ Waystation</div>
+          <div class="conn-color-desc">Formal corridor site linked with a registered waystation — a bridge between the two programs.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#84be6e"></div>
+          <div class="conn-color-label">Corridor ↔ HNP</div>
+          <div class="conn-color-desc">Managed corridor site adjacent to a native-planting yard — private engagement alongside formal sites.</div>
+        </div>
+        <div class="conn-color-cell">
+          <div class="conn-color-swatch" style="background:#4db6b8"></div>
+          <div class="conn-color-label">Waystation ↔ HNP</div>
+          <div class="conn-color-desc">Registered waystation linked with a native-planting yard — distributed private corridor pair.</div>
+        </div>
+      </div><!-- conn-color-grid -->
+
+    </div><!-- connectivity lines -->
+
+    <!-- ── Analysis Layers ───────────────────────────────────────── -->
+    <div class="guide-block" style="margin-top: var(--gap-lg)">
+      <div class="guide-block-label">Analysis Layers</div>
+      <p class="guide-block-intro">
+        The Analysis panel surfaces three computed layers that go beyond raw data to interpret
+        network health and guide action.
+      </p>
+
+      <div class="guide-subsection">
+        <h4 class="guide-subsection-title">&#x26A1; Expansion Opportunities</h4>
+        <p>
+          Locations where ecological conditions support new habitat — but no registered program yet exists within 800 m.
+          <strong>Native plant documentation and nesting habitat suitability are the primary signals;</strong>
+          pollinator sightings serve only as supporting evidence (the goal of a new site is to <em>attract</em> pollinators,
+          not to follow them).
+        </p>
+        <p>
+          Each marker is scored 0–100 across six factors:
+        </p>
+        <ul class="guide-list">
+          <li><strong>Native plant records (primary, 0–35 pts)</strong> — documented native plants within 800 m of the candidate location (iNat, GBIF). The strongest ecological signal: where native plants thrive, pollinator habitat can be established.</li>
+          <li><strong>Nesting habitat suitability (primary, 0–30 pts)</strong> — proxied from the NLCD nesting score of the nearest scored corridor site within 3 km. High grassland and bare-ground cover predicts good ground-nesting conditions.</li>
+          <li><strong>Corridor stepping-stone proximity (0–15 pts)</strong> — located 0.8–3 km from an existing Pollinator Corridor site, maximising connectivity value.</li>
+          <li><strong>PFAS-free environment (0 or −20 pts)</strong> — no known PFAS detection within 1.5 km. Contaminated sites receive a heavy score penalty.</li>
+          <li><strong>Low pesticide pressure (0 or −5 pts)</strong> — county not in the top-quartile agricultural pesticide band.</li>
+          <li><strong>Pollinator activity (0–5 pts)</strong> — active sightings as a light supporting signal only.</li>
+        </ul>
+        <p>
+          Each marker also carries a <strong>Recommendation Type</strong> based on the character of the surrounding land:
+        </p>
+        <ul class="guide-list">
+          <li><strong>Corridor Expansion Candidate</strong> (green) — Within stepping-stone range of an existing Corridor site on public land. Suitable for a formal Pollinator Corridor planting. Coordinate with City of Green Bay Parks.</li>
+          <li><strong>Community Engagement Opportunity</strong> (purple) — Primarily near Waystation or HNP sites, suggesting private residential land. Consider outreach to property owners about Monarch Waystation registration or the Homegrown National Park program.</li>
+          <li><strong>Dual-Pathway Opportunity</strong> (amber) — Mixed or unknown land character. Assess both formal Corridor eligibility and community engagement. A field visit is recommended.</li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">&#x26A0; Problem Areas</h4>
+        <p>
+          Corridor sites with one or more identified issues that may limit their value to the network.
+          Problem areas are detected automatically from loaded data and updated whenever the app refreshes.
+          Seven problem types are tracked:
+        </p>
+        <ul class="guide-list">
+          <li><strong>PFAS Proximity</strong> (high) — Known PFAS detection within 1 km. Soil and water contamination risk for plantings and insects.</li>
+          <li><strong>No Pollinator Activity</strong> (medium) — No recorded sightings within 500 m. May indicate low visibility, lack of observation effort, or genuine poor visitation.</li>
+          <li><strong>Isolated Site</strong> (high) — No registered habitat of any type within 2 km. Beyond reliable bumble bee foraging range; unable to exchange pollinators with the network.</li>
+          <li><strong>Weak Connection</strong> (medium) — Nearest neighbor 700 m–2 km away. Small-bodied bees (mining, sweat, mason) cannot reliably traverse this gap.</li>
+          <li><strong>Poor Nesting Habitat</strong> (medium) — NLCD-derived nesting suitability score below 25/100. Low bare ground and grassland cover within 300 m.</li>
+          <li><strong>Shaded Habitat</strong> (low) — Over 55% tree canopy within 150 m may suppress sun-loving pollinator plants.</li>
+          <li><strong>High Pesticide Pressure</strong> (high) — Site in a top-quartile agricultural pesticide county.</li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">&#x1F331; Habitat Suitability Heatmap</h4>
+        <p>
+          A green-ramp heatmap showing where habitat establishment is most likely to succeed across the full 15 km study area.
+          <strong>Native plant documentation is the primary positive signal;</strong>
+          pollinator activity is a light supporting factor only.
+          Bright green = high suitability; faint or absent = insufficient ecological basis or contamination penalty.
+        </p>
+        <p>Scoring per grid cell (∼1.7 km spacing):</p>
+        <ul class="guide-list">
+          <li><strong>Native plants (0–0.45)</strong> — Dominant factor. Requires at least one native plant record to register.</li>
+          <li><strong>Stepping-stone proximity (0–0.22)</strong> — 0.5–3 km from existing habitat.</li>
+          <li><strong>Pollinator activity (0–0.12)</strong> — Supporting signal only.</li>
+          <li><strong>PFAS penalty (−0.30)</strong> — Contaminated areas are suppressed on the heatmap.</li>
+          <li><strong>Pesticide penalty (−0.15)</strong> — High-pressure counties are scored down.</li>
+        </ul>
+      </div>
+    </div><!-- Analysis Layers -->
+
+  </div><!-- guide-inner -->
+</section>
+
+
+
+</main>
+
+<footer role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="wm">Bay <span>Hive</span></div>
+      <p>Pollinator habitat intelligence for the Greater Green Bay region. Fusing public data into actionable conservation insight &mdash; openly, locally, durably.</p>
+      <div class="badge">&#x2B21; GNU GPL v3.0</div>
+    </div>
+    <div class="footer-col">
+      <h4>About</h4>
+      <ul>
+        <li><a href="bayhive-site.html#problem">The Problem</a></li>
+        <li><a href="bayhive-site.html#tool">What It Does</a></li>
+        <li><a href="bayhive-site.html#users">Who It Serves</a></li>
+        <li><a href="guide.html">Map Guide</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Reference</h4>
+      <ul>
+        <li><a href="reference.html#alerts">Alert Engine</a></li>
+        <li><a href="reference.html#data">Data Sources</a></li>
+        <li><a href="reference.html#governance">Governance</a></li>
+        <li><a href="reference.html#contribute">Get Involved</a></li>
+        <li><a href="https://github.com/ChrisMenning/habitat" target="_blank" rel="noopener">GitHub Repository</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Bay Hive &middot; Greater Green Bay, WI &middot; 44.519&deg;N 88.020&deg;W &middot; 15 km analysis radius</p>
+    <p>Data sourced from public agencies and open-access repositories. See each source&rsquo;s terms for redistribution rights.</p>
+  </div>
+</footer>
+
+<script>
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(el => { if (el.isIntersecting) el.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script><script>
+// ── Mobile navigation hamburger ───────────────────────────────────────────
+const navToggle = document.getElementById('nav-toggle');
+const navList   = document.getElementById('nav-links-list');
+if (navToggle && navList) {
+  navToggle.addEventListener('click', () => {
+    const isOpen = navList.classList.toggle('is-open');
+    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+  });
+  // Close when any nav link is activated (smooth-scroll target)
+  navList.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      navList.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+      navToggle.setAttribute('aria-label', 'Open navigation menu');
+    });
+  });
+  // Close on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
+      navList.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+      navToggle.setAttribute('aria-label', 'Open navigation menu');
+      navToggle.focus();
+    }
+  });
+}
+</script>
+</body>
+</html>
+
+</body>
+</html>

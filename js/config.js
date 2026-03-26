@@ -53,6 +53,7 @@ export const LAYERS = [
     emoji:       '<i class="ph ph-butterfly"></i>',
     description: 'Bees, butterflies, moths, hoverflies & hummingbirds',
     defaultOn:   true,
+    vintage:     null,
   },
   {
     id:          'native-plants',
@@ -60,6 +61,7 @@ export const LAYERS = [
     emoji:       '<i class="ph ph-flower"></i>',
     description: 'Native & endemic plant species',
     defaultOn:   false,
+    vintage:     null,
   },
   {
     id:          'other-plants',
@@ -67,6 +69,7 @@ export const LAYERS = [
     emoji:       '<i class="ph ph-flower-lotus"></i>',
     description: 'Introduced, invasive & unconfirmed plants',
     defaultOn:   false,
+    vintage:     null,
   },
   {
     id:          'other-wildlife',
@@ -74,6 +77,7 @@ export const LAYERS = [
     emoji:       '<i class="ph ph-paw-print"></i>',
     description: 'Birds, mammals, non-pollinator insects, fungi & more',
     defaultOn:   false,
+    vintage:     null,
   },
 ];
 
@@ -93,6 +97,7 @@ export const GBIF_LAYERS = [
     emoji:       '<i class="ph ph-butterfly"></i>',
     description: 'Butterflies, moths & bees from museums and research surveys',
     defaultOn:   true,
+    vintage:     null,
   },
   {
     id:          'gbif-native-plants',
@@ -100,6 +105,7 @@ export const GBIF_LAYERS = [
     emoji:       '<i class="ph ph-flower"></i>',
     description: 'Native & endemic plant records from herbaria and surveys',
     defaultOn:   false,
+    vintage:     null,
   },
   {
     id:          'gbif-non-native-plants',
@@ -107,6 +113,7 @@ export const GBIF_LAYERS = [
     emoji:       '<i class="ph ph-flower-lotus"></i>',
     description: 'Introduced, naturalised & invasive plant records',
     defaultOn:   false,
+    vintage:     null,
   },
   {
     id:          'gbif-wildlife',
@@ -114,6 +121,7 @@ export const GBIF_LAYERS = [
     emoji:       '<i class="ph ph-paw-print"></i>',
     description: 'Non-pollinator animals (birds, mammals, reptiles, amphibians) from museums and research surveys',
     defaultOn:   false,
+    vintage:     null,
   },
 ];
 
@@ -137,6 +145,7 @@ export const BEE_LAYERS = [
     emoji:       '<i class="ph ph-bee"></i>',
     description: 'All GBIF occurrence records across 6 bee families (Andrenidae, Apidae, Colletidae, Halictidae, Megachilidae, Melittidae) — the same data source as the FWS Bee Distribution Tool, scoped to Brown County.',
     defaultOn:   true,
+    vintage:     null,
   },
   {
     id:          'bees-richness',
@@ -144,6 +153,7 @@ export const BEE_LAYERS = [
     emoji:       '<i class="ph ph-chart-bar"></i>',
     description: 'Heatmap of bee record density — a spatial proxy for species richness. Brighter areas have more bee specimens documented in GBIF collections.',
     defaultOn:   false,
+    vintage:     null,
   },
   {
     id:          'bees-imperiled',
@@ -151,6 +161,7 @@ export const BEE_LAYERS = [
     emoji:       '<i class="ph ph-warning"></i>',
     description: 'Occurrences of bee species with NatureServe global ranks G1–G3 (Critically Imperiled to Vulnerable) or IUCN Vulnerable / Endangered / Critically Endangered. Includes federally listed species (e.g. Rusty-patched Bumble Bee).',
     defaultOn:   true,
+    vintage:     null,
   },
 ];
 
@@ -175,6 +186,7 @@ export const AREA_LAYERS = [
     defaultOn:    false,
     fillColor:    '#16a34a',
     outlineColor: '#15803d',
+    vintage:      { year: 2023 },
   },
   {
     id:           'dnr-sna',
@@ -184,6 +196,7 @@ export const AREA_LAYERS = [
     defaultOn:    true,
     fillColor:    '#0891b2',
     outlineColor: '#0e7490',
+    vintage:      { year: 2023 },
   },
   {
     id:           'dnr-managed',
@@ -193,6 +206,7 @@ export const AREA_LAYERS = [
     defaultOn:    false,
     fillColor:    '#7c3aed',
     outlineColor: '#6d28d9',
+    vintage:      { year: 2023 },
   },
   {
     id:           'gbcc-corridor',
@@ -202,6 +216,7 @@ export const AREA_LAYERS = [
     defaultOn:    true,
     fillColor:    '#f59e0b',
     outlineColor: '#d97706',
+    vintage:      null,
   },
   {
     id:           'gbcc-treatment',
@@ -211,6 +226,7 @@ export const AREA_LAYERS = [
     defaultOn:    false,
     fillColor:    '#a3e635',
     outlineColor: '#65a30d',
+    vintage:      null,
   },
 ];
 
@@ -233,6 +249,7 @@ export const WAYSTATION_LAYER = [
     emoji:       '<i class="ph ph-butterfly"></i>',
     description: 'Monarch Watch certified waystation habitats (locations confirmed via Brown County parcel records)',
     defaultOn:   true,
+    vintage:     null,
   },
 ];
 
@@ -243,6 +260,7 @@ export const HNP_LAYER = [
     emoji:       '<i class="ph ph-leaf"></i>',
     description: 'Registered native plant yards contributing to local biodiversity (Homegrown National Park)',
     defaultOn:   true,
+    vintage:     null,
   },
 ];
 
@@ -322,6 +340,7 @@ export const NLCD_LAYERS = [
   group:       cls.group,
   tileUrl:     nlcdClassTileUrl(cls.code),
   attribution: '<a href="https://www.mrlc.gov/" target="_blank">MRLC NLCD 2021</a>',
+  vintage:     { year: 2021 },
 }));
 
 /**
@@ -360,6 +379,7 @@ export const TREE_CANOPY_LAYERS = TREE_CANOPY_YEARS.map(year => ({
   year,
   tileUrl:     _tcTileUrl(year),
   attribution: `<a href="https://dnr.wisconsin.gov/topic/urbanforests/ufia/plan-treecanopy" target="_blank">WI DNR Urban Tree Canopy ${year}</a>`,
+  vintage:     { year },
 }));
 
 export const EBIRD_LAYER = [
@@ -368,7 +388,8 @@ export const EBIRD_LAYER = [
     label:       'eBird Sightings',
     emoji:       '<i class="ph ph-bird"></i>',
     description: 'Recent bird observations near Green Bay from Cornell Lab of Ornithology (30-day window)',
-    defaultOn:   true,
+    defaultOn:   false,
+    vintage:     null,
   },
 ];
 
@@ -379,6 +400,7 @@ export const HAZARD_LAYERS = [
     emoji:       '<i class="ph ph-biohazard"></i>',
     description: 'WI DNR · PFAS forever-chemical detections in surface water & fish',
     defaultOn:   true,
+    vintage:     null,
   },
 ];
 
@@ -394,6 +416,7 @@ export const PESTICIDE_LAYER = {
   emoji:       '<i class="ph ph-flask"></i>',
   description: 'County-level agricultural pesticide intensity · CDL crop-type proxy · USDA application rate lookup',
   defaultOn:   false,
+  vintage:     { year: 2023 },
 };
 
 export const PARCEL_LAYER = {
@@ -402,6 +425,7 @@ export const PARCEL_LAYER = {
   emoji:       '📐',
   description: 'Brown County parcel boundaries colored by ownership class (City / County / State / Institutional / Private). Visible at neighborhood zoom (≥ 14). Lazy-loaded on first toggle.',
   defaultOn:   false,
+  vintage:     { year: 2024 },
 };
 
 export const COMMONS_LAYER = {
@@ -410,6 +434,7 @@ export const COMMONS_LAYER = {
   emoji:       '📷',
   description: 'Wikimedia Commons geotagged nature/habitat photography within 10 km. Click a camera marker to view the photo and license.',
   defaultOn:   false,
+  vintage:     null,
 };
 
 // ── Analysis layers ──────────────────────────────────────────────────────────
@@ -426,8 +451,24 @@ export const EXPANSION_LAYER = [
     emoji:       '<i class="ph ph-trend-up"></i>',
     description: 'Areas with documented pollinator activity and no nearby formal habitat site — scored by native plant diversity, pollution proximity, and pesticide pressure. Green = good suitability, amber = moderate, red = limiting factors present.',
     defaultOn:   false,
+    vintage:     null,
   },
 ];
+
+/**
+ * InVEST / Lonsdorf Pollinator Index layer.
+ * Visualizes the Lonsdorf et al. (2009) pollinator abundance model output:
+ * P(x) = N(x) × Σ[F(j) × e^(−D/α)] across three bee guilds (small/medium/bumble).
+ * NLCD biophysical attribute table from Wentling et al. (2021) and InVEST User's Guide.
+ */
+export const INVEST_LAYER = {
+  id:          'invest-heat',
+  label:       'Pollinator Index',
+  emoji:       '<i class="ph ph-chart-line-up"></i>',
+  description: 'InVEST / Lonsdorf (2009) pollinator abundance index — P(x) = N(x) × foraging sums across small solitary (300 m), medium solitary (700 m), and bumble bee (1500 m) guilds. NLCD biophysical scores from Wentling et al. (2021) and the InVEST User\'s Guide. Yellow = peak relative abundance; teal = moderate. Index is relative — not an absolute bee density.',
+  defaultOn:   false,
+  vintage:     { year: 2021 },
+};
 
 /**
  * Problem Areas — corridor sites with inferred issues: PFAS proximity,
@@ -441,8 +482,49 @@ export const PROBLEM_AREAS_LAYER = [
     emoji:       '<i class="ph ph-warning-circle"></i>',
     description: 'Habitat sites and zones with inferred problems: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates severity.',
     defaultOn:   false,
+    vintage:     null,
   },
 ];
+
+// ── Temporal freshness constants ──────────────────────────────────────────────
+
+/** Years past vintage at which a raster layer is considered stale (dimmed). */
+export const STALENESS_THRESHOLD_YEARS = 3;
+
+/** Years past vintage at which a temporal-mismatch alert is raised. */
+export const TEMPORAL_MISMATCH_THRESHOLD_YEARS = 3;
+
+/**
+ * Flat Map of every layer id → vintage `{ year }` for layers with a fixed
+ * data vintage. Live layers (vintage == null) are omitted.
+ * @type {Map<string, { year: number }>}
+ */
+export const LAYER_VINTAGES = new Map(
+  [
+    ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...TREE_CANOPY_LAYERS, ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
+    PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+  ]
+    .filter(l => l.vintage != null)
+    .map(l => [l.id, l.vintage])
+);
+
+/**
+ * Flat Map of every layer id → human-readable label.
+ * Used by the temporal-mismatch alert to name stale layers.
+ * @type {Map<string, string>}
+ */
+export const LAYER_LABELS = new Map(
+  [
+    ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...TREE_CANOPY_LAYERS, ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
+    PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+  ]
+    .filter(l => l.label != null)
+    .map(l => [l.id, l.label])
+);
 
 // ── Establishment means ──────────────────────────────────────────────────────
 

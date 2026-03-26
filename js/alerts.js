@@ -6,11 +6,14 @@
  * completes and calls renderAlerts().
  *
  * Alert types:
- *   PFAS_NEAR_HABITAT  — PFAS site within 1 km of a waystation or corridor site
- *   SIGHTINGS_NO_SITE  — zip/area with notable sightings but no habitat program site
- *   CORRIDOR_COVERAGE  — corridor sites with zero nearby pollinators sightings
- *   SITE_CLUSTER       — multiple habitat program sites within 200 m of each other
+ *   PFAS_NEAR_HABITAT    — PFAS site within 1 km of a waystation or corridor site
+ *   SIGHTINGS_NO_SITE    — zip/area with notable sightings but no habitat program site
+ *   CORRIDOR_COVERAGE    — corridor sites with zero nearby pollinators sightings
+ *   SITE_CLUSTER         — multiple habitat program sites within 200 m of each other
+ *   TEMPORAL_MISMATCH    — stale fixed-vintage layer active alongside live observation layers
  */
+
+import { TEMPORAL_MISMATCH_THRESHOLD_YEARS, LAYER_LABELS } from './config.js';
 
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
@@ -94,6 +97,8 @@ export function computeAlerts({
   nestingScores      = new Map(),
   canopyScores       = new Map(),
   parcelFeatures     = [],
+  activeLayerIds     = [],
+  layerVintages      = new Map(),
 }) {
   const alerts = [];
 
@@ -631,7 +636,7 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '<i class="ph ph-plant"></i>',
         key:    'poor-nesting-habitat',
-        text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index — little bare ground, shrubland, or grassland detected within 300 m. Adding bare-soil patches, sand berms, or letting edges go unmowed would significantly expand nesting resources: ${names.join(', ')}${extra}.`,
+        text:   `Poor Nesting Habitat: ${poorSites.length} corridor site${poorSites.length > 1 ? 's score' : ' scores'} below 25/100 on the NLCD nesting suitability index (class 31 Barren Land, 52 Shrub/Scrub, 71 Grassland) — little bare ground or grassland detected within 300 m. About 70% of native bee species are ground-nesters relying on exposed soil or sparse cover; adding bare-soil patches, sand berms, or unmowed edges would significantly expand nesting substrate: ${names.join(', ')}${extra}.`,
         coords: poorSites.map(centroid),
         layers: ['gbcc-corridor'],
       });
@@ -658,7 +663,7 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '<i class="ph ph-tree"></i>',
         key:    'shaded-habitat',
-        text:   `Shaded Habitat: ${shadedSites.length} corridor site${shadedSites.length > 1 ? 's have' : ' has'} >55% tree canopy coverage within 150 m — shading may suppress sun-loving pollinator plants. Consider canopy thinning or selective edge management near: ${names.join(', ')}${extra}.`,
+        text:   `Shaded Habitat: ${shadedSites.length} corridor site${shadedSites.length > 1 ? 's have' : ' has'} >55% tree canopy coverage within 150 m — shading suppresses sun-loving pollinator plants and compacts soil, reducing bare-ground substrate for ground-nesting bees (~70% of bee species). Consider canopy thinning or selective edge management near: ${names.join(', ')}${extra}.`,
         coords: shadedSites.map(centroid),
         layers: ['gbcc-corridor'],
       });
@@ -737,6 +742,29 @@ export function computeAlerts({
           subItems: publicSubItems,
         });
       }
+    }
+  }
+
+  // ── Alert: Temporal mismatch — stale fixed-vintage layer + live layer active ─
+  if (activeLayerIds.length > 0 && layerVintages.size > 0) {
+    const currentYear = new Date().getFullYear();
+    const stale = activeLayerIds.filter(id => {
+      const v = layerVintages.get(id);
+      return v && (currentYear - v.year) >= TEMPORAL_MISMATCH_THRESHOLD_YEARS;
+    });
+    const hasLive = activeLayerIds.some(id => !layerVintages.has(id));
+    if (stale.length > 0 && hasLive) {
+      const names = stale
+        .map(id => LAYER_LABELS.get(id) ?? id)
+        .join(', ');
+      alerts.push({
+        level:  'info',
+        icon:   '<i class="ph ph-calendar-x"></i>',
+        key:    'temporal-mismatch',
+        text:   `Temporal mismatch: ${names} ${stale.length === 1 ? 'uses' : 'use'} fixed vintage data (${stale.map(id => layerVintages.get(id)?.year).join(', ')}) while live observation layers are also active. Patterns may not reflect current conditions. Consider comparing independently.`,
+        coords: [],
+        layers: stale,
+      });
     }
   }
 
@@ -1165,149 +1193,6 @@ export function computeProblemFeatures({
     }
   }
 
-  return { type: 'FeatureCollection', features };
-}
-
-// ── Suitability grid ──────────────────────────────────────────────────────────
-
-/**
- * Computes a spatial suitability score grid across the study area for the
- * habitat suitability heatmap.  Each grid point carries a `weight` (0\u20131)
- * representing how suitable that location is for new pollinator habitat.
- *
- * Positive factors (scored independently, then summed):
- *   native plant sightings nearby    (strongest signal \u2014 biodiversity already present)
- *   pollinator sighting density       (evidence of use)
- *   proximity to existing habitat in stepping-stone zone (300 m\u20132 km)
- *   clean environment (no PFAS site within 1 km)
- *   low pesticide pressure county
- *
- * Negative adjustments:
- *   PFAS site within 1 km            (\u221220 pts penalty)
- *   high-pesticide county             (\u221210 pts penalty)
- *
- * @param {object} ctx  — same shape as computeAlerts ctx plus centerLng/Lat/radiusKm
- * @returns {GeoJSON.FeatureCollection}
- */
-export function computeSuitabilityPoints({
-  corridorFeatures    = [],
-  waystationFeatures  = [],
-  hnpFeatures         = [],
-  pollinatorSightings = [],
-  pfasFeatures        = [],
-  pesticideCounties   = [],
-  nestingScores       = new Map(),
-  centerLng = -88.0133,
-  centerLat  = 44.5133,
-  radiusKm   = 15,
-}) {
-  const GRID_STEP    = 0.012;  // ~1.3 km — finer for better resolution
-  const NESTING_KM   = 4.0;   // max radius to borrow a nesting-score proxy
-  const PFAS_BONUS_KM   = 3.0;
-  const PFAS_PENALTY_KM = 1.0;
-  const DEG_LAT = 1 / 111.32;
-  const DEG_LNG = 1 / (111.32 * Math.cos(centerLat * Math.PI / 180));
-
-  // Pre-bucket native plant sightings (1/50° cells ≈ 2.2 km)
-  const nativeBuckets = new Map();
-  for (const s of pollinatorSightings) {
-    const lid = s.properties?.layer_id;
-    if (lid !== 'native-plants' && lid !== 'gbif-native-plants') continue;
-    const c = s.geometry?.coordinates;
-    if (!c) continue;
-    const key = `${(c[0] * 50 | 0)},${(c[1] * 50 | 0)}`;
-    nativeBuckets.set(key, (nativeBuckets.get(key) ?? 0) + 1);
-  }
-
-  function nativeCount([lng, lat]) {
-    let n = 0;
-    const bx = lng * 50 | 0, by = lat * 50 | 0;
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dy = -1; dy <= 1; dy++)
-        n += nativeBuckets.get(`${bx + dx},${by + dy}`) ?? 0;
-    return n;
-  }
-
-  // Build list of corridor sites with NLCD nesting scores for proxy lookup
-  const scoredSites = corridorFeatures
-    .map(f => {
-      const sc   = centroid(f);
-      const info = nestingScores.get(f.properties?.name ?? '');
-      return sc && info?.score != null ? { coord: sc, score: info.score } : null;
-    })
-    .filter(Boolean);
-
-  const latMin = centerLat - radiusKm * DEG_LAT;
-  const latMax = centerLat + radiusKm * DEG_LAT;
-  const lngMin = centerLng - radiusKm * DEG_LNG;
-  const lngMax = centerLng + radiusKm * DEG_LNG;
-
-  const features = [];
-  for (let lat = latMin; lat <= latMax; lat += GRID_STEP) {
-    for (let lng = lngMin; lng <= lngMax; lng += GRID_STEP) {
-      const coord = [lng, lat];
-      if (distKm([centerLng, centerLat], coord) > radiusKm) continue;
-
-      // ── Hard gate: native plant record required ────────────────────────────
-      // Plants don't grow on open water — this exclusion removes bay/lake cells.
-      const nativeNearby = nativeCount(coord);
-      if (nativeNearby < 1) continue;
-
-      // ── Factor 1: Nesting suitability proxy (PRIMARY, 0–0.50) ─────────────
-      let nestingScore = 0;
-      if (scoredSites.length > 0) {
-        let bestDist = Infinity, bestSc = -1;
-        for (const s of scoredSites) {
-          const d = distKm(coord, s.coord);
-          if (d < bestDist && d <= NESTING_KM) { bestDist = d; bestSc = s.score; }
-        }
-        if (bestSc >= 0) {
-          if (bestSc >= 75)      nestingScore = 0.50;
-          else if (bestSc >= 55) nestingScore = 0.38;
-          else if (bestSc >= 35) nestingScore = 0.24;
-          else if (bestSc >= 15) nestingScore = 0.12;
-          else                   nestingScore = 0.04;
-        }
-      }
-
-      // ── Factor 2: Native plant sightings (SECOND, 0–0.35) ─────────────────
-      let nativePlantScore;
-      if (nativeNearby >= 15)     nativePlantScore = 0.35;
-      else if (nativeNearby >= 6) nativePlantScore = 0.25;
-      else if (nativeNearby >= 2) nativePlantScore = 0.16;
-      else                        nativePlantScore = 0.08; // ≥1 already confirmed
-
-      // ── Factor 3: PFAS distance (THIRD) ───────────────────────────────────
-      let pfasScore = 0;
-      let minPfasDist = Infinity;
-      for (const p of pfasFeatures) {
-        const pc = centroid(p);
-        if (pc) minPfasDist = Math.min(minPfasDist, distKm(coord, pc));
-      }
-      if (minPfasDist === Infinity || minPfasDist >= PFAS_BONUS_KM) {
-        pfasScore = 0.10;  // clean / no data — small bonus
-      } else if (minPfasDist >= PFAS_PENALTY_KM) {
-        pfasScore = 0.0;   // caution zone
-      } else {
-        pfasScore = -0.40; // heavy penalty within 1 km
-      }
-
-      // ── Supporting penalty: high-pesticide county ─────────────────────────
-      const pestBand = _getPesticideBandForCoord(coord, pesticideCounties);
-      const pestPenalty = pestBand?.band === 4 ? -0.12 : 0;
-
-      const score = Math.max(0, Math.min(1,
-        nestingScore + nativePlantScore + pfasScore + pestPenalty
-      ));
-      if (score < 0.08) continue;
-
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: coord },
-        properties: { weight: score },
-      });
-    }
-  }
   return { type: 'FeatureCollection', features };
 }
 

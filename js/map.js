@@ -53,7 +53,7 @@ export function initMap(containerId) {
   });
 
   _map.addControl(new maplibregl.NavigationControl(),                'top-left');
-  _map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-left');
+  _map.addControl(new maplibregl.ScaleControl({ unit: 'imperial' }), 'bottom-right');
 
   return _map;
 }
@@ -319,6 +319,22 @@ export function setLayerVisibility(id, visible) {
     if (_map.getLayer(`cluster-${id}`))       _map.setLayoutProperty(`cluster-${id}`,       'visibility', vis);
     if (_map.getLayer(`cluster-label-${id}`)) _map.setLayoutProperty(`cluster-label-${id}`, 'visibility', vis);
   }
+}
+
+/**
+ * Applies data-driven paint to the waystation circle layer so approximate-location
+ * markers render with a ghostly faded appearance vs confirmed-location markers.
+ * The `approximate` boolean property on each feature drives the expression.
+ * Safe to call multiple times — subsequent calls just update the same properties.
+ */
+export function setWaystationApproxStyle() {
+  if (!_map.getLayer('points-waystations')) return;
+  _map.setPaintProperty('points-waystations', 'circle-opacity', [
+    'case', ['==', ['get', 'approximate'], true], 0.38, 0.92,
+  ]);
+  _map.setPaintProperty('points-waystations', 'circle-stroke-opacity', [
+    'case', ['==', ['get', 'approximate'], true], 0.22, 1.0,
+  ]);
 }
 
 /**
@@ -611,6 +627,8 @@ export function registerRasterLayer(id, visible, tileUrl, attribution = '') {
     type:   'raster',
     source: `${id}-source`,
     layout: { visibility: visible ? 'visible' : 'none' },
+    // Default opacity 0.65. Stale-vintage layers (≥ STALENESS_THRESHOLD_YEARS old)
+    // are dimmed to 0.50 by _applyStaleRasterOpacity() in app.js after registration.
     paint:  { 'raster-opacity': 0.65 },
   });
 }
@@ -846,6 +864,65 @@ export function updatePollinatorTrafficHeatmap(sightingFeatures) {
   source.setData({ type: 'FeatureCollection', features });
 }
 
+/**
+ * Registers the Native Plant Density heatmap source and layer.
+ * Uses a green palette distinct from the amber pollinator heatmap and the
+ * forest-green suitability heatmap.
+ *
+ * @param {boolean} visible
+ */
+export function registerNativePlantHeatmap(visible) {
+  _map.addSource('native-plant-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'native-plant-heat-layer',
+    type:   'heatmap',
+    source: 'native-plant-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    1,
+      'heatmap-radius':    ['interpolate', ['exponential', 2], ['zoom'], 10, 14, 14, 200],
+      'heatmap-intensity': 0.9,
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(187,247,208,0)',
+        0.2,  'rgba(134,239,172,0.28)',
+        0.5,  'rgba(34,197,94,0.58)',
+        0.75, 'rgba(21,128,61,0.82)',
+        1,    'rgba(5,46,22,1)',
+      ],
+      'heatmap-opacity': 0.65,
+    },
+  });
+}
+
+/**
+ * Update the Native Plant Density heatmap from a combined iNat + GBIF
+ * native-plant feature array (pre-deduplicated by the caller).
+ *
+ * @param {GeoJSON.Feature[]} plantFeatures
+ */
+export function updateNativePlantHeatmap(plantFeatures) {
+  const source = _map.getSource('native-plant-heat');
+  if (!source) return;
+
+  const features = plantFeatures
+    .filter(f => f?.geometry)
+    .map(f => {
+      const g = f.geometry;
+      const coords = g.type === 'Point' ? g.coordinates : (() => {
+        const ring = g.coordinates[0];
+        return [ring.reduce((s, c) => s + c[0], 0) / ring.length,
+                ring.reduce((s, c) => s + c[1], 0) / ring.length];
+      })();
+      return { type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: {} };
+    });
+
+  source.setData({ type: 'FeatureCollection', features });
+}
+
 // ── Expansion Opportunities layer ────────────────────────────────────────────
 
 /**
@@ -933,56 +1010,6 @@ export function updateProblemAreasLayer(geojson) {
   );
 }
 
-// ── Habitat Suitability heatmap ───────────────────────────────────────────────
-
-/**
- * Registers the habitat suitability heatmap.
- * Each grid-point feature carries a `weight` property (0–1) computed by
- * computeSuitabilityPoints() in alerts.js.
- *
- * Color ramp: transparent → pale green → medium green → deep forest green.
- * High-weight (good suitability) areas render as rich green; sparse/polluted
- * areas fade to transparent.
- */
-export function registerSuitabilityHeatmap(visible) {
-  _map.addSource('suitability-heat', {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
-  });
-  _map.addLayer({
-    id:     'suitability-heat-layer',
-    type:   'heatmap',
-    source: 'suitability-heat',
-    layout: { visibility: visible ? 'visible' : 'none' },
-    paint: {
-      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
-      'heatmap-intensity': 1.8,
-      'heatmap-color': [
-        'interpolate', ['linear'], ['heatmap-density'],
-        0,    'rgba(0,0,0,0)',
-        0.05, 'rgba(187,247,208,0.55)',
-        0.20, 'rgba(74,222,128,0.75)',
-        0.45, 'rgba(22,163,74,0.88)',
-        0.70, 'rgba(20,83,45,0.95)',
-        1.0,  'rgba(6,78,59,1.0)',
-      ],
-      // Radius sized to one grid cell (~1.3 km) so points don't over-blend
-      'heatmap-radius': [
-        'interpolate', ['exponential', 2], ['zoom'],
-        8, 14, 10, 30, 12, 58, 14, 110,
-      ],
-      'heatmap-opacity': 0.82,
-    },
-  });
-}
-
-/** Replaces Suitability heatmap source data. */
-export function updateSuitabilityHeatmap(geojson) {
-  _map.getSource('suitability-heat')?.setData(
-    geojson ?? { type: 'FeatureCollection', features: [] }
-  );
-}
-
 export function setHeatmapVisibility(id, visible) {
   const vis = visible ? 'visible' : 'none';
   const layerId = `${id}-layer`;
@@ -1034,6 +1061,66 @@ export function registerCdlFringeHeatmap(visible) {
 /** Replaces the CDL fringe source data. */
 export function updateCdlFringeHeatmap(geojson) {
   _map.getSource('cdl-fringe-heat')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
+// ── InVEST / Lonsdorf Pollinator Index heatmap ───────────────────────────────
+
+/**
+ * Registers the InVEST pollinator abundance index heatmap.
+ *
+ * Each grid-point feature carries a `weight` property (0–1) computed by
+ * computeInVESTHeatmap() in nesting.js using the Lonsdorf et al. (2009)
+ * P(x) = N(x) × Σ[F(j) × e^(−D/α)] model with three bee guilds.
+ *
+ * Color ramp: transparent → teal → emerald → forest green → yellow-green (peak).
+ * Radius scaled with zoom so the grid always reads as a continuous surface.
+ */
+export function registerInVESTHeatmap(visible) {
+  _map.addSource('invest-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'invest-heat-layer',
+    type:   'heatmap',
+    source: 'invest-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
+      'heatmap-intensity': [
+        'interpolate', ['linear'], ['zoom'],
+        8,  1.5,
+        12, 2.2,
+        14, 3.5,
+      ],
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.06, 'rgba(20,184,166,0.20)',   // teal
+        0.25, 'rgba(16,185,129,0.55)',   // emerald
+        0.50, 'rgba(5,150,105,0.80)',    // dark emerald
+        0.72, 'rgba(52,211,153,0.92)',   // bright emerald
+        0.88, 'rgba(217,249,157,0.97)',  // lime
+        1.0,  'rgba(250,204,21,1.0)',    // yellow (peak quality)
+      ],
+      // Grid step 0.012° (~1.3 km). Radius ensures continuous surface at all zooms.
+      'heatmap-radius': [
+        'interpolate', ['exponential', 2], ['zoom'],
+        8,  18,
+        10, 42,
+        12, 110,
+        14, 300,
+      ],
+      'heatmap-opacity': 0.80,
+    },
+  });
+}
+
+/** Replaces InVEST heatmap source data. */
+export function updateInVESTHeatmap(geojson) {
+  _map.getSource('invest-heat')?.setData(
     geojson ?? { type: 'FeatureCollection', features: [] }
   );
 }
@@ -1835,6 +1922,21 @@ export function setParcelFeatures(geojson, classifyFn) {
     }),
   };
   src.setData(stamped);
+}
+
+/**
+ * Wires a click handler specifically on the parcel fill layer.
+ * Fires the callback with the clicked feature's properties and lngLat.
+ *
+ * @param {function(maplibregl.LngLat, object): void} onParcelClick
+ */
+export function wireParcelClick(onParcelClick) {
+  _map.on('click', 'parcel-fill', e => {
+    const features = _map.queryRenderedFeatures(e.point, { layers: ['parcel-fill'] });
+    if (features.length) onParcelClick(e.lngLat, features[0].properties);
+  });
+  _map.on('mouseenter', 'parcel-fill', () => { _map.getCanvas().style.cursor = 'pointer'; });
+  _map.on('mouseleave', 'parcel-fill', () => { _map.getCanvas().style.cursor = '';        });
 }
 
 /**

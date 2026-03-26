@@ -19,7 +19,7 @@ let _onRange = null;
 
 let _trackMin  = 2009;
 let _trackMax  = new Date().getFullYear();
-let _startYear = 2009;
+let _startYear = Math.max(2009, new Date().getFullYear() - 5);
 let _endYear   = new Date().getFullYear();
 
 /** Active calendar months (0=Jan…11=Dec). Empty = all months pass. */
@@ -96,8 +96,8 @@ export function initTimeline(onRange, dataMinYear) {
   _onRange   = onRange;
   _trackMin  = dataMinYear ?? 2009;
   _trackMax  = new Date().getFullYear();
-  // Default: show last 1 year
-  _startYear = _trackMin;
+  // Default: show last 5 years
+  _startYear = Math.max(_trackMin, _trackMax - 5);
   _endYear   = _trackMax;
   _render();
   _initMonthFilter();
