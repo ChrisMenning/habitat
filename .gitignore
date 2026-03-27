@@ -3,3 +3,7 @@ api-keys.txt
 nass-key.txt
 noaa-token.txt
 ebird-key.txt
+
+# SSH keys
+key
+key.pub

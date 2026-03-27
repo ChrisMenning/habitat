@@ -7,32 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="bayhive-styles.css">
+<script src="nav.js" defer></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
-<nav role="navigation" aria-label="Main navigation">
-  <a href="/" class="nav-wordmark" aria-label="Bay Hive home">
-    <span class="w1">Bay</span>
-    <span class="w2">Hive</span>
-    <span class="wh">⬡</span>
-  </a>
-  <button class="nav-hamburger" id="nav-toggle"
-          aria-label="Open navigation menu" aria-expanded="false"
-          aria-controls="nav-links-list">
-    <span></span><span></span><span></span>
-  </button>
-  <ul class="nav-links" id="nav-links-list">
-    <li><a href="#problem">The Problem</a></li>
-    <li><a href="#tool">The Tool</a></li>
-    <li><a href="#users">Who It Serves</a></li>
-    <li><a href="/guide.html">Map Guide</a></li>
-    <li><a href="/reference.html">Reference</a></li>
-    <li><a href="/app" class="nav-cta">Launch &#x2197;</a></li>
-  </ul>
-</nav>
+<bh-nav></bh-nav>
 
 <main id="main-content">
 
@@ -522,38 +504,5 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   } catch { /* DNR ArcGIS unreachable — keep obs-based alert text */ }
 })();
 </script>
-
-<script>
-// ── Mobile navigation hamburger ───────────────────────────────────────────
-const navToggle = document.getElementById('nav-toggle');
-const navList   = document.getElementById('nav-links-list');
-if (navToggle && navList) {
-  navToggle.addEventListener('click', () => {
-    const isOpen = navList.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-  });
-  // Close when any nav link is activated (smooth-scroll target)
-  navList.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-    });
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-      navToggle.focus();
-    }
-  });
-}
-</script>
-</body>
-</html>
-
 </body>
 </html>

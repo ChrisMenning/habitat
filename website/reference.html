@@ -7,32 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="bayhive-styles.css">
+<script src="nav.js" defer></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
-<nav role="navigation" aria-label="Main navigation">
-  <a href="/" class="nav-wordmark" aria-label="Bay Hive home">
-    <span class="w1">Bay</span>
-    <span class="w2">Hive</span>
-    <span class="wh">&#x2B21;</span>
-  </a>
-  <button class="nav-hamburger" id="nav-toggle"
-          aria-label="Open navigation menu" aria-expanded="false"
-          aria-controls="nav-links-list">
-    <span></span><span></span><span></span>
-  </button>
-  <ul class="nav-links" id="nav-links-list">
-    <li><a href="/">Overview</a></li>
-    <li><a href="/guide.html">Map Guide</a></li>
-    <li><a href="#alerts">Alerts</a></li>
-    <li><a href="#data">Data</a></li>
-    <li><a href="#governance">Governance</a></li>
-    <li><a href="#contribute" class="nav-cta">Get Involved</a></li>
-  </ul>
-</nav>
+<bh-nav></bh-nav>
 
 <main id="main-content">
 
@@ -354,17 +336,6 @@
 </div>
 
 <!-- FOOTER -->
-
-<div class="tech-strip" aria-label="Technical specifications">
-  <div class="tech-item"><span class="tech-item-lbl">Runtime</span><span class="tech-item-val">Node.js 18+</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Dependencies</span><span class="tech-item-val">Zero (npm)</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Mapping</span><span class="tech-item-val">MapLibre GL 3.6.2</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Modules</span><span class="tech-item-val">Native ES Modules</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Caching</span><span class="tech-item-val">IndexedDB</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Accessibility</span><span class="tech-item-val">WCAG 2.2 AA</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">License</span><span class="tech-item-val">GNU GPL v3.0</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Deploy</span><span class="tech-item-val">node serve.js</span></div>
-</div>
 </main>
 
 <footer role="contentinfo">
@@ -405,37 +376,6 @@ const observer = new IntersectionObserver((entries) => {
   entries.forEach(el => { if (el.isIntersecting) el.target.classList.add('visible'); });
 }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script><script>
-// ── Mobile navigation hamburger ───────────────────────────────────────────
-const navToggle = document.getElementById('nav-toggle');
-const navList   = document.getElementById('nav-links-list');
-if (navToggle && navList) {
-  navToggle.addEventListener('click', () => {
-    const isOpen = navList.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-  });
-  // Close when any nav link is activated (smooth-scroll target)
-  navList.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-    });
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-      navToggle.focus();
-    }
-  });
-}
 </script>
-</body>
-</html>
-
 </body>
 </html>
