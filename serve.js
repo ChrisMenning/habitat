@@ -2343,8 +2343,15 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Normalise: treat / as /index.html
-  const relative = pathname === '/' ? '/index.html' : pathname;
+  // Normalise paths: marketing pages served at root-level URLs; /app → the tool.
+  const WEB_ROUTES = new Map([
+    ['/',                    '/website/bayhive-site.html'],
+    ['/app',                 '/index.html'],
+    ['/guide.html',          '/website/guide.html'],
+    ['/reference.html',      '/website/reference.html'],
+    ['/bayhive-styles.css',  '/website/bayhive-styles.css'],
+  ]);
+  const relative = WEB_ROUTES.get(pathname) ?? pathname;
 
   // Prevent directory traversal
   const filePath = path.join(ROOT, path.normalize(relative));
