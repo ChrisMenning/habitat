@@ -439,7 +439,7 @@ body {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  z-index: 10;
+  z-index: 10000;
   border-bottom: 1px solid #1a4d2e;
   box-shadow: 0 2px 12px rgba(0,0,0,0.5);
   position: relative;
@@ -1166,6 +1166,25 @@ details > summary:focus-visible {
 }
 .header-btn:hover         { background: rgba(52,211,153,0.22); border-color: #34d399; color: #d1fae5; }
 .header-btn:focus-visible { outline: 2px solid #34d399; outline-offset: 2px; }
+
+/* Export dropdown menu */
+.export-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #1e293b;
+  line-height: 1.4;
+}
+.export-menu-item:hover  { background: #f1f5f9; }
+.export-menu-item i      { margin-top: 2px; color: #64748b; flex-shrink: 0; }
+.export-menu-item small  { color: #64748b; font-size: 0.72rem; }
 
 /* ── Modals ─────────────────────────────────────────────────────────────────── */
 .modal-overlay {

@@ -436,6 +436,8 @@ p { color: var(--fog); }
 .tag-connect { color: #6AACB0; border-color: rgba(106,172,176,0.4); }
 .tag-crops   { color: #9AC050; border-color: rgba(154,192,80,0.4); }
 .tag-site    { color: var(--mist); border-color: rgba(122,140,98,0.4); }
+.tag-climate { color: #5BA8D0; border-color: rgba(91,168,208,0.4); }
+.tag-data    { color: #9CA3AF; border-color: rgba(156,163,175,0.4); }
 
 .alert-body strong { display: block; font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.2rem; }
 .alert-body p { font-size: 0.78rem; line-height: 1.55; color: var(--mist); }

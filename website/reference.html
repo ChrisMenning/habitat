@@ -41,9 +41,9 @@
   <div class="alerts-layout">
     <div class="alerts-intro reveal">
       <div class="sec-label">Alert Engine</div>
-      <h2 id="alerts-h2">Fourteen<br><em>automated<br>spatial alerts</em></h2>
+      <h2 id="alerts-h2">Seventeen<br><em>automated<br>spatial alerts</em></h2>
       <p>
-        The platform's core analytical output: fourteen spatial checks that run entirely in the 
+        The platform's core analytical output: seventeen spatial checks that run entirely in the 
         browser against data already loaded in memory, with no server-side processing required.
       </p>
       <div class="tech-note">
@@ -151,8 +151,29 @@
           <p>Corridor sites with &gt;55% tree canopy coverage within 150 m (WI DNR Urban Tree Canopy 2022).</p>
         </div>
       </div>
-    </div>
-  </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-climate">Climate</span>
+        <div class="alert-body">
+          <strong>GDD Below Normal</strong>
+          <p>Daily growing-degree accumulation (base 50&deg;F) running below the 30-year normal for the current May&ndash;September window at Green Bay. Requires NOAA optional key; suppressed when the key is absent.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-climate">Climate</span>
+        <div class="alert-body">
+          <strong>Fall Frost Risk</strong>
+          <p>At least one sub-34&deg;F forecast within the next 14-day NOAA window during the active pollinator season (May&ndash;Sep). Late frosts threaten late-season milkweed and nectar resources. Requires NOAA optional key.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-data">Data</span>
+        <div class="alert-body">
+          <strong>Temporal Mismatch</strong>
+          <p>A loaded data layer whose vintage year is more than 3 years old while live-rendered on the map. Flagged to prompt users to verify whether older data is still representative of current conditions.</p>
+        </div>
+      </div>
+    </div><!-- alerts-table -->
+  </div><!-- alerts-layout -->
 </section>
 
 <div class="section-divider"></div>
@@ -178,6 +199,7 @@
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · historical back to 2010</div></div>
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">GBIF Occurrence API v1 · up to 600</div></div>
     <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">FWS Dataset · All 6 Bee Families</div></div>
+    <div class="source-item"><div class="source-cat">Analysis Model</div><div class="source-name">InVEST Pollinator Index · Lonsdorf et al. 2009 · NLCD biophysical scores</div></div>
     <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">USGS PAD-US v3.0</div></div>
     <div class="source-item"><div class="source-cat">Conservation</div><div class="source-name">WI DNR State Natural Areas &amp; Managed Lands</div></div>
     <div class="source-item"><div class="source-cat">Hazards</div><div class="source-name">WI DNR PFAS Contamination Sites</div></div>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Bay Hive</title>
+  <title>Bay Hive · Intelligence Tool</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
   <!-- suppress favicon 404 -->
   <link rel="icon" href="data:,">
@@ -20,13 +20,15 @@
 
 <header id="header">
   <div id="header-text">
-    <h1><i class="ph ph-bee" aria-hidden="true"></i> Bay Hive</h1>
+    <h1><i class="ph ph-bee" aria-hidden="true"></i> <a href="/" style="color:inherit;text-decoration:none">Bay Hive</a></h1>
     <p>Public Data Intelligence for Pollinator Operations in the Green Bay area.</p>
   </div>
   <div id="header-actions">
     <button id="btn-help"  class="header-btn" title="Help &amp; feature guide"><i class="ph ph-question" aria-hidden="true"></i> Help</button>
     <button id="btn-about" class="header-btn" title="About Bay Hive"><i class="ph ph-info" aria-hidden="true"></i> About</button>
-    <button id="btn-export" class="header-btn" title="Export HTML report"><i class="ph ph-file-text" aria-hidden="true"></i> Export</button>
+    <div id="export-wrap" style="position:relative;display:inline-block">
+      <button id="btn-export" class="header-btn" title="Export report" aria-haspopup="true" aria-expanded="false" aria-controls="export-menu"><i class="ph ph-file-text" aria-hidden="true"></i> Export &#x25be;</button>
+    </div>
     <button id="btn-export-png" class="header-btn" title="Save map as PNG image"><i class="ph ph-image" aria-hidden="true"></i> PNG</button>
     <button id="btn-permalink" class="header-btn" title="Copy sharable link to clipboard"><i class="ph ph-link" aria-hidden="true"></i> Link</button>
     <a href="/tests.html" target="_blank" class="header-btn" title="Open unit test runner" style="text-decoration:none;"><i class="ph ph-flask" aria-hidden="true"></i> Tests</a>
@@ -605,104 +607,13 @@
       <h3>License &amp; Philosophy</h3>
       <p>Bay Hive is released under the <strong>GNU General Public License v3.0</strong> — free to use, modify, and distribute as a public good, with no warranty of any kind. There's nothing proprietary here. Every piece of data comes from public sources. Every algorithm is straightforward spatial analysis. The only thing this project adds is the assembly — putting all of it in one place so anyone working on pollinator habitat in the Green Bay area can see the full picture at once.</p>
 
-      <h3>Data Sources</h3>
-      <p>Every layer in Bay Hive is sourced from publicly available APIs and datasets. Here's what each one is and how it's used:</p>
-
-      <h4>🌸 iNaturalist — Pollinator &amp; Plant Sightings</h4>
-      <p><strong>Source:</strong> <a href="https://www.inaturalist.org/pages/api+reference" target="_blank">iNaturalist API v1</a></p>
-      <p>The primary biodiversity data source. Up to 2,000 observations per query are fetched within 15 km of Green Bay. Observations are filtered and partitioned into four layers: Pollinators (bees, butterflies, moths, hoverflies, hummingbirds), Native Plants, Other Plants, and Other Wildlife. The <em>establishment_means</em> field is resolved against Wisconsin's regional checklist to determine native/introduced/invasive status, which drives the colored outer ring on each sighting dot. Data is cached by date range for 1 hour.</p>
-
-      <h4>🔬 GBIF — Historical Biodiversity Records</h4>
-      <p><strong>Source:</strong> <a href="https://www.gbif.org/developer/occurrence" target="_blank">GBIF Occurrence API v1</a></p>
-      <p>Museum specimens, herbarium records, and multi-source research datasets provide historical depth that iNaturalist alone can't offer. GBIF pollinators and native/non-native plants are fetched separately (up to 600 records each). These appear as slightly different-styled dots below the iNaturalist layer so current active observations stay visually dominant.</p>
-
-      <h4>🦋 Monarch Watch Certified Waystations</h4>
-      <p><strong>Source:</strong> Manually curated list cross-referenced with Brown County parcel records</p>
-      <p>56 Monarch Watch certified waystation habitats in the Green Bay area. Locations have been verified against public parcel data. These are private gardens and yards that have been formally certified as monarch butterfly habitat — each one a small node in the larger network. Displayed as violet circles with butterfly icons.</p>
-
-      <h4>🌿 Homegrown National Park (HNP)</h4>
-      <p><strong>Source:</strong> <a href="https://homegrownnationalpark.org" target="_blank">Homegrown National Park guest API</a></p>
-      <p>Registered native plant yards from Doug Tallamy's Homegrown National Park initiative. These are self-reported yards where homeowners have committed to planting native species that support local food webs. Fetched via a CORS proxy in the local server since the HNP API doesn't send CORS headers. Proxied at <code>/api/hnp-plantings</code>.</p>
-
-      <h4>🦋 NE Wisconsin Pollinator Corridor (GBCC)</h4>
-      <p><strong>Source:</strong> <a href="https://storymaps.arcgis.com/stories/9f4ca337f8ed486ab8422be9ef8015a3" target="_blank">Green Bay Conservation Corps ArcGIS Feature Service</a></p>
-      <p>The mapped habitat planting areas that form the NE Wisconsin Pollinator Corridor. These are the formal program sites managed by the Green Bay Conservation Corps — public parks, rights-of-way, and institutional properties that have been planted with pollinator-supporting native species. This is the backbone of the corridor network the rest of the map is built around.</p>
-
-      <h4>🌱 GBCC Habitat Treatments</h4>
-      <p><strong>Source:</strong> Green Bay Conservation Corps ArcGIS Feature Service</p>
-      <p>Restoration treatment polygons — sites where the GBCC has performed invasive removal, prescribed burns, or re-planting work. Shows the active restoration footprint separate from the established corridor planting areas.</p>
-
-      <h4>🛡️ USGS PAD-US Protected Areas</h4>
-      <p><strong>Source:</strong> <a href="https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-overview" target="_blank">USGS PAD-US v3.0 ArcGIS Feature Service</a></p>
-      <p>The Protected Areas Database of the United States — the most comprehensive national inventory of public lands and waters protected for conservation. Federal, state, local government, tribal, NGO, and joint-managed lands are all included. Displayed as green polygon fills. Each popup shows the managing entity, designation type, public access level, and GAP conservation status (1 = strictly protected → 4 = no formal protection).</p>
-
-      <h4>🌳 WI DNR State Natural Areas</h4>
-      <p><strong>Source:</strong> <a href="https://dnrmaps.wi.gov/" target="_blank">Wisconsin DNR ArcGIS MapServer</a></p>
-      <p>Wisconsin's network of State Natural Areas — sites preserved specifically to protect outstanding examples of Wisconsin's natural communities. Many SNAs contain rare plant species and high-quality natural habitat. Displayed as blue-teal polygon fills with acreage in popups.</p>
-
-      <h4>🏕️ WI DNR Managed Lands</h4>
-      <p><strong>Source:</strong> Wisconsin DNR ArcGIS MapServer</p>
-      <p>DNR-managed properties including wildlife areas, state forests, and parks. Broader than SNAs, these include actively managed game and recreation lands that nonetheless provide significant habitat value.</p>
-
-      <h4>⚠️ WI DNR PFAS Contamination Sites</h4>
-      <p><strong>Source:</strong> <a href="https://dnrmaps.wi.gov/" target="_blank">Wisconsin DNR PFAS Surface Water &amp; Fish Data MapServer</a></p>
-      <p>PFAS ("forever chemical") detection sites in surface water and fish tissue across Wisconsin. The alerts engine flags any PFAS site within 1 km of a waystation or corridor site — contaminated water sources can harm pollinators that drink from them, and plants in contaminated soil may be affected. Displayed as red warning circles.</p>
-
-      <h4>🌿 NLCD 2021 — National Land Cover Database</h4>
-      <p><strong>Source:</strong> <a href="https://www.mrlc.gov/" target="_blank">MRLC / USGS National Land Cover Database 2021</a>, served via MRLC GeoServer WMS</p>
-      <p>The 30-meter resolution national land cover classification for 2021, with 16 classes covering water, developed land, forest, shrubland, grassland, agriculture, and wetlands. Each of the 16 classes is available as a separately toggleable layer, served through a custom Node.js PNG pixel-filter proxy that strips all non-matching pixels to transparent. This makes it possible to isolate exactly one cover type at a time. The 🐝 Bee-Crop Field Fringe heatmap is also derived from the NLCD Agricultural classes (codes 81 and 82).</p>
-
-      <h4>🌾 CDL 2023 — USDA NASS Cropland Data Layer</h4>
-      <p><strong>Source:</strong> <a href="https://nassgeodata.gmu.edu/CropScape/" target="_blank">USDA NASS CropScape WMS</a></p>
-      <p>The full-color USDA crop-type raster for 2023, showing individual crop species mapped at 30-meter resolution. The CDL statistics endpoint also provides county-level acreage breakdowns used to compute the Pollinator Mismatch alert — comparing bee-dependent crop acreage (alfalfa, cranberries, cucurbits, apples, etc.) against habitat site density to identify zones where adding habitat has the greatest economic leverage for crop yields.</p>
-
-      <h4>🐝 USDA NASS QuickStats</h4>
-      <p><strong>Source:</strong> <a href="https://quickstats.nass.usda.gov/api" target="_blank">USDA NASS QuickStats API</a> (requires free API key)</p>
-      <p>County-level agricultural census data providing Wisconsin managed honey bee colony counts and Brown County crop area harvested by species. When a NASS API key is configured (via <code>nass-key.txt</code> or <code>NASS_API_KEY</code> environment variable), this data enriches the Pollinator Mismatch alert with specific colony figures and Census-verified crop acreage, making the alert more actionable.</p>
-
-      <h4>&#x1f4f8; Wikimedia Commons Photos</h4>
-      <p><strong>Source:</strong> <a href="https://commons.wikimedia.org/w/api.php" target="_blank">Wikimedia Commons API</a></p>
-      <p>Georeferenced pollinator and habitat photos sourced via keyword search (bee, bees, butterfly, moth, pollinator, etc.) with client-side proximity filtering to the 15 km analysis radius. Photos appear as camera marker icons and open in a lightbox with attribution, license, and a link to the original Commons page.</p>
-
-      <h4>&#x1f333; WI DNR Urban Tree Canopy</h4>
-      <p><strong>Source:</strong> <a href="https://dnrmaps.wi.gov/" target="_blank">Wisconsin DNR Urban Forestry ArcGIS ImageServer</a></p>
-      <p>1-meter resolution tree canopy classification derived from NAIP aerial imagery for three survey years: 2013, 2020, and 2022. Each pixel is classified as tree canopy or non-canopy. Displayed as a raster overlay in the Land Cover &amp; Cropland panel; the active year tracks the timeline scrubber. Canopy coverage % (within 150 m of each corridor site centroid) is also computed server-side via <code>/api/canopy-check</code> and shown in the site detail drawer. Note: WI DNR advises against direct change-detection comparisons between survey years due to methodology differences.</p>
-
-      <h3>How the Intelligence Alerts Work</h3>
-      <p>The alerts engine (<code>alerts.js</code>) runs entirely client-side against data already in memory — no additional network requests. Alerts are recalculated every time new data loads. Each alert type uses a specific spatial algorithm:</p>
-      <ul>
-        <li><strong>PFAS Near Habitat</strong> — haversine distance check, 1 km radius from each PFAS site to all corridor sites and waystations</li>
-        <li><strong>Unsupported Sites</strong> — for each habitat site, checks whether any pollinator sighting exists within 500 m</li>
-        <li><strong>Opportunity Zones</strong> — grid-buckets sightings at ~1 km resolution, flags buckets with ≥5 sightings and no habitat site within 800 m</li>
-        <li><strong>Declining Public Zone</strong> — for each opportunity zone showing a sighting decline (&gt;30% drop, prior year vs. current year) that also has a City or County parcel within 800 m; escalates to a Warning alert</li>
-        <li><strong>Public Land Gap</strong> — City/County parcels ≥0.5 ac within opportunity zones with no habitat program site within 500 m; flagged as Warning (actionable without private negotiation)</li>
-        <li><strong>Connected Pairs</strong> — finds habitat site pairs within 300 m of each other (ideal corridor stepping-stone distance)</li>
-        <li><strong>Isolated Habitat</strong> — flags sites with no other habitat within 2 km (habitat islands that pollinators can't reach from the broader network)</li>
-        <li><strong>Weak Nodes</strong> — corridor sites whose nearest corridor neighbour is 700 m–2 km away (beyond comfortable solitary bee foraging range, not yet fully isolated)</li>
-        <li><strong>Connectivity Gap</strong> — finds the widest edge in the Minimum Spanning Tree over all corridor sites; flags if &gt;2.5 km (exceeds most native bee foraging range)</li>
-        <li><strong>Quadrant Coverage</strong> — divides the map area into four quadrants around the centroid of all sites; flags any quadrant with no habitat</li>
-        <li><strong>Pollinator Mismatch</strong> — compares bee-dependent crop acreage % against estimated habitat coverage based on site count and assumed coverage per site</li>
-        <li><strong>High Pesticide Pressure</strong> — flags corridor sites and waystations in counties with Critical-band pesticide intensity (band 4 of 4)</li>
-        <li><strong>Poor Nesting Habitat</strong> — fires for corridor sites scoring below 25/100 on the NLCD-derived nesting suitability index (300 m radius, classes 31/52/71)</li>
-        <li><strong>Shaded Habitat</strong> — fires for corridor sites with &gt;55% tree canopy coverage within 150 m (WI DNR UTC 2022). High canopy closure can suppress the sun-dependent pollinator wildflowers that NE Wisconsin corridor sites are designed to support.</li>
-      </ul>
-
-      <h4>🧪 Pesticide Pressure</h4>
-      <p><strong>Source:</strong> Embedded county-level estimates derived from USDA NASS crop data and known pesticide-use patterns for NE Wisconsin</p>
-      <p>County-level agricultural pesticide intensity for the 9 counties in the Green Bay analysis region. Scores reflect crop mix (row crops, alfalfa, cranberries) and associated neonicotinoid seed treatment use. Displayed as a choropleth (pale yellow → deep red) with four bands: Low, Moderate, High, Critical. On by default. The Pesticide Pressure alert fires for any habitat site in a Critical-band county.</p>
-
-      <h4>🪨 NLCD Nesting Suitability</h4>
-      <p><strong>Source:</strong> <a href="https://www.mrlc.gov/" target="_blank">MRLC NLCD 2021</a>, computed server-side via <code>/api/nlcd-nesting</code></p>
-      <p>For each corridor site, fetches NLCD 2021 WMS tiles at zoom 13 (≈14 m/px) and counts pixels of three nesting-relevant classes within 300 m: class 31 Barren Land (weight 3), class 52 Shrub/Scrub (weight 2), class 71 Grassland/Herbaceous (weight 3). The weighted pixel fraction is normalized to a 0–100 score. Gray = Low (0–33, alert threshold &lt;25), Tan = Moderate (34–66), Dark brown = Good (67–100). Scores are fetched asynchronously after corridor data loads and appear as badges on corridor site markers whenever any NLCD layer is active. The score and a plain-language description also appear in the site detail drawer. Tile results are cached 24 h server-side.</p>
-
-      <h3>Technical Architecture</h3>
-      <p>Bay Hive runs entirely in the browser as ES modules, served by a minimal Node.js static file server (<code>serve.js</code>) that also acts as a CORS proxy for data sources that don't send cross-origin headers. No build step, no framework, no npm install required.</p>
-      <ul>
-        <li><strong>Map rendering:</strong> <a href="https://maplibre.org/" target="_blank">MapLibre GL JS 3.6.2</a></li>
-        <li><strong>NLCD tile filtering &amp; nesting scoring:</strong> Pure Node.js PNG decoder — CRC32, Paeth predictor, palette PNG support, RGBA encoder — all without npm dependencies. The same infrastructure powers both the per-class tile proxy and the <code>/api/nlcd-nesting</code> batch scoring endpoint.</li>
-        <li><strong>Caching:</strong> Browser IndexedDB (via a lightweight wrapper in <code>cache.js</code>); NLCD tiles cached 24 h server-side in memory</li>
-        <li><strong>No tracking, no analytics, no external JS beyond MapLibre</strong></li>
-      </ul>
+      <h3>Data &amp; Documentation</h3>
+      <p>Data comes from iNaturalist, GBIF, USDA NASS, WI DNR, USGS PAD-US, GBCC, Monarch Watch, eBird, and Homegrown National Park — all public sources, all freely available.</p>
+      <p style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem">
+        <a href="/guide.html" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:0.35rem 0.75rem;background:var(--surface2,#f1f5f9);border-radius:4px;color:var(--text,#1e293b);text-decoration:none;font-size:0.85rem">Map Guide ↗</a>
+        <a href="/reference.html#data" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:0.35rem 0.75rem;background:var(--surface2,#f1f5f9);border-radius:4px;color:var(--text,#1e293b);text-decoration:none;font-size:0.85rem">Data Sources ↗</a>
+        <a href="/reference.html#alerts" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:0.35rem 0.75rem;background:var(--surface2,#f1f5f9);border-radius:4px;color:var(--text,#1e293b);text-decoration:none;font-size:0.85rem">Alert Engine ↗</a>
+      </p>
 
       <p style="margin-top:2rem;font-size:0.75rem;color:var(--muted,#6b7280);">
         <a href="/terms.html" target="_blank" rel="noopener noreferrer" style="color:inherit;">Terms of Service</a>
@@ -731,6 +642,26 @@
       <a id="lightbox-link" href="" target="_blank" rel="noopener noreferrer">View on Wikimedia Commons ↗</a>
     </div>
   </div>
+</div>
+<!-- Export dropdown — appended to body so it escapes all stacking contexts -->
+<div id="export-menu" role="menu" hidden
+     style="position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.18);min-width:220px;z-index:100000;padding:4px 0">
+  <button class="export-menu-item" role="menuitem" data-report="full">
+    <i class="ph ph-file-text" aria-hidden="true"></i>
+    <span><strong>Full Intelligence Report</strong><br><small>All sections &middot; complete dataset</small></span>
+  </button>
+  <button class="export-menu-item" role="menuitem" data-report="brief">
+    <i class="ph ph-presentation-chart" aria-hidden="true"></i>
+    <span><strong>Executive Brief</strong><br><small>Key metrics &middot; alerts &middot; top 5 sites</small></span>
+  </button>
+  <button class="export-menu-item" role="menuitem" data-report="outreach">
+    <i class="ph ph-map-pin" aria-hidden="true"></i>
+    <span><strong>Field &amp; Outreach Report</strong><br><small>Full expansion table &middot; public land contacts</small></span>
+  </button>
+  <button class="export-menu-item" role="menuitem" data-report="ecological">
+    <i class="ph ph-tree" aria-hidden="true"></i>
+    <span><strong>Ecological Assessment</strong><br><small>Biodiversity &middot; nesting &middot; climate &middot; threats</small></span>
+  </button>
 </div>
 
 </body>

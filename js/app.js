@@ -89,7 +89,8 @@ import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
          setCommonsImages as setDrawerCommonsImages }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
          mountTimelineDrag, registerTemporalLayer }   from './timeline.js';
-import { setExportData, exportReport, exportMapPng }  from './export.js';
+import { setExportData, exportReport, exportMapPng,
+         exportExecutiveBrief, exportOutreachReport, exportEcologicalAssessment } from './export.js';
 import { parsePermalink, applyPermalinkState,
          initPermalink }                               from './permalink.js';
 import { fetchEbirdObservations }                      from './ebird.js';
@@ -806,7 +807,7 @@ async function loadObservations() {
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
           _updateAlertBadge(updatedAlerts.length);
-          setExportData({ alerts: updatedAlerts });
+          setExportData({ alerts: updatedAlerts, nestingScores: scores });
         }
       }).catch(() => { /* nesting scores unavailable — silent degradation */ });
 
@@ -1008,10 +1009,12 @@ async function loadObservations() {
       pollinatorSightings: allPollinatorFeatures,
       pesticideCounties,
     };
-    updateExpansionOpportunitiesLayer(computeExpansionOpportunities({
+    const _expansionFC = computeExpansionOpportunities({
       ..._analysisCtx,
       nestingScores: _nestingScores,
-    }));
+    });
+    updateExpansionOpportunitiesLayer(_expansionFC);
+    setExportData({ expansionFeatures: _expansionFC.features, parcelFeatures: _parcelFeatures });
     updateProblemAreasLayer(computeProblemFeatures({
       ..._analysisCtx,
       nestingScores: _nestingScores,
@@ -1546,8 +1549,41 @@ map.on('load', async () => {
     });
   });
 
-  // Export button
-  document.getElementById('btn-export').addEventListener('click', exportReport);
+  // Export dropdown — menu lives on <body> to escape MapLibre stacking context
+  const btnExport  = document.getElementById('btn-export');
+  const exportMenu = document.getElementById('export-menu');
+  const reportFns  = { full: exportReport, brief: exportExecutiveBrief, outreach: exportOutreachReport, ecological: exportEcologicalAssessment };
+
+  function _positionExportMenu() {
+    const r = btnExport.getBoundingClientRect();
+    // Prefer right-aligned to button; clamp to viewport left edge
+    const menuW = exportMenu.offsetWidth || 220;
+    let left = r.right - menuW;
+    if (left < 4) left = 4;
+    exportMenu.style.top  = `${r.bottom + 4}px`;
+    exportMenu.style.left = `${left}px`;
+  }
+
+  btnExport?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !exportMenu.hidden;
+    exportMenu.hidden = open;
+    btnExport.setAttribute('aria-expanded', String(!open));
+    if (!open) _positionExportMenu();
+  });
+  exportMenu?.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-report]');
+    if (!item) return;
+    exportMenu.hidden = true;
+    btnExport.setAttribute('aria-expanded', 'false');
+    (reportFns[item.dataset.report] ?? exportReport)();
+  });
+  document.addEventListener('click', (e) => {
+    if (!btnExport?.contains(e.target) && !exportMenu?.contains(e.target)) {
+      if (exportMenu) exportMenu.hidden = true;
+      btnExport?.setAttribute('aria-expanded', 'false');
+    }
+  });
   document.getElementById('btn-export-png')?.addEventListener('click', exportMapPng);
 
   // Help / About modals
