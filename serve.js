@@ -2350,6 +2350,7 @@ const server = http.createServer((req, res) => {
     ['/guide.html',          '/website/guide.html'],
     ['/reference.html',      '/website/reference.html'],
     ['/bayhive-styles.css',  '/website/bayhive-styles.css'],
+    ['/nav.js',              '/website/nav.js'],
   ]);
   const relative = WEB_ROUTES.get(pathname) ?? pathname;
 
@@ -2373,7 +2374,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
   // Restore all in-memory caches from disk before warming.
