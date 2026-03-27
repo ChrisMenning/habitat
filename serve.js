@@ -2343,8 +2343,16 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Normalise: treat / as /index.html
-  const relative = pathname === '/' ? '/index.html' : pathname;
+  // Normalise paths: marketing pages served at root-level URLs; /app → the tool.
+  const WEB_ROUTES = new Map([
+    ['/',                    '/website/bayhive-site.html'],
+    ['/app',                 '/index.html'],
+    ['/guide.html',          '/website/guide.html'],
+    ['/reference.html',      '/website/reference.html'],
+    ['/bayhive-styles.css',  '/website/bayhive-styles.css'],
+    ['/nav.js',              '/website/nav.js'],
+  ]);
+  const relative = WEB_ROUTES.get(pathname) ?? pathname;
 
   // Prevent directory traversal
   const filePath = path.join(ROOT, path.normalize(relative));
@@ -2366,7 +2374,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`Serving ${ROOT}`);
   console.log(`Open → http://localhost:${PORT}`);
   // Restore all in-memory caches from disk before warming.

@@ -7,30 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="bayhive-styles.css">
+<script src="nav.js" defer></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
-<nav role="navigation" aria-label="Main navigation">
-  <a href="bayhive-site.html" class="nav-wordmark" aria-label="Bay Hive home">
-    <span class="w1">Bay</span>
-    <span class="w2">Hive</span>
-    <span class="wh">&#x2B21;</span>
-  </a>
-  <button class="nav-hamburger" id="nav-toggle"
-          aria-label="Open navigation menu" aria-expanded="false"
-          aria-controls="nav-links-list">
-    <span></span><span></span><span></span>
-  </button>
-  <ul class="nav-links" id="nav-links-list">
-    <li><a href="bayhive-site.html">Overview</a></li>
-    <li><a href="#map-guide">Map Guide</a></li>
-    <li><a href="reference.html">Reference</a></li>
-    <li><a href="https://bay-hive-pollinator-intelligence.onrender.com/" class="nav-cta">Launch &#x2197;</a></li>
-  </ul>
-</nav>
+<bh-nav></bh-nav>
 
 <main id="main-content">
 
@@ -321,24 +305,150 @@
         </ul>
       </div>
 
-      <div class="guide-subsection" style="margin-top: var(--gap-md)">
-        <h4 class="guide-subsection-title">&#x1F331; Habitat Suitability Heatmap</h4>
+            <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">&#x1F331; InVEST Pollinator Index</h4>
         <p>
-          A green-ramp heatmap showing where habitat establishment is most likely to succeed across the full 15 km study area.
-          <strong>Native plant documentation is the primary positive signal;</strong>
-          pollinator activity is a light supporting factor only.
-          Bright green = high suitability; faint or absent = insufficient ecological basis or contamination penalty.
+          A continuous relative pollinator abundance index computed across the full 15&nbsp;km study area using the
+          <strong>Lonsdorf et al. (2009) foraging model</strong> (InVEST Pollinator Supply &amp; Demand).
+          Inputs are NLCD 2021 land cover biophysical scores &mdash; nesting suitability and floral resource
+          availability estimated per class. Output is an amber-to-gold heatmap grid where higher values
+          indicate landscapes more capable of supporting pollinator populations, independent of where
+          observations have actually been recorded.
         </p>
-        <p>Scoring per grid cell (∼1.7 km spacing):</p>
+        <p>Three bee guilds are modeled simultaneously:</p>
         <ul class="guide-list">
-          <li><strong>Native plants (0–0.45)</strong> — Dominant factor. Requires at least one native plant record to register.</li>
-          <li><strong>Stepping-stone proximity (0–0.22)</strong> — 0.5–3 km from existing habitat.</li>
-          <li><strong>Pollinator activity (0–0.12)</strong> — Supporting signal only.</li>
-          <li><strong>PFAS penalty (−0.30)</strong> — Contaminated areas are suppressed on the heatmap.</li>
-          <li><strong>Pesticide penalty (−0.15)</strong> — High-pressure counties are scored down.</li>
+          <li><strong>Short-range guild (0.3 km)</strong> &mdash; Sweat bees (Halictidae), small mining bees, and mason bees (Osmia spp.) whose typical foraging radius is 300&nbsp;m or less.</li>
+          <li><strong>Medium-range guild (0.7 km)</strong> &mdash; Large mason bees, leafcutter bees (Megachile), and bumble bee workers in moderate foraging conditions.</li>
+          <li><strong>Long-range guild (1.5 km)</strong> &mdash; Bumble bees (Bombus pensylvanicus, B. griseocollis) and carpenter bees (Xylocopa) with extended foraging capacity.</li>
         </ul>
+        <p>
+          Each guild computes nesting supply &times; weighted floral accessibility within its foraging radius.
+          The three outputs are combined and normalized (0 = lowest, 1 = highest relative index).
+          Off by default; toggle via the Layers panel.
+        </p>
       </div>
     </div><!-- Analysis Layers -->
+
+    <!-- Data Layers -->
+    <div class="guide-block" style="margin-top: var(--gap-lg)">
+      <div class="guide-block-label">Data Layers</div>
+      <p style="font-size:0.97rem;line-height:1.8;color:var(--fog);max-width:680px;margin-bottom:2rem">
+        The Layers panel surfaces every toggleable data source. Layers are organized into six groups,
+        each covering a different aspect of the regional landscape and biodiversity picture.
+      </p>
+
+      <div class="guide-subsection">
+        <h4 class="guide-subsection-title">Biodiversity Observations</h4>
+        <ul class="guide-list">
+          <li>
+            <strong>iNaturalist</strong> &mdash; Research-grade sightings back to 2010, up to 2,000 records per calendar year.
+            Four independently toggleable sub-layers: <em>Pollinators</em> (on by default), <em>Native Plants</em>,
+            <em>Other Plants</em>, and <em>Wildlife</em>. Each dot&rsquo;s outer ring indicates establishment status
+            (native / introduced / invasive) resolved against Wisconsin&rsquo;s regional checklist.
+          </li>
+          <li>
+            <strong>GBIF</strong> &mdash; Global Biodiversity Information Facility occurrence records (up to 600),
+            including museum specimens and multi-source research datasets. Mirrors iNat&rsquo;s four sub-layers.
+            Useful for validating iNat coverage and finding historically documented species.
+          </li>
+          <li>
+            <strong>eBird</strong> &mdash; Cornell Lab of Ornithology bird sightings. Off by default.
+            Requires an optional eBird API key configured in <code>api-keys.txt</code>.
+          </li>
+          <li>
+            <strong>Bee Records (FWS)</strong> &mdash; USGS/FWS dataset covering all six bee families. Three view modes:
+            <em>Bee Records</em> (individual sample points, on by default), <em>Species Richness</em> (density heatmap),
+            and <em>Imperiled Species</em> (NatureServe G1&ndash;G3 and IUCN VU+).
+          </li>
+          <li>
+            <strong>Commons Photos</strong> &mdash; Wikimedia Commons geotagged images within the 15&nbsp;km radius.
+            Clicking a camera marker opens a lightbox with the photo, attribution, and Commons link.
+          </li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">Conservation Areas</h4>
+        <ul class="guide-list">
+          <li>
+            <strong>Protected Areas (PAD-US)</strong> &mdash; USGS Protected Areas Database v3.0. Federal, state,
+            local, tribal, and NGO lands as polygon fills. Each popup shows managing entity, designation type,
+            public access level, and GAP conservation status (1 = strictly protected &rarr; 4 = no formal protection).
+          </li>
+          <li>
+            <strong>State Natural Areas (SNA)</strong> &mdash; WI DNR designated sites preserving outstanding natural
+            communities, often with rare plant species. On by default.
+          </li>
+          <li>
+            <strong>DNR Managed Lands</strong> &mdash; Broader DNR-managed properties: wildlife areas, state forests,
+            parks. Off by default.
+          </li>
+          <li>
+            <strong>Pollinator Corridor (GBCC)</strong> &mdash; NE Wisconsin Pollinator Corridor Project planting site
+            polygons from the Green Bay Conservation Corps. On by default. The backbone layer for all connectivity analysis.
+          </li>
+          <li>
+            <strong>Habitat Treatments (GBCC)</strong> &mdash; GBCC restoration interventions (planting, invasive removal,
+            prescribed burn). Shows the active restoration footprint. Off by default.
+          </li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">Land Cover &amp; Agriculture</h4>
+        <ul class="guide-list">
+          <li>
+            <strong>NLCD 2021 (16 classes)</strong> &mdash; National Land Cover Database at 30&nbsp;m resolution via MRLC GeoServer WMS.
+            Each class is individually toggleable &mdash; Open Water through Emergent Herbaceous Wetlands.
+            Useful for identifying nesting substrate (bare ground, shrubland, grassland) near corridor sites.
+            Also the input layer for the NLCD-derived nesting suitability score shown in the site dossier.
+          </li>
+          <li>
+            <strong>Cropland Data Layer (CDL)</strong> &mdash; USDA NASS CropScape raster (30&nbsp;m resolution) showing
+            dominant crop cover. Used with NASS QuickStats to compute the Pollinator&ndash;Crop Mismatch alert.
+          </li>
+          <li>
+            <strong>Tree Canopy (2013 / 2020 / 2022)</strong> &mdash; WI DNR Urban Tree Canopy classification in three
+            annual snapshots. A scrubber control switches between vintages. Per-site canopy % (150&nbsp;m radius) also
+            drives the <em>Shaded Habitat</em> alert and appears in the site dossier. Note: WI DNR advises against
+            direct change-detection comparisons across years.
+          </li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">Hazards</h4>
+        <ul class="guide-list">
+          <li>
+            <strong>PFAS Contamination Sites</strong> &mdash; WI DNR-mapped PFAS detection and investigation sites
+            in surface water and fish tissue. On by default. A 1&nbsp;km proximity check to any corridor site
+            or Monarch Waystation triggers the <em>PFAS Near Habitat</em> alert.
+          </li>
+          <li>
+            <strong>Pesticide Pressure</strong> &mdash; County-level choropleth using the USDA/NASS Critical Band index
+            across 9 NE Wisconsin counties. Bands 1&ndash;4 (Low to Critical) reflect crop mix and associated
+            neonicotinoid use. Any corridor site in a Critical-band county triggers the
+            <em>High Pesticide Pressure</em> alert.
+          </li>
+        </ul>
+      </div>
+
+      <div class="guide-subsection" style="margin-top: var(--gap-md)">
+        <h4 class="guide-subsection-title">Parcel Ownership</h4>
+        <p>
+          Brown County parcel records classified into five ownership tiers: <strong>City of Green Bay</strong>,
+          <strong>Brown County</strong>, <strong>State of Wisconsin</strong>, <strong>Institutional</strong>
+          (schools, churches, non-profits), and <strong>Private</strong>. Off by default.
+        </p>
+        <p>
+          Clicking any public parcel opens a drawer with contact information for the responsible agency
+          (City Parks, County Parks, or WI DNR) plus assessor links for the parcel record.
+          The Expansion Opportunities layer uses parcel ownership to assign a <em>Recommendation Type</em>
+          and to show public land badges in expansion drawers and export reports.
+        </p>
+      </div>
+
+    </div><!-- Data Layers -->
 
   </div><!-- guide-inner -->
 </section>
@@ -357,19 +467,19 @@
     <div class="footer-col">
       <h4>About</h4>
       <ul>
-        <li><a href="bayhive-site.html#problem">The Problem</a></li>
-        <li><a href="bayhive-site.html#tool">What It Does</a></li>
-        <li><a href="bayhive-site.html#users">Who It Serves</a></li>
-        <li><a href="guide.html">Map Guide</a></li>
+        <li><a href="/#problem">The Problem</a></li>
+        <li><a href="/#tool">What It Does</a></li>
+        <li><a href="/#users">Who It Serves</a></li>
+        <li><a href="/guide.html">Map Guide</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h4>Reference</h4>
       <ul>
-        <li><a href="reference.html#alerts">Alert Engine</a></li>
-        <li><a href="reference.html#data">Data Sources</a></li>
-        <li><a href="reference.html#governance">Governance</a></li>
-        <li><a href="reference.html#contribute">Get Involved</a></li>
+        <li><a href="/reference.html#alerts">Alert Engine</a></li>
+        <li><a href="/reference.html#data">Data Sources</a></li>
+        <li><a href="/reference.html#governance">Governance</a></li>
+        <li><a href="/reference.html#contribute">Get Involved</a></li>
         <li><a href="https://github.com/ChrisMenning/habitat" target="_blank" rel="noopener">GitHub Repository</a></li>
       </ul>
     </div>
@@ -385,37 +495,6 @@ const observer = new IntersectionObserver((entries) => {
   entries.forEach(el => { if (el.isIntersecting) el.target.classList.add('visible'); });
 }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script><script>
-// ── Mobile navigation hamburger ───────────────────────────────────────────
-const navToggle = document.getElementById('nav-toggle');
-const navList   = document.getElementById('nav-links-list');
-if (navToggle && navList) {
-  navToggle.addEventListener('click', () => {
-    const isOpen = navList.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-  });
-  // Close when any nav link is activated (smooth-scroll target)
-  navList.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-    });
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-      navToggle.focus();
-    }
-  });
-}
 </script>
-</body>
-</html>
-
 </body>
 </html>

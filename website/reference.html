@@ -7,32 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="bayhive-styles.css">
+<script src="nav.js" defer></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
-<nav role="navigation" aria-label="Main navigation">
-  <a href="bayhive-site.html" class="nav-wordmark" aria-label="Bay Hive home">
-    <span class="w1">Bay</span>
-    <span class="w2">Hive</span>
-    <span class="wh">&#x2B21;</span>
-  </a>
-  <button class="nav-hamburger" id="nav-toggle"
-          aria-label="Open navigation menu" aria-expanded="false"
-          aria-controls="nav-links-list">
-    <span></span><span></span><span></span>
-  </button>
-  <ul class="nav-links" id="nav-links-list">
-    <li><a href="bayhive-site.html">Overview</a></li>
-    <li><a href="guide.html">Map Guide</a></li>
-    <li><a href="#alerts">Alerts</a></li>
-    <li><a href="#data">Data</a></li>
-    <li><a href="#governance">Governance</a></li>
-    <li><a href="#contribute" class="nav-cta">Get Involved</a></li>
-  </ul>
-</nav>
+<bh-nav></bh-nav>
 
 <main id="main-content">
 
@@ -41,9 +23,9 @@
   <div class="alerts-layout">
     <div class="alerts-intro reveal">
       <div class="sec-label">Alert Engine</div>
-      <h2 id="alerts-h2">Fourteen<br><em>automated<br>spatial alerts</em></h2>
+      <h2 id="alerts-h2">Seventeen<br><em>automated<br>spatial alerts</em></h2>
       <p>
-        The platform's core analytical output: fourteen spatial checks that run entirely in the 
+        The platform's core analytical output: seventeen spatial checks that run entirely in the 
         browser against data already loaded in memory, with no server-side processing required.
       </p>
       <div class="tech-note">
@@ -151,8 +133,29 @@
           <p>Corridor sites with &gt;55% tree canopy coverage within 150 m (WI DNR Urban Tree Canopy 2022).</p>
         </div>
       </div>
-    </div>
-  </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-climate">Climate</span>
+        <div class="alert-body">
+          <strong>GDD Below Normal</strong>
+          <p>Daily growing-degree accumulation (base 50&deg;F) running below the 30-year normal for the current May&ndash;September window at Green Bay. Requires NOAA optional key; suppressed when the key is absent.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-climate">Climate</span>
+        <div class="alert-body">
+          <strong>Fall Frost Risk</strong>
+          <p>At least one sub-34&deg;F forecast within the next 14-day NOAA window during the active pollinator season (May&ndash;Sep). Late frosts threaten late-season milkweed and nectar resources. Requires NOAA optional key.</p>
+        </div>
+      </div>
+      <div class="alert-row">
+        <span class="alert-tag tag-data">Data</span>
+        <div class="alert-body">
+          <strong>Temporal Mismatch</strong>
+          <p>A loaded data layer whose vintage year is more than 3 years old while live-rendered on the map. Flagged to prompt users to verify whether older data is still representative of current conditions.</p>
+        </div>
+      </div>
+    </div><!-- alerts-table -->
+  </div><!-- alerts-layout -->
 </section>
 
 <div class="section-divider"></div>
@@ -178,6 +181,7 @@
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · historical back to 2010</div></div>
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">GBIF Occurrence API v1 · up to 600</div></div>
     <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">FWS Dataset · All 6 Bee Families</div></div>
+    <div class="source-item"><div class="source-cat">Analysis Model</div><div class="source-name">InVEST Pollinator Index · Lonsdorf et al. 2009 · NLCD biophysical scores</div></div>
     <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">USGS PAD-US v3.0</div></div>
     <div class="source-item"><div class="source-cat">Conservation</div><div class="source-name">WI DNR State Natural Areas &amp; Managed Lands</div></div>
     <div class="source-item"><div class="source-cat">Hazards</div><div class="source-name">WI DNR PFAS Contamination Sites</div></div>
@@ -332,17 +336,6 @@
 </div>
 
 <!-- FOOTER -->
-
-<div class="tech-strip" aria-label="Technical specifications">
-  <div class="tech-item"><span class="tech-item-lbl">Runtime</span><span class="tech-item-val">Node.js 18+</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Dependencies</span><span class="tech-item-val">Zero (npm)</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Mapping</span><span class="tech-item-val">MapLibre GL 3.6.2</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Modules</span><span class="tech-item-val">Native ES Modules</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Caching</span><span class="tech-item-val">IndexedDB</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Accessibility</span><span class="tech-item-val">WCAG 2.2 AA</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">License</span><span class="tech-item-val">GNU GPL v3.0</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Deploy</span><span class="tech-item-val">node serve.js</span></div>
-</div>
 </main>
 
 <footer role="contentinfo">
@@ -355,19 +348,19 @@
     <div class="footer-col">
       <h4>About</h4>
       <ul>
-        <li><a href="bayhive-site.html#problem">The Problem</a></li>
-        <li><a href="bayhive-site.html#tool">What It Does</a></li>
-        <li><a href="bayhive-site.html#users">Who It Serves</a></li>
-        <li><a href="guide.html">Map Guide</a></li>
+        <li><a href="/#problem">The Problem</a></li>
+        <li><a href="/#tool">What It Does</a></li>
+        <li><a href="/#users">Who It Serves</a></li>
+        <li><a href="/guide.html">Map Guide</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h4>Reference</h4>
       <ul>
-        <li><a href="reference.html#alerts">Alert Engine</a></li>
-        <li><a href="reference.html#data">Data Sources</a></li>
-        <li><a href="reference.html#governance">Governance</a></li>
-        <li><a href="reference.html#contribute">Get Involved</a></li>
+        <li><a href="/reference.html#alerts">Alert Engine</a></li>
+        <li><a href="/reference.html#data">Data Sources</a></li>
+        <li><a href="/reference.html#governance">Governance</a></li>
+        <li><a href="/reference.html#contribute">Get Involved</a></li>
         <li><a href="https://github.com/ChrisMenning/habitat" target="_blank" rel="noopener">GitHub Repository</a></li>
       </ul>
     </div>
@@ -383,37 +376,6 @@ const observer = new IntersectionObserver((entries) => {
   entries.forEach(el => { if (el.isIntersecting) el.target.classList.add('visible'); });
 }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script><script>
-// ── Mobile navigation hamburger ───────────────────────────────────────────
-const navToggle = document.getElementById('nav-toggle');
-const navList   = document.getElementById('nav-links-list');
-if (navToggle && navList) {
-  navToggle.addEventListener('click', () => {
-    const isOpen = navList.classList.toggle('is-open');
-    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    navToggle.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-  });
-  // Close when any nav link is activated (smooth-scroll target)
-  navList.querySelectorAll('a').forEach(a => {
-    a.addEventListener('click', () => {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-    });
-  });
-  // Close on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && navList.classList.contains('is-open')) {
-      navList.classList.remove('is-open');
-      navToggle.setAttribute('aria-expanded', 'false');
-      navToggle.setAttribute('aria-label', 'Open navigation menu');
-      navToggle.focus();
-    }
-  });
-}
 </script>
-</body>
-</html>
-
 </body>
 </html>

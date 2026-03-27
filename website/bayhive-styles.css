@@ -100,6 +100,7 @@ nav {
   transition: color 0.2s;
 }
 .nav-links a:hover { color: var(--honey); }
+.nav-links a[aria-current="page"] { color: var(--honey); }
 .nav-cta {
   background: var(--honey) !important;
   color: var(--ink) !important;
@@ -116,7 +117,7 @@ nav {
 .hero {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 55% 45%;
+  grid-template-columns: 1fr minmax(0, 770px) minmax(0, 630px) 1fr;
   position: relative;
   overflow: hidden;
   padding-top: 4rem;
@@ -139,6 +140,7 @@ nav {
 }
 
 .hero-content {
+  grid-column: 2;
   position: relative; z-index: 2;
   display: flex; flex-direction: column; justify-content: center;
   padding: 6rem 3rem 6rem 4rem;
@@ -219,6 +221,7 @@ h1 .hl { color: var(--honey); font-style: italic; }
 .btn-ghost:hover { border-color: var(--honey); color: var(--wax); }
 
 .hero-right {
+  grid-column: 3;
   position: relative; z-index: 2;
   display: flex; align-items: center; justify-content: center;
   padding: 6rem 3rem;
@@ -436,6 +439,8 @@ p { color: var(--fog); }
 .tag-connect { color: #6AACB0; border-color: rgba(106,172,176,0.4); }
 .tag-crops   { color: #9AC050; border-color: rgba(154,192,80,0.4); }
 .tag-site    { color: var(--mist); border-color: rgba(122,140,98,0.4); }
+.tag-climate { color: #5BA8D0; border-color: rgba(91,168,208,0.4); }
+.tag-data    { color: #9CA3AF; border-color: rgba(156,163,175,0.4); }
 
 .alert-body strong { display: block; font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.2rem; }
 .alert-body p { font-size: 0.78rem; line-height: 1.55; color: var(--mist); }
@@ -719,7 +724,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   }
   .nav-links.is-open { display: flex; }
   .hero { grid-template-columns: 1fr; }
-  .hero-content { padding: 7rem 1.5rem 3rem; }
+  .hero-content { grid-column: 1; padding: 7rem 1.5rem 3rem; }
   .hero-right { display: none; }
   h1 { font-size: 3.2rem; }
   #problem, #alerts, #users, #contribute { padding: 4rem 1.5rem; }
