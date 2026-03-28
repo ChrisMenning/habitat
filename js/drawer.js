@@ -630,6 +630,19 @@ export function openDrawer(feature) {
   const nearbyParcelsHtml = isApprox ? '' : _buildNearbyParcelsSection(coord);
   const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
 
+  // Monarch migration phenology notice — shown only for waystation drawers
+  const migrationHtml = (() => {
+    if (src !== 'waystation') return '';
+    const now = new Date();
+    const m = now.getMonth(), d = now.getDate();
+    // Monarch Watch timing for 44.5°N (Green Bay): Aug 28 – Sep 15, peak ~Sep 8
+    const inWindow = (m === 7 && d >= 28) || (m === 8 && d <= 15);
+    if (inWindow) {
+      return `<p style="margin:0 0 8px;padding:4px 9px;font-size:11px;line-height:1.45;border-radius:4px;background:rgba(245,158,11,0.13);border:1px solid rgba(245,158,11,0.32);color:#f59e0b;font-weight:600;">&#x1F98B; Fall migration window active: Aug 28 \u2013 Sep 15 &middot; Peak ~Sep 8 (Green Bay, 44.5&#xb0;N)</p>`;
+    }
+    return `<p style="margin:0 0 8px;padding:3px 9px;font-size:11px;line-height:1.45;border-radius:4px;color:#6b7280;">Fall migration window: Aug 28 \u2013 Sep 15 (Green Bay area)</p>`;
+  })();
+
   body.innerHTML = `
     <div class="drawer-header" style="background:${headerColor};">
       <div class="drawer-header-label">${esc(titleLabel)}</div>
@@ -638,6 +651,7 @@ export function openDrawer(feature) {
     <div class="drawer-content">
       ${approxHtml}
       ${metaHtml}
+      ${migrationHtml}
       ${nestingHtml}
       ${canopyHtml}
       ${nearbyParcelsHtml}
