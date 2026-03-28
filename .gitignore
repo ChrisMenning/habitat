@@ -8,5 +8,7 @@ ebird-key.txt
 key
 key.pub
 
-# Snapshots — runtime/harvested data, not for version control
-snapshots/
+# Snapshots — runtime cache and harvested iNat data, not for version control
+# Pre-computed reference files (climate-normals, observed-temps) ARE committed
+snapshots/cache/
+snapshots/inat-*.json

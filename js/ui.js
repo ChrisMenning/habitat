@@ -756,14 +756,11 @@ export function buildAreaPopupHTML(props) {
   if (src === 'hnp') {
     const isOrg    = props.org_type === 'ORGANIZATIONS';
     const typeLabel = isOrg ? 'Member Organization' : 'Registered Yard';
-    const mapUrl   = props.hnp_map_url
-      ? `<a class="popup-link" href="${esc(props.hnp_map_url)}" target="_blank" rel="noopener noreferrer">View on HNP map ↗</a>`
-      : `<a class="popup-link" href="https://homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">Homegrown National Park ↗</a>`;
     return `
       <div class="popup-body">
         <strong class="popup-name">${esc(props.name)}</strong>
         <span class="popup-source">🌿 HNP · ${typeLabel}</span>
-        ${mapUrl}
+        <a class="popup-link" href="https://map.homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">View on HNP Map ↗</a>
       </div>`;
   }
 

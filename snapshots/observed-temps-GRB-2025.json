@@ -1,0 +1,699 @@
+{
+  "station": "GRB / USW00014898",
+  "stationName": "GREEN BAY AUSTIN STRAUBEL INTL AP, WI US",
+  "year": 2025,
+  "source": "Iowa Environmental Mesonet (IEM) ASOS archive — Iowa State University. Observed daily temperature data; not federal government-hosted.",
+  "sourceUrl": "https://mesonet.agron.iastate.edu/",
+  "retrieved": "2026-03-27",
+  "cumulativeGddBase50": 1,
+  "records": [
+    {
+      "doy": 1,
+      "date": "01-01",
+      "tmax": 32,
+      "tmin": 23,
+      "tavg": 27.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 2,
+      "date": "01-02",
+      "tmax": 26,
+      "tmin": 19,
+      "tavg": 22.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 3,
+      "date": "01-03",
+      "tmax": 21,
+      "tmin": 14,
+      "tavg": 17.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 4,
+      "date": "01-04",
+      "tmax": 17,
+      "tmin": 8,
+      "tavg": 12.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 5,
+      "date": "01-05",
+      "tmax": 21,
+      "tmin": 6,
+      "tavg": 13.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 6,
+      "date": "01-06",
+      "tmax": 29,
+      "tmin": 16,
+      "tavg": 22.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 7,
+      "date": "01-07",
+      "tmax": 24,
+      "tmin": 11,
+      "tavg": 17.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 8,
+      "date": "01-08",
+      "tmax": 22,
+      "tmin": 9,
+      "tavg": 15.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 9,
+      "date": "01-09",
+      "tmax": 31,
+      "tmin": 7,
+      "tavg": 19,
+      "gddBase50": 0
+    },
+    {
+      "doy": 10,
+      "date": "01-10",
+      "tmax": 29,
+      "tmin": 25,
+      "tavg": 27,
+      "gddBase50": 0
+    },
+    {
+      "doy": 11,
+      "date": "01-11",
+      "tmax": 32,
+      "tmin": 21,
+      "tavg": 26.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 12,
+      "date": "01-12",
+      "tmax": 32,
+      "tmin": 19,
+      "tavg": 25.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 13,
+      "date": "01-13",
+      "tmax": 19,
+      "tmin": 3,
+      "tavg": 11,
+      "gddBase50": 0
+    },
+    {
+      "doy": 14,
+      "date": "01-14",
+      "tmax": 19,
+      "tmin": -2,
+      "tavg": 8.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 15,
+      "date": "01-15",
+      "tmax": 23,
+      "tmin": 0,
+      "tavg": 11.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 16,
+      "date": "01-16",
+      "tmax": 38,
+      "tmin": 21,
+      "tavg": 29.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 17,
+      "date": "01-17",
+      "tmax": 46,
+      "tmin": 23,
+      "tavg": 34.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 18,
+      "date": "01-18",
+      "tmax": 36,
+      "tmin": 6,
+      "tavg": 21,
+      "gddBase50": 0
+    },
+    {
+      "doy": 19,
+      "date": "01-19",
+      "tmax": 6,
+      "tmin": -5,
+      "tavg": 0.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 20,
+      "date": "01-20",
+      "tmax": 2,
+      "tmin": -8,
+      "tavg": -3,
+      "gddBase50": 0
+    },
+    {
+      "doy": 21,
+      "date": "01-21",
+      "tmax": 2,
+      "tmin": -13,
+      "tavg": -5.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 22,
+      "date": "01-22",
+      "tmax": 22,
+      "tmin": 2,
+      "tavg": 12,
+      "gddBase50": 0
+    },
+    {
+      "doy": 23,
+      "date": "01-23",
+      "tmax": 19,
+      "tmin": 3,
+      "tavg": 11,
+      "gddBase50": 0
+    },
+    {
+      "doy": 24,
+      "date": "01-24",
+      "tmax": 20,
+      "tmin": 0,
+      "tavg": 10,
+      "gddBase50": 0
+    },
+    {
+      "doy": 25,
+      "date": "01-25",
+      "tmax": 38,
+      "tmin": 20,
+      "tavg": 29,
+      "gddBase50": 0
+    },
+    {
+      "doy": 26,
+      "date": "01-26",
+      "tmax": 32,
+      "tmin": 11,
+      "tavg": 21.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 27,
+      "date": "01-27",
+      "tmax": 41,
+      "tmin": 22,
+      "tavg": 31.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 28,
+      "date": "01-28",
+      "tmax": 49,
+      "tmin": 19,
+      "tavg": 34,
+      "gddBase50": 0
+    },
+    {
+      "doy": 29,
+      "date": "01-29",
+      "tmax": 41,
+      "tmin": 26,
+      "tavg": 33.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 30,
+      "date": "01-30",
+      "tmax": 53,
+      "tmin": 21,
+      "tavg": 37,
+      "gddBase50": 0
+    },
+    {
+      "doy": 31,
+      "date": "01-31",
+      "tmax": 40,
+      "tmin": 20,
+      "tavg": 30,
+      "gddBase50": 0
+    },
+    {
+      "doy": 32,
+      "date": "02-01",
+      "tmax": 30,
+      "tmin": 12,
+      "tavg": 21,
+      "gddBase50": 0
+    },
+    {
+      "doy": 33,
+      "date": "02-02",
+      "tmax": 37,
+      "tmin": 30,
+      "tavg": 33.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 34,
+      "date": "02-03",
+      "tmax": 36,
+      "tmin": 25,
+      "tavg": 30.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 35,
+      "date": "02-04",
+      "tmax": 25,
+      "tmin": 8,
+      "tavg": 16.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 36,
+      "date": "02-05",
+      "tmax": 24,
+      "tmin": -1,
+      "tavg": 11.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 37,
+      "date": "02-06",
+      "tmax": 35,
+      "tmin": 10,
+      "tavg": 22.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 38,
+      "date": "02-07",
+      "tmax": 25,
+      "tmin": 7,
+      "tavg": 16,
+      "gddBase50": 0
+    },
+    {
+      "doy": 39,
+      "date": "02-08",
+      "tmax": 25,
+      "tmin": 15,
+      "tavg": 20,
+      "gddBase50": 0
+    },
+    {
+      "doy": 40,
+      "date": "02-09",
+      "tmax": 20,
+      "tmin": 2,
+      "tavg": 11,
+      "gddBase50": 0
+    },
+    {
+      "doy": 41,
+      "date": "02-10",
+      "tmax": 23,
+      "tmin": 4,
+      "tavg": 13.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 42,
+      "date": "02-11",
+      "tmax": 16,
+      "tmin": -8,
+      "tavg": 4,
+      "gddBase50": 0
+    },
+    {
+      "doy": 43,
+      "date": "02-12",
+      "tmax": 19,
+      "tmin": -7,
+      "tavg": 6,
+      "gddBase50": 0
+    },
+    {
+      "doy": 44,
+      "date": "02-13",
+      "tmax": 17,
+      "tmin": -2,
+      "tavg": 7.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 45,
+      "date": "02-14",
+      "tmax": 25,
+      "tmin": -10,
+      "tavg": 7.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 46,
+      "date": "02-15",
+      "tmax": 28,
+      "tmin": 22,
+      "tavg": 25,
+      "gddBase50": 0
+    },
+    {
+      "doy": 47,
+      "date": "02-16",
+      "tmax": 25,
+      "tmin": 0,
+      "tavg": 12.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 48,
+      "date": "02-17",
+      "tmax": 7,
+      "tmin": -8,
+      "tavg": -0.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 49,
+      "date": "02-18",
+      "tmax": 12,
+      "tmin": -12,
+      "tavg": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 50,
+      "date": "02-19",
+      "tmax": 16,
+      "tmin": -5,
+      "tavg": 5.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 51,
+      "date": "02-20",
+      "tmax": 29,
+      "tmin": 9,
+      "tavg": 19,
+      "gddBase50": 0
+    },
+    {
+      "doy": 52,
+      "date": "02-21",
+      "tmax": 25,
+      "tmin": -3,
+      "tavg": 11,
+      "gddBase50": 0
+    },
+    {
+      "doy": 53,
+      "date": "02-22",
+      "tmax": 29,
+      "tmin": 16,
+      "tavg": 22.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 54,
+      "date": "02-23",
+      "tmax": 36,
+      "tmin": 19,
+      "tavg": 27.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 55,
+      "date": "02-24",
+      "tmax": 53,
+      "tmin": 36,
+      "tavg": 44.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 56,
+      "date": "02-25",
+      "tmax": 48,
+      "tmin": 31,
+      "tavg": 39.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 57,
+      "date": "02-26",
+      "tmax": 47,
+      "tmin": 33,
+      "tavg": 40,
+      "gddBase50": 0
+    },
+    {
+      "doy": 58,
+      "date": "02-27",
+      "tmax": 43,
+      "tmin": 30,
+      "tavg": 36.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 59,
+      "date": "02-28",
+      "tmax": 49,
+      "tmin": 23,
+      "tavg": 36,
+      "gddBase50": 0
+    },
+    {
+      "doy": 60,
+      "date": "03-01",
+      "tmax": 27,
+      "tmin": 15,
+      "tavg": 21,
+      "gddBase50": 0
+    },
+    {
+      "doy": 61,
+      "date": "03-02",
+      "tmax": 31,
+      "tmin": 15,
+      "tavg": 23,
+      "gddBase50": 0
+    },
+    {
+      "doy": 62,
+      "date": "03-03",
+      "tmax": 46,
+      "tmin": 26,
+      "tavg": 36,
+      "gddBase50": 0
+    },
+    {
+      "doy": 63,
+      "date": "03-04",
+      "tmax": 50,
+      "tmin": 34,
+      "tavg": 42,
+      "gddBase50": 0
+    },
+    {
+      "doy": 64,
+      "date": "03-05",
+      "tmax": 39,
+      "tmin": 25,
+      "tavg": 32,
+      "gddBase50": 0
+    },
+    {
+      "doy": 65,
+      "date": "03-06",
+      "tmax": 37,
+      "tmin": 24,
+      "tavg": 30.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 66,
+      "date": "03-07",
+      "tmax": 42,
+      "tmin": 24,
+      "tavg": 33,
+      "gddBase50": 0
+    },
+    {
+      "doy": 67,
+      "date": "03-08",
+      "tmax": 45,
+      "tmin": 20,
+      "tavg": 32.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 68,
+      "date": "03-09",
+      "tmax": 60,
+      "tmin": 32,
+      "tavg": 46,
+      "gddBase50": 0
+    },
+    {
+      "doy": 69,
+      "date": "03-10",
+      "tmax": 65,
+      "tmin": 32,
+      "tavg": 48.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 70,
+      "date": "03-11",
+      "tmax": 47,
+      "tmin": 30,
+      "tavg": 38.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 71,
+      "date": "03-12",
+      "tmax": 47,
+      "tmin": 30,
+      "tavg": 38.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 72,
+      "date": "03-13",
+      "tmax": 60,
+      "tmin": 30,
+      "tavg": 45,
+      "gddBase50": 0
+    },
+    {
+      "doy": 73,
+      "date": "03-14",
+      "tmax": 67,
+      "tmin": 35,
+      "tavg": 51,
+      "gddBase50": 1
+    },
+    {
+      "doy": 74,
+      "date": "03-15",
+      "tmax": 62,
+      "tmin": 35,
+      "tavg": 48.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 75,
+      "date": "03-16",
+      "tmax": 40,
+      "tmin": 27,
+      "tavg": 33.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 76,
+      "date": "03-17",
+      "tmax": 48,
+      "tmin": 25,
+      "tavg": 36.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 77,
+      "date": "03-18",
+      "tmax": 48,
+      "tmin": 35,
+      "tavg": 41.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 78,
+      "date": "03-19",
+      "tmax": 40,
+      "tmin": 32,
+      "tavg": 36,
+      "gddBase50": 0
+    },
+    {
+      "doy": 79,
+      "date": "03-20",
+      "tmax": 38,
+      "tmin": 28,
+      "tavg": 33,
+      "gddBase50": 0
+    },
+    {
+      "doy": 80,
+      "date": "03-21",
+      "tmax": 53,
+      "tmin": 30,
+      "tavg": 41.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 81,
+      "date": "03-22",
+      "tmax": 37,
+      "tmin": 26,
+      "tavg": 31.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 82,
+      "date": "03-23",
+      "tmax": 38,
+      "tmin": 29,
+      "tavg": 33.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 83,
+      "date": "03-24",
+      "tmax": 35,
+      "tmin": 20,
+      "tavg": 27.5,
+      "gddBase50": 0
+    },
+    {
+      "doy": 84,
+      "date": "03-25",
+      "tmax": 41,
+      "tmin": 21,
+      "tavg": 31,
+      "gddBase50": 0
+    },
+    {
+      "doy": 85,
+      "date": "03-26",
+      "tmax": 46,
+      "tmin": 20,
+      "tavg": 33,
+      "gddBase50": 0
+    },
+    {
+      "doy": 86,
+      "date": "03-27",
+      "tmax": 56,
+      "tmin": 31,
+      "tavg": 43.5,
+      "gddBase50": 0
+    }
+  ]
+}
