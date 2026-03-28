@@ -441,7 +441,7 @@ function tileToBbox3857(z, x, y) {
 //   71  Grassland/Herbaceous — ground-nesting bees                            (weight 3)
 
 const NESTING_CODES   = { 31: 7, 52: 2, 71: 3 };
-const TRACKED_CODES   = new Set([11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
+const TRACKED_CODES   = new Set([11, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
 const NESTING_Z       = 13;
 const NESTING_RADIUS  = 300; // metres
 const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
@@ -549,7 +549,7 @@ async function _getNlcdTileData(z, tx, ty) {
  */
 function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
   const { palMap, indices, width, height } = tile;
-  const counts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
+  const counts = { 11: 0, 21: 0, 22: 0, 23: 0, 24: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
   let total = 0;
   const latR    = lat * Math.PI / 180;
   const cosLat  = Math.cos(latR);
@@ -615,14 +615,14 @@ async function _computeNestingBatch(sites) {
   );
   // Score each site
   return sites.map(s => {
-    const aggCounts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
+    const aggCounts = { 11: 0, 21: 0, 22: 0, 23: 0, 24: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
     let aggTotal = 0;
     for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
       const k = `${NESTING_Z}/${tx}/${ty}`;
       const t = fetched.get(k);
       if (!t) continue;
       const { counts, total } = _countNestingPixels(t.data, NESTING_Z, tx, ty, s.lng, s.lat, NESTING_RADIUS);
-      for (const code of [11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]) {
+      for (const code of [11, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]) {
         aggCounts[code] += counts[code] || 0;
       }
       aggTotal += total;

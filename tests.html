@@ -266,8 +266,8 @@ def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting → scores for 1 site'
   if (d.length !== 1) throw new Error(`Expected 1 result, got ${d.length}`);
   if (typeof d[0].score !== 'number') throw new Error(`Result missing numeric score`);
 });
-def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting rejects batch > 200 sites (400)', async () => {
-  const sites = JSON.stringify(Array.from({ length: 201 }, (_, i) => ({ id: `s${i}`, lng: -88, lat: 44.5 })));
+def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting rejects batch > 600 sites (400)', async () => {
+  const sites = JSON.stringify(Array.from({ length: 601 }, (_, i) => ({ id: `s${i}`, lng: -88, lat: 44.5 })));
   const r = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(sites)}`);
   if (r.status !== 400) throw new Error(`Expected HTTP 400 for oversized batch, got ${r.status}`);
 });

@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INAT_HISTORY_START_YEAR,
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER, INAT_HISTORY_START_YEAR,
          LAYER_VINTAGES, LAYER_LABELS, STALENESS_THRESHOLD_YEARS, TEMPORAL_MISMATCH_THRESHOLD_YEARS,
          CENTER, RADIUS_KM, LAYER_PRESETS } from './config.js';
 import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
@@ -61,6 +61,10 @@ import { initMap, registerLayer, registerAreaLayer,
          updateProblemAreasLayer,
          registerInVESTHeatmap,
          updateInVESTHeatmap,
+         registerInVESTUrbanHeatmap,
+         updateInVESTUrbanHeatmap,
+         registerForagingBands,
+         updateForagingBands,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
@@ -88,6 +92,7 @@ import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
          setHabitatSites as setDrawerHabitatSites,
          setNestingScores as setDrawerNestingScores,
          setCanopyScores as setDrawerCanopyScores,
+         setInvestCrosswalkScores as setDrawerInvestCrosswalkScores,
          setParcelFeatures as setDrawerParcelFeatures,
          setCommonsImages as setDrawerCommonsImages }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
@@ -99,7 +104,7 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
-import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap } from './nesting.js';
+import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap, computeInVESTHeatmapUrban, crosswalkInVESTCorridor, computeForagingBands } from './nesting.js';
 import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache, queryParcelsNear, OWNERSHIP_META } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
@@ -214,6 +219,8 @@ function areaOrPointVisibility(id, visible) {
   else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
   else if (id === 'bees-richness')        setHeatmapVisibility('bees-richness', visible);
   else if (id === 'invest-heat')                setHeatmapVisibility('invest-heat', visible);
+  else if (id === 'invest-urban-heat')           setHeatmapVisibility('invest-urban-heat', visible);
+  else if (id === 'foraging-bands')              setHeatmapVisibility('foraging-bands', visible);
   else if (id === 'journeynorth-monarchs')       setJourneyNorthVisibility(visible);
   else                                           setLayerVisibility(id, visible);
 }
@@ -278,6 +285,7 @@ const _ALL_CONFIG_LAYERS = [
   ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
   ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
   PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+  INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER,
 ];
 
 /**
@@ -290,6 +298,8 @@ const _HARDCODED_CB_SUFFIXES = [
   'heatmap-native-plants',
   'tree-canopy',
   'cdl-fringe',
+  'invest-urban-heat',
+  'foraging-bands',
 ];
 
 /**
@@ -391,6 +401,9 @@ let _nestingLoaded    = false;        // true once first fetch completes
 let _canopyScores     = new Map();   // site name → canopyPct (0–100)
 let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
 let _alertFocusHandler = null;        // module-level so async callbacks can re-render alerts
+// Urban InVEST fine-grid cache — populated lazily on first toggle
+let _urbanNlcdScores  = null;         // fine-grid Map (430 m) once fetched
+let _urbanInVESTGeojson = null;       // computed GeoJSON cache so re-toggle is instant
 
 // Parcel and Commons state — populated lazily on first layer enable
 let _parcelFeatures = [];
@@ -461,13 +474,51 @@ function _coordsToFeatures(coords) {
  * as mesh nodes (so lines connect groups, not every underlying individual).
  * When fully expanded (zoom ≥ clusterMaxZoom), individual points are used.
  */
+/**
+ * Collapses corridor features that are within `thresholdKm` of each other
+ * into a single representative Point at their centroid.  Used by the
+ * connectivity mesh to avoid false density in tight site groupings like
+ * Farlin Park (9 adjacent sites that should count as one network node).
+ */
+function _clusterCorridorFeats(feats, thresholdKm = 0.25) {
+  const clusters = [];
+  for (const feat of feats) {
+    const g = feat.geometry;
+    const [lng, lat] = g.type === 'Point'
+      ? g.coordinates
+      : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+    let found = null;
+    for (const c of clusters) {
+      const dx = (lng - c.lng) * 111.32 * Math.cos(lat * Math.PI / 180);
+      const dy = (lat - c.lat) * 111.32;
+      if (Math.sqrt(dx*dx + dy*dy) < thresholdKm) { found = c; break; }
+    }
+    if (found) {
+      found.count++;
+      found.lng += (lng - found.lng) / found.count;
+      found.lat += (lat - found.lat) / found.count;
+    } else {
+      clusters.push({ lng, lat, count: 1 });
+    }
+  }
+  return clusters.map(c => ({
+    type: 'Feature',
+    geometry:   { type: 'Point', coordinates: [c.lng, c.lat] },
+    properties: {},
+  }));
+}
+
 function refreshConnectivityMesh() {
   // Foraging-range mesh uses confirmed-location waystations only — approximate
   // sites have no known address and would create false connectivity signals.
   const hnpCoords = getEffectiveClusteredCoords('hnp');
   const hnpFeats  = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
 
-  updateConnectivityMesh(_corridorFeats, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
+  // Cluster nearby corridor sites (threshold 250 m) to treat dense groupings
+  // like Farlin Park as a single network node rather than 9 individual points.
+  const clusteredCorridor = _clusterCorridorFeats(_corridorFeats, 0.25);
+
+  updateConnectivityMesh(clusteredCorridor, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
 }
 
 // ── Background iNaturalist historical loader ───────────────────────────────────
@@ -636,6 +687,51 @@ const _refreshParcelViewport = _debounce(async () => {
     if (hint) hint.textContent = 'Parcel data unavailable — county GIS endpoint could not be reached.';
   }
 }, 800);
+
+// ── Lazy Urban InVEST + corridor crosswalk ───────────────────────────────────
+
+/**
+ * Fetches/computes the Urban InVEST index at fine (0.003°) grid resolution.
+ * Results are cached in _urbanNlcdScores / _urbanInVESTGeojson so re-toggling
+ * the layer is instant.  Called from the toggle-invest-urban-heat change handler.
+ */
+async function _lazyComputeUrbanInVEST() {
+  if (_urbanInVESTGeojson) {
+    // Already computed — just push the cached GeoJSON to the layer.
+    updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    return;
+  }
+  try {
+    if (!_urbanNlcdScores) {
+      // Use 0.006° (≈660 m) grid over a 12 km radius — 2× finer than the
+      // landscape layer (0.012°) but ~10× fewer cells than 0.003° over 15 km.
+      // This keeps the fetch to ~3 API requests and compute to <200 ms.
+      console.debug('[urban-invest] fetching fine-grid NLCD scores (0.006°, 12 km)…');
+      _urbanNlcdScores = await fetchGridNlcdScores(CENTER[0], CENTER[1], 12, 0.006);
+    }
+    _urbanInVESTGeojson = computeInVESTHeatmapUrban(_urbanNlcdScores, CENTER[0], CENTER[1], 12);
+    updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
+
+    // Also run the corridor crosswalk and log scores for inspection.
+    if (_corridorFeats.length) {
+      const sites = _corridorFeats.map(f => {
+        const g = f.geometry;
+        const coord = g.type === 'Point'
+          ? g.coordinates
+          : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+        return { name: f.properties?.Park ?? 'Site', coords: coord };
+      });
+      const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, sites);
+      setDrawerInvestCrosswalkScores(xwalk);
+      console.debug('[invest-crosswalk] top sites:', [...xwalk].sort((a,b)=>b.investScore-a.investScore).slice(0,10));
+    }
+  } catch (err) {
+    console.warn('[urban-invest] failed:', err.message);
+  }
+}
+
+// ── Lazy Commons photos ───────────────────────────────────────────────────────
 
 /**
  * Fetches Wikimedia Commons geotagged photos near the map centre on the first
@@ -963,6 +1059,24 @@ async function loadObservations() {
         _gridNlcdScores = scores;
         updateInVESTHeatmap(computeInVESTHeatmap(_gridNlcdScores, CENTER[0], CENTER[1], RADIUS_KM));
       }).catch(() => { /* grid NLCD unavailable — silent degradation */ });
+
+      // Compute foraging-range bands from corridor site centroids.
+      // Must use corridorResult.value.features directly here — _corridorFeats is
+      // not yet assigned at this point in the allSettled handler (it's set
+      // further down in the cross-module bind block, after all if/else branches).
+      {
+        const rawCorridorFeats = corridorResult.value.features;
+        if (rawCorridorFeats.length) {
+          const corridorSites = rawCorridorFeats.map(f => {
+            const g = f.geometry;
+            const coord = g.type === 'Point'
+              ? g.coordinates
+              : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+            return { name: f.properties?.name ?? f.properties?.Park ?? 'Corridor Site', coords: coord };
+          });
+          updateForagingBands(computeForagingBands(corridorSites));
+        }
+      }
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -1565,6 +1679,8 @@ map.on('load', async () => {
   registerExpansionOpportunitiesLayer(false);
   registerProblemAreasLayer(false);
   registerInVESTHeatmap(false);
+  registerInVESTUrbanHeatmap(false);
+  registerForagingBands(false);
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -1782,17 +1898,9 @@ map.on('load', async () => {
   // Initialise the activity bar (opens/closes flyout panes)
   const activityBar = initActivityBar();
 
-  // Permalink — restore state from URL hash, then init sync
-  const _permalinkState = parsePermalink();
-  if (_permalinkState) {
-    applyPermalinkState(_permalinkState, map);
-  } else {
-    // Apply the Orientation view as the default starting state
-    const _orientPreset = LAYER_PRESETS.find(p => p.id === 'orientation');
-    if (_orientPreset) applyPreset(_orientPreset);
-  }
-
-  // Connectivity mesh follows corridor — no standalone toggle needed.
+  // Wire hardcoded-checkbox change handlers BEFORE applyPreset/applyPermalinkState.
+  // These listeners must exist when applyPreset dispatches 'change' events on them;
+  // otherwise layer visibility is never updated and the checkbox/layer state diverges.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
   });
@@ -1809,6 +1917,23 @@ map.on('load', async () => {
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
+  document.getElementById('toggle-invest-urban-heat')?.addEventListener('change', e => {
+    setHeatmapVisibility('invest-urban-heat', e.target.checked);
+    if (e.target.checked) _lazyComputeUrbanInVEST();
+  });
+  document.getElementById('toggle-foraging-bands')?.addEventListener('change', e => {
+    setHeatmapVisibility('foraging-bands', e.target.checked);
+  });
+
+  // Permalink — restore state from URL hash, then init sync
+  const _permalinkState = parsePermalink();
+  if (_permalinkState) {
+    applyPermalinkState(_permalinkState, map);
+  } else {
+    // Apply the Orientation view as the default starting state
+    const _orientPreset = LAYER_PRESETS.find(p => p.id === 'orientation');
+    if (_orientPreset) applyPreset(_orientPreset);
+  }
   // "All layers off" button — unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
     document.querySelectorAll('#panel-flyout input[type="checkbox"]:checked').forEach(cb => {
@@ -2166,19 +2291,67 @@ map.on('load', async () => {
   // Wire click interactions on all layers (points + polygon fills)
   const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
-  const alertLayerIds = ['points-expansion-opportunities', 'points-problem-areas'];
+  const alertLayerIds  = ['points-expansion-opportunities', 'points-problem-areas'];
+  const investHitIds   = ['invest-urban-heat-hits-layer'];
 
   // Wire hover cursors for all interactive layers (no click listener here)
-  wireHoverCursors([...areaLayerIds, ...pointLayerIds, ...alertLayerIds]);
+  wireHoverCursors([...areaLayerIds, ...pointLayerIds, ...alertLayerIds, ...investHitIds]);
 
   // Single unified click dispatcher — one query, one decision tree, no double-firing
   getMap().on('click', e => {
     const allHits = getMap().queryRenderedFeatures(e.point, {
-      layers: [...areaLayerIds, ...pointLayerIds, ...alertLayerIds],
+      layers: [...areaLayerIds, ...pointLayerIds, ...alertLayerIds, ...investHitIds],
     });
     if (!allHits.length) return;
 
     const lngLat = e.lngLat;
+
+    // Urban InVEST hit — show explainer popup
+    const investHit = allHits.find(f => f.layer.id === 'invest-urban-heat-hits-layer');
+    if (investHit && !allHits.some(f => f.layer.id !== 'invest-urban-heat-hits-layer' && isDrawerFeature(f.properties))) {
+      const w = investHit.properties?.weight ?? 0;
+      const pct = Math.round(w * 100);
+      const tier = pct >= 70 ? 'relatively high quality' : pct >= 35 ? 'moderate quality' : 'lower quality relative to nearby urban areas';
+      const body = `
+        <div class="drawer-score-hero" style="margin-bottom:12px">
+          <div class="drawer-score-ring">
+            <span class="drawer-score-num">${pct}</span>
+            <span class="drawer-score-denom">/100</span>
+          </div>
+          <div class="drawer-score-bar-wrap">
+            <div class="drawer-score-bar"><div class="drawer-score-fill" style="width:${pct}%;background:#8b5cf6"></div></div>
+            <span class="drawer-score-tier" style="color:#8b5cf6">Urban habitat index — ${tier}</span>
+          </div>
+        </div>
+        <div class="drawer-section-label">What this score means</div>
+        <p class="drawer-intel-note">
+          This score compares the habitat potential of this location to other <strong>urban</strong> cells within the study area — not to rural grassland.
+          A score of ${pct}/100 means this area ranks in approximately the ${pct}th percentile of developed land for pollinator suitability.
+        </p>
+        <div class="drawer-section-label">About this model</div>
+        <p class="drawer-intel-note">
+          The InVEST Lonsdorf&nbsp;(2009) pollinator model was designed and calibrated for farmland — it scores
+          habitat relative to rural grassland and cropland, where urban land always loses.
+          This layer is a <strong>derivative adaptation</strong>: the same kernel is re-run at 660&nbsp;m resolution,
+          restricted to developed NLCD classes (≥20% impervious), and normalized against the best urban cell
+          rather than rural land. The result is a within-city comparison — it does not claim that any urban
+          site equals the habitat quality of a prairie remnant.
+          Small and medium solitary bees (Osmia, Lasioglossum) are upweighted; they are the species most
+          likely to colonize urban plantings.
+        </p>
+        <div class="drawer-section-label">Limitations</div>
+        <p class="drawer-intel-note">
+          Scores reflect the surrounding 660&nbsp;m land cover matrix, not what is specifically planted here.
+          Individual corridor sites (&lt;1 acre) are below this grid's resolution.
+          A high score means this block is better than surrounding impervious land —
+          not that it is good habitat in any absolute ecological sense.
+        </p>`;
+      openIntelDrawer('Urban Habitat Index', body, {
+        headerStyle: 'background:#3b0764',
+        labelHtml: '<i class="ph ph-buildings"></i> Urban Habitat Index',
+      });
+      return;
+    }
 
     // Cluster — zoom in to expand (check first; cluster marker sits in pointLayerIds)
     const clusterHit = allHits.find(f => f.properties.cluster);

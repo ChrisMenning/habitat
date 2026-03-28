@@ -32,6 +32,9 @@ let _nestingScores = new Map();
 /** Tree canopy coverage percentages keyed by site name — updated asynchronously. */
 let _canopyScores = new Map();
 
+/** Urban InVEST crosswalk scores — array of {name, investScore} — populated when urban layer first loads. */
+let _investCrosswalk = [];
+
 /** Parcel features — updated when parcel layer is first enabled. */
 let _parcelFeatures = [];
 
@@ -40,6 +43,7 @@ let _commonsImages = [];
 
 export function setNestingScores(scores)    { _nestingScores  = scores   ?? new Map(); }
 export function setCanopyScores(scores)     { _canopyScores   = scores   ?? new Map(); }
+export function setInvestCrosswalkScores(data) { _investCrosswalk = data ?? []; }
 
 // ── Score help popup events ───────────────────────────────────────────────────
 // Wired once (guarded by flag) to the drawer body element; handles all
@@ -627,6 +631,26 @@ export function openDrawer(feature, alertFeatures = []) {
         </div>
       </div>`;
   })();
+  // ── Urban Habitat Index context score (InVEST crosswalk) ─────────────────────
+  const investHtml = (() => {
+    if (src !== 'gbcc-corridor') return '';
+    const key   = p.name || p.registrant || '';
+    const match = _investCrosswalk.find(x => x.name === key);
+    if (!match) return '';
+    const pct   = Math.round(match.investScore * 100);
+    const tier  = pct >= 70 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+    const color = pct >= 70 ? '#7c3aed' : pct >= 35 ? '#8b5cf6' : '#a78bfa';
+    return `
+      <div class="drawer-section-label">Urban habitat context (adapted InVEST, 660\u202fm grid)</div>
+      <div class="drawer-nesting-row">
+        <div class="drawer-nesting-score" style="background:${color};">${pct}</div>
+        <div class="drawer-nesting-detail">
+          <span class="drawer-nesting-label" style="color:${color};">Urban Habitat Index \u2014 ${tier}</span>
+          <span class="drawer-nesting-desc">Derived from the InVEST Lonsdorf\u00a0(2009) model, originally calibrated for farmland. Score is relative to other developed land in the study area \u2014 not to rural habitat. Reflects surrounding NLCD land cover within 660\u202fm, not the specific plantings here. Enable \u201cUrban Habitat Index\u201d in the Analysis pane to view the full heatmap.</span>
+        </div>
+      </div>`;
+  })();
+
   const nearbyParcelsHtml = isApprox ? '' : _buildNearbyParcelsSection(coord);
   const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
 
@@ -680,6 +704,7 @@ export function openDrawer(feature, alertFeatures = []) {
       ${migrationHtml}
       ${nestingHtml}
       ${canopyHtml}
+      ${investHtml}
       ${nearbyParcelsHtml}
       ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>
