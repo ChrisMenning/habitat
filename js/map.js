@@ -2020,24 +2020,11 @@ export function registerCommonsLayer(visible) {
     source: 'commons-photos',
     layout: { visibility: vis },
     paint: {
-      'circle-radius':       7,
+      'circle-radius':       9,
       'circle-color':        '#7c3aed',
-      'circle-opacity':      0.85,
+      'circle-opacity':      0.9,
       'circle-stroke-color': '#fff',
-      'circle-stroke-width': 1.5,
-    },
-  });
-
-  _map.addLayer({
-    id:     'commons-photo-icon',
-    type:   'symbol',
-    source: 'commons-photos',
-    layout: {
-      visibility:              vis,
-      'text-field':            '📷',
-      'text-size':             11,
-      'text-allow-overlap':    true,
-      'text-ignore-placement': true,
+      'circle-stroke-width': 2,
     },
   });
 }
@@ -2058,9 +2045,7 @@ export function setCommonsFeatures(geojson) {
  */
 export function setCommonsLayerVisibility(visible) {
   const vis = visible ? 'visible' : 'none';
-  for (const id of ['commons-photo-circle', 'commons-photo-icon']) {
-    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
-  }
+  if (_map.getLayer('commons-photo-circle')) _map.setLayoutProperty('commons-photo-circle', 'visibility', vis);
 }
 
 

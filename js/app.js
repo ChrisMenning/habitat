@@ -76,7 +76,7 @@ import { initMap, registerLayer, registerAreaLayer,
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
          setLoading, setStatus, initActivityBar,
          buildPopupHTML, buildAreaPopupHTML,
-         esc, closeLightbox }                               from './ui.js';
+         esc, openLightbox, closeLightbox }                  from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts,
          computeExpansionOpportunities,
@@ -632,7 +632,9 @@ const _refreshParcelViewport = _debounce(async () => {
 async function _lazyFetchCommons() {
   try {
     const center = map.getCenter().toArray();
+    console.debug('[commons] fetching near', center);
     const images = await fetchCommonsForApp(center);
+    console.debug('[commons] fetched', images.length, 'images');
     _commonsLoaded = true;
     setDrawerCommonsImages(images);
     const features = images
@@ -650,7 +652,9 @@ async function _lazyFetchCommons() {
           descurl:     img.descurl,
         },
       }));
+    console.debug('[commons] features with coords:', features.length);
     setMapCommonsFeatures({ type: 'FeatureCollection', features });
+    updateCounts({ 'commons-photos': images.length });
   } catch (err) {
     console.warn('Commons photos unavailable:', err);
   }
@@ -1573,6 +1577,23 @@ map.on('load', async () => {
   registerLayer('other-wildlife', LAYERS.find(l => l.id === 'other-wildlife').defaultOn, { radius: 8, symbol: 'icon-deer' });
   // Commons photo markers — registered last so they render above all other layers
   registerCommonsLayer(false);
+  {
+    const map = getMap();
+    map.on('mouseenter', 'commons-photo-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'commons-photo-circle', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'commons-photo-circle', e => {
+      const p = e.features?.[0]?.properties;
+      if (!p) return;
+      openLightbox({
+        thumburl:    p.thumburl,
+        title:       p.title,
+        description: p.description,
+        artist:      p.artist,
+        license:     p.license,
+        descurl:     p.descurl,
+      });
+    });
+  }
 
   // Build the side-panel UI
   // Opacity callback: routes to the correct setter based on layer type
