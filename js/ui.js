@@ -252,6 +252,23 @@ export function buildAreaLegend(onToggle = null) {
     WAYSTATION_LAYER[0].label,
     WAYSTATION_LAYER[0].defaultOn,
   );
+  // Monarch migration phenology hint — hardcoded Monarch Watch timing for Green Bay (44.5°N)
+  (() => {
+    const now = new Date();
+    const m = now.getMonth(), d = now.getDate();
+    // Window: Aug 28 (m=7,d=28) – Sep 15 (m=8,d=15); peak ~Sep 8
+    const inWindow = (m === 7 && d >= 28) || (m === 8 && d <= 15);
+    const note = document.createElement('p');
+    note.setAttribute('aria-label', 'Monarch fall migration window for Green Bay area');
+    if (inWindow) {
+      note.style.cssText = 'margin:-2px 0 6px 28px;font-size:10px;line-height:1.4;padding:3px 7px;border-radius:3px;color:#f59e0b;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.30);font-weight:600;';
+      note.innerHTML = '&#x1F98B; Migration window: Aug 28 &#x2013; Sep 15 &middot; Peak ~Sep 8';
+    } else {
+      note.style.cssText = 'margin:-2px 0 6px 28px;font-size:10px;line-height:1.4;padding:2px 6px;color:#6b7280;';
+      note.textContent = 'Migration window: Aug 28 \u2013 Sep 15';
+    }
+    section.appendChild(note);
+  })();
   // Homegrown National Park
   makeRow(
     HNP_LAYER[0].id,
@@ -285,6 +302,23 @@ export function buildAreaLegend(onToggle = null) {
 
   addGroupLabel('Sightings · eBird');
   makeRow(EBIRD_LAYER[0].id, circleSwatch('#64748b', '#475569'), EBIRD_LAYER[0].label, EBIRD_LAYER[0].defaultOn, false);
+
+  // ── Journey North Historical Monarchs (toggleable) ───────────────────────
+  addGroupLabel('Sightings · Journey North (1996–2020)');
+  makeRow(
+    'journeynorth-monarchs',
+    `<div class="area-legend-circle" style="background:#fb923c;outline:2px solid #f97316;outline-offset:-1px;" aria-hidden="true"></div>`,
+    'Journey North Monarchs',
+    false,  // off by default — requires pre-processed data file
+    true,
+  );
+  (() => {
+    const note = document.createElement('p');
+    note.id = 'jn-monarchs-status';
+    note.style.cssText = 'margin:-2px 0 6px 28px;font-size:10px;line-height:1.4;padding:2px 6px;color:#6b7280;';
+    note.textContent = 'Historical · 1996–2020 (CC BY)';
+    section.appendChild(note);
+  })();
 
   addGroupLabel('Bee Distribution (FWS · GBIF)');
   const BEE_COLORS = { 'bees-records': '#f59e0b', 'bees-imperiled': '#ef4444' };
@@ -722,14 +756,11 @@ export function buildAreaPopupHTML(props) {
   if (src === 'hnp') {
     const isOrg    = props.org_type === 'ORGANIZATIONS';
     const typeLabel = isOrg ? 'Member Organization' : 'Registered Yard';
-    const mapUrl   = props.hnp_map_url
-      ? `<a class="popup-link" href="${esc(props.hnp_map_url)}" target="_blank" rel="noopener noreferrer">View on HNP map ↗</a>`
-      : `<a class="popup-link" href="https://homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">Homegrown National Park ↗</a>`;
     return `
       <div class="popup-body">
         <strong class="popup-name">${esc(props.name)}</strong>
         <span class="popup-source">🌿 HNP · ${typeLabel}</span>
-        ${mapUrl}
+        <a class="popup-link" href="https://map.homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">View on HNP Map ↗</a>
       </div>`;
   }
 

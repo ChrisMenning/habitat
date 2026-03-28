@@ -103,40 +103,39 @@
 <section id="problem" aria-labelledby="problem-h2">
   <div class="problem-grid">
     <div class="problem-left reveal">
-      <h2 id="problem-h2">Early stage.<br><em>Genuinely useful.</em></h2>
-      <p class="lead">Bay Hive is an open-source tool built by one person, in public, with the conservation community in mind.</p>
+      <div class="sec-label">The Problem</div>
+      <h2 id="problem-h2">The data exists.<br><em>The view doesn't.</em></h2>
+      <p class="lead">Pollinator conservation in northeastern Wisconsin is fragmented across agencies, organizations, and data systems.</p>
       <p>
-        The alert thresholds are a first pass — reasonable defaults built from published literature, 
-        not field-validated by corridor practitioners. The suitability models are directional indicators, 
-        not peer-reviewed outputs. The data it draws on is authoritative; the conclusions it draws from 
-        that data benefit from scrutiny.
+        The Green Bay Conservation Corps manages a regional corridor. The Wisconsin Department of Natural Resources oversees state
+        natural areas and managed lands. Federal datasets track protected areas and bee distributions. 
+        Community scientists log tens of thousands of sightings annually — but no unified tool brings 
+        these sources together at the local scale.
       </p>
       <p>
-        What's here is genuinely useful for seeing patterns that are otherwise invisible at the local scale. 
-        It becomes more useful — and more trustworthy — with input from people who know this landscape. 
-        That's the ask.
+        Unifying that data at the local scale is a hard technical problem — one that conservation organizations shouldn't have to solve themselves. Bay Hive does.
       </p>
     </div>
     <div class="problem-right reveal d2">
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Alert logic needs field review</strong>
-          <p>The fourteen spatial alerts represent a first pass. Practitioners with corridor knowledge can identify false positives, missing conditions, and thresholds that don't match reality on the ground.</p>
+          <strong>Neglected habitat sites</strong>
+          <p>Sites that receive no documented pollinator activity may be unknowingly overlooked, with no systematic way to identify them.</p>
         </div>
       </div>
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Models are directional, not definitive</strong>
-          <p>The InVEST pollinator index and nesting suitability scores indicate relative conditions across the landscape. They are starting points for investigation, not conclusions.</p>
+          <strong>Unflagged hazard proximity</strong>
+          <p>Contamination from per- and polyfluoroalkyl substances (PFAS) near sensitive habitat is not systematically cross-referenced with corridor boundaries or waystations.</p>
         </div>
       </div>
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Built to be extended</strong>
-          <p>The codebase is modular and dependency-free. New data sources, refined alert conditions, and additional layers can be added without toolchain setup. Contributions are welcome.</p>
+          <strong>Invisible restoration candidates</strong>
+          <p>High-sighting parcels with no formal habitat designation — the best restoration candidates — remain invisible without a unified spatial view.</p>
         </div>
       </div>
     </div>
@@ -204,6 +203,53 @@
       <div class="feature-num">09</div>
       <h3>Integrated Valuation of Ecosystem Services and Tradeoffs (InVEST) pollinator index</h3>
       <p>Lonsdorf et al. (2009) foraging model computing a continuous relative pollinator abundance index across the study area. Three bee guilds (0.3&nbsp;/ 0.7&nbsp;/ 1.5&nbsp;km range) with NLCD 2021 biophysical inputs. Shows where pollinators are most likely supported by the surrounding landscape &mdash; independent of observation records.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- A NOTE ON THIS TOOL -->
+<section id="note" aria-labelledby="note-h2">
+  <div class="problem-grid">
+    <div class="problem-left reveal">
+      <div class="sec-label">A Note on This Tool</div>
+      <h2 id="note-h2">Early stage.<br><em>Genuinely useful.</em></h2>
+      <p class="lead">Bay Hive is an open-source tool built by one person, in public, with the conservation community in mind.</p>
+      <p>
+        The alert thresholds are a first pass — reasonable defaults built from published literature, 
+        not field-validated by corridor practitioners. The suitability models are directional indicators, 
+        not peer-reviewed outputs. The data it draws on is authoritative; the conclusions it draws from 
+        that data benefit from scrutiny.
+      </p>
+      <p style="margin-bottom: 2rem;">
+        What's here is genuinely useful for seeing patterns that are otherwise invisible at the local scale. 
+        It becomes more useful — and more trustworthy — with input from people who know this landscape. 
+        That's the ask.
+      </p>
+    </div>
+    <div class="problem-right reveal d2">
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Alert logic needs field review</strong>
+          <p>The spatial alerts represent a first pass. Practitioners with corridor knowledge can identify false positives, missing conditions, and thresholds that don't match reality on the ground.</p>
+        </div>
+      </div>
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Models are directional, not definitive</strong>
+          <p>The InVEST pollinator index and nesting suitability scores indicate relative conditions across the landscape. They are starting points for investigation, not conclusions.</p>
+        </div>
+      </div>
+      <div class="blind-spot">
+        <span class="blind-spot-icon">◎</span>
+        <div class="blind-spot-text">
+          <strong>Built to be extended</strong>
+          <p>The codebase is modular and dependency-free. New data sources, refined alert conditions, and additional layers can be added without toolchain setup. Contributions are welcome.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -345,7 +391,7 @@
     <div class="contribute-header reveal">
       <div>
         <div class="sec-label">Get Involved</div>
-        <h2 id="contrib-h2">The data is already<br><em>public.</em></h2>
+        <h2 id="contrib-h2">Two ways to<br><em>help.</em></h2>
       </div>
       <div>
         <p>

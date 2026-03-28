@@ -63,14 +63,14 @@ export async function fetchHnpYards() {
         type: 'Feature',
         geometry: f.geometry,
         properties: {
-          ...p,                        // all raw API fields (area_sqft, website, socials, etc.)
+          ...p,                        // guest API fields: id, type (org_type alias added below)
           data_source: 'hnp',
           layer_id:    'hnp',
           est_key:     'hnp',
           hnp_id:      p.id,
           name:        p.name || p.org_name ||
                          (isOrg ? 'HNP Member Organization' : 'Homegrown National Park Yard'),
-          hnp_map_url: `https://homegrownnationalpark.org/map/?id=${p.id}`,
+          hnp_map_url: 'https://map.homegrownnationalpark.org/',
         },
       };
     });

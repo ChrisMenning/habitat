@@ -1223,6 +1223,12 @@ details > summary:focus-visible {
 }
 
 .header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  box-sizing: border-box;
+  white-space: nowrap;
   background: rgba(52,211,153,0.12);
   color: #6ee7b7;
   border: 1px solid rgba(52,211,153,0.28);
@@ -2356,6 +2362,14 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
   outline-offset: 2px;
 }
 
+/* ── Tablet layout ─────────────────────────────────────────────────────────── */
+/* Hide the header tagline on tablets in portrait — it wraps and stretches the header bar */
+@media (max-width: 768px) {
+  #header p {
+    display: none;
+  }
+}
+
 /* ── Mobile layout ─────────────────────────────────────────────────────────── */
 /*
  * Narrow-screen overrides for the app UI.
@@ -2404,13 +2418,32 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
     left: 68px;
   }
 
-  /* Intel bar scrolls horizontally — no layout changes needed, just tighter min-width */
+  /* Intel bar: each tile sizes to its own content; bar scrolls horizontally */
   .intel-stat {
-    min-width: 68px;
+    flex: 0 0 auto;
+    padding: 4px 7px;
+  }
+  .intel-val {
+    font-size: 0.9rem;
+  }
+  .intel-lbl {
+    font-size: 10px;
+    letter-spacing: 0;
   }
 
-  /* Hide the header tagline on narrow screens — it wraps awkwardly */
-  #header p {
+  /* Header buttons: icon-only to prevent overflow on narrow screens */
+  .header-btn {
+    font-size: 0;
+    padding: 6px 8px;
+    gap: 0;
+  }
+  .header-btn i {
+    font-size: 1rem;
+  }
+
+  /* Hide the Tests link (dev tool) and loading status text on mobile */
+  #header-actions a.header-btn,
+  #status {
     display: none;
   }
 

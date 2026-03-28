@@ -69,6 +69,9 @@ import { initMap, registerLayer, registerAreaLayer,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
          setWaystationApproxStyle,
+         registerJourneyNorthLayer,
+         setJourneyNorthFeatures,
+         setJourneyNorthVisibility,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
          setLoading, setStatus, initActivityBar,
@@ -209,8 +212,9 @@ function areaOrPointVisibility(id, visible) {
   else if (id === 'parcels')              setParcelLayerVisibility(visible);
   else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
   else if (id === 'bees-richness')        setHeatmapVisibility('bees-richness', visible);
-  else if (id === 'invest-heat')          setHeatmapVisibility('invest-heat', visible);
-  else                                    setLayerVisibility(id, visible);
+  else if (id === 'invest-heat')                setHeatmapVisibility('invest-heat', visible);
+  else if (id === 'journeynorth-monarchs')       setJourneyNorthVisibility(visible);
+  else                                           setLayerVisibility(id, visible);
 }
 
 /**
@@ -1536,6 +1540,9 @@ map.on('load', async () => {
       radius: 14, strokeWidth: 2, opacity: 1.0, symbol: 'icon-butterfly-detailed', iconSize: 0.44,      cluster: true, clusterColor: '#8b5cf6',    });
   }
 
+  // Journey North historical monarch observations (off by default; requires pre-processed data file)
+  registerJourneyNorthLayer(false);
+
   // 2c. Homegrown National Park native planting yards — immediately after waystations
   for (const layer of HNP_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
@@ -1802,6 +1809,45 @@ map.on('load', async () => {
   setLayerFeatures('waystations', waystationGeoJSON().features);
   // Apply data-driven paint for approximate-location markers (faded ghost style)
   setWaystationApproxStyle();
+
+  // Journey North historical monarchs — pre-processed static GeoJSON (see scripts/fetch-journeynorth.js)
+  // Cached for 1 week; graceful no-op if the file is absent.
+  (() => {
+    const JN_URL    = '/data/journeynorth_monarchs.json';
+    const statusEl  = () => document.getElementById('jn-monarchs-status');
+    cacheGet(JN_URL).then(cached => {
+      if (cached) { setJourneyNorthFeatures(cached); return; }
+      fetch(JN_URL)
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .then(data => {
+          setJourneyNorthFeatures(data);
+          cacheSet(JN_URL, data, 7 * 24 * 60 * 60 * 1000);
+          const el = statusEl();
+          if (el) el.textContent = 'Historical · 1996–2020 (CC BY)';
+        })
+        .catch(() => {
+          const el = statusEl();
+          if (el) el.textContent = 'No data — run scripts/fetch-journeynorth.js first';
+        });
+    });
+    // Wire hover cursor + click popup for JN points
+    const map = getMap();
+    map.on('mouseenter', 'points-journeynorth-monarchs', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'points-journeynorth-monarchs', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'points-journeynorth-monarchs', e => {
+      const f = e.features?.[0]?.properties;
+      if (!f) return;
+      const label = f.type || 'Monarch observation';
+      const dateStr = f.date ? ` · ${f.date}` : '';
+      const nStr = f.n && f.n > 1 ? ` (${f.n})` : '';
+      showPopup(e.lngLat,
+        `<div class="popup-body" style="min-width:170px">
+          <strong class="popup-name">${esc(label)}${nStr}</strong>
+          <span class="popup-source">🦋 Journey North${dateStr}</span>
+          <p style="font-size:10px;color:#6b7280;margin:6px 0 0">Historical 1996–2020 · not live</p>
+        </div>`);
+    });
+  })();
 
   // API key health check — shows a dismissible banner if any keys are missing
   initHealthCheck();

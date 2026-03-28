@@ -923,6 +923,50 @@ export function updateNativePlantHeatmap(plantFeatures) {
   source.setData({ type: 'FeatureCollection', features });
 }
 
+// ── Journey North Historical Monarch layer ────────────────────────────────────
+// Colors keyed on properties.obs_type (set by scripts/fetch-journeynorth.js).
+const JN_OBS_COLORS = {
+  roost:     '#f59e0b', // amber   — fall roosts
+  adult:     '#fb923c', // orange  — adults, first sighted, peak migration
+  egg_larva: '#84cc16', // lime    — eggs / larvae
+  milkweed:  '#34d399', // emerald — milkweed sightings
+};
+
+export function registerJourneyNorthLayer(visible) {
+  _map.addSource('journeynorth-monarchs', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id: 'points-journeynorth-monarchs',
+    type: 'circle',
+    source: 'journeynorth-monarchs',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 3, 10, 5, 13, 7],
+      'circle-color': ['match', ['get', 'obs_type'],
+        'roost',     JN_OBS_COLORS.roost,
+        'adult',     JN_OBS_COLORS.adult,
+        'egg_larva', JN_OBS_COLORS.egg_larva,
+        'milkweed',  JN_OBS_COLORS.milkweed,
+        '#94a3b8',
+      ],
+      'circle-opacity': 0.62,
+      'circle-stroke-color': 'rgba(0,0,0,0.22)',
+      'circle-stroke-width': 0.5,
+    },
+  });
+}
+
+export function setJourneyNorthFeatures(geojson) {
+  _map.getSource('journeynorth-monarchs')?.setData(geojson);
+}
+
+export function setJourneyNorthVisibility(visible) {
+  const lid = 'points-journeynorth-monarchs';
+  if (_map.getLayer(lid)) _map.setLayoutProperty(lid, 'visibility', visible ? 'visible' : 'none');
+}
+
 // ── Expansion Opportunities layer ────────────────────────────────────────────
 
 /**

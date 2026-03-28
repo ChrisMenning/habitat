@@ -1,0 +1,3294 @@
+{
+  "station": "USW00014898",
+  "stationName": "GREEN BAY AUSTIN STRAUBEL INTL AP, WI US",
+  "normals": "1991-2020",
+  "source": "Bundled — derived from NOAA 1991-2020 Climate Normals publication. Live NOAA API access disrupted following federal data service changes in 2025.",
+  "generated": "2026-03-27",
+  "records": [
+    {
+      "doy": 1,
+      "date": "01-01",
+      "tmax": 29,
+      "tmin": 12,
+      "tavg": 20.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 2,
+      "date": "01-02",
+      "tmax": 28.9,
+      "tmin": 11.8,
+      "tavg": 20.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 3,
+      "date": "01-03",
+      "tmax": 28.8,
+      "tmin": 11.6,
+      "tavg": 20.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 4,
+      "date": "01-04",
+      "tmax": 28.6,
+      "tmin": 11.4,
+      "tavg": 20,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 5,
+      "date": "01-05",
+      "tmax": 28.5,
+      "tmin": 11.2,
+      "tavg": 19.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 6,
+      "date": "01-06",
+      "tmax": 28.4,
+      "tmin": 11,
+      "tavg": 19.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 7,
+      "date": "01-07",
+      "tmax": 28.3,
+      "tmin": 10.7,
+      "tavg": 19.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 8,
+      "date": "01-08",
+      "tmax": 28.2,
+      "tmin": 10.5,
+      "tavg": 19.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 9,
+      "date": "01-09",
+      "tmax": 28,
+      "tmin": 10.3,
+      "tavg": 19.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 10,
+      "date": "01-10",
+      "tmax": 27.9,
+      "tmin": 10.1,
+      "tavg": 19,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 11,
+      "date": "01-11",
+      "tmax": 27.8,
+      "tmin": 9.9,
+      "tavg": 18.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 12,
+      "date": "01-12",
+      "tmax": 27.7,
+      "tmin": 9.7,
+      "tavg": 18.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 13,
+      "date": "01-13",
+      "tmax": 27.6,
+      "tmin": 9.4,
+      "tavg": 18.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 14,
+      "date": "01-14",
+      "tmax": 27.4,
+      "tmin": 9.2,
+      "tavg": 18.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 15,
+      "date": "01-15",
+      "tmax": 27.3,
+      "tmin": 9,
+      "tavg": 18.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 16,
+      "date": "01-16",
+      "tmax": 27.2,
+      "tmin": 8.8,
+      "tavg": 18,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 17,
+      "date": "01-17",
+      "tmax": 27.3,
+      "tmin": 8.9,
+      "tavg": 18.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 18,
+      "date": "01-18",
+      "tmax": 27.5,
+      "tmin": 9.1,
+      "tavg": 18.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 19,
+      "date": "01-19",
+      "tmax": 27.6,
+      "tmin": 9.2,
+      "tavg": 18.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 20,
+      "date": "01-20",
+      "tmax": 27.8,
+      "tmin": 9.4,
+      "tavg": 18.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 21,
+      "date": "01-21",
+      "tmax": 27.9,
+      "tmin": 9.5,
+      "tavg": 18.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 22,
+      "date": "01-22",
+      "tmax": 28.1,
+      "tmin": 9.6,
+      "tavg": 18.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 23,
+      "date": "01-23",
+      "tmax": 28.2,
+      "tmin": 9.8,
+      "tavg": 19,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 24,
+      "date": "01-24",
+      "tmax": 28.4,
+      "tmin": 9.9,
+      "tavg": 19.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 25,
+      "date": "01-25",
+      "tmax": 28.5,
+      "tmin": 10,
+      "tavg": 19.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 26,
+      "date": "01-26",
+      "tmax": 28.7,
+      "tmin": 10.2,
+      "tavg": 19.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 27,
+      "date": "01-27",
+      "tmax": 28.8,
+      "tmin": 10.3,
+      "tavg": 19.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 28,
+      "date": "01-28",
+      "tmax": 28.9,
+      "tmin": 10.5,
+      "tavg": 19.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 29,
+      "date": "01-29",
+      "tmax": 29.1,
+      "tmin": 10.6,
+      "tavg": 19.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 30,
+      "date": "01-30",
+      "tmax": 29.2,
+      "tmin": 10.7,
+      "tavg": 20,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 31,
+      "date": "01-31",
+      "tmax": 29.4,
+      "tmin": 10.9,
+      "tavg": 20.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 32,
+      "date": "02-01",
+      "tmax": 29.5,
+      "tmin": 11,
+      "tavg": 20.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 33,
+      "date": "02-02",
+      "tmax": 29.7,
+      "tmin": 11.2,
+      "tavg": 20.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 34,
+      "date": "02-03",
+      "tmax": 29.8,
+      "tmin": 11.3,
+      "tavg": 20.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 35,
+      "date": "02-04",
+      "tmax": 30,
+      "tmin": 11.4,
+      "tavg": 20.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 36,
+      "date": "02-05",
+      "tmax": 30.1,
+      "tmin": 11.6,
+      "tavg": 20.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 37,
+      "date": "02-06",
+      "tmax": 30.2,
+      "tmin": 11.7,
+      "tavg": 21,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 38,
+      "date": "02-07",
+      "tmax": 30.4,
+      "tmin": 11.9,
+      "tavg": 21.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 39,
+      "date": "02-08",
+      "tmax": 30.5,
+      "tmin": 12,
+      "tavg": 21.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 40,
+      "date": "02-09",
+      "tmax": 30.7,
+      "tmin": 12.1,
+      "tavg": 21.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 41,
+      "date": "02-10",
+      "tmax": 30.8,
+      "tmin": 12.3,
+      "tavg": 21.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 42,
+      "date": "02-11",
+      "tmax": 31,
+      "tmin": 12.4,
+      "tavg": 21.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 43,
+      "date": "02-12",
+      "tmax": 31.1,
+      "tmin": 12.5,
+      "tavg": 21.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 44,
+      "date": "02-13",
+      "tmax": 31.3,
+      "tmin": 12.7,
+      "tavg": 22,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 45,
+      "date": "02-14",
+      "tmax": 31.4,
+      "tmin": 12.8,
+      "tavg": 22.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 46,
+      "date": "02-15",
+      "tmax": 31.6,
+      "tmin": 13,
+      "tavg": 22.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 47,
+      "date": "02-16",
+      "tmax": 31.7,
+      "tmin": 13.1,
+      "tavg": 22.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 48,
+      "date": "02-17",
+      "tmax": 32.2,
+      "tmin": 13.5,
+      "tavg": 22.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 49,
+      "date": "02-18",
+      "tmax": 32.6,
+      "tmin": 14,
+      "tavg": 23.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 50,
+      "date": "02-19",
+      "tmax": 33.1,
+      "tmin": 14.4,
+      "tavg": 23.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 51,
+      "date": "02-20",
+      "tmax": 33.5,
+      "tmin": 14.9,
+      "tavg": 24.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 52,
+      "date": "02-21",
+      "tmax": 34,
+      "tmin": 15.3,
+      "tavg": 24.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 53,
+      "date": "02-22",
+      "tmax": 34.4,
+      "tmin": 15.7,
+      "tavg": 25,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 54,
+      "date": "02-23",
+      "tmax": 34.9,
+      "tmin": 16.2,
+      "tavg": 25.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 55,
+      "date": "02-24",
+      "tmax": 35.3,
+      "tmin": 16.6,
+      "tavg": 26,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 56,
+      "date": "02-25",
+      "tmax": 35.8,
+      "tmin": 17.1,
+      "tavg": 26.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 57,
+      "date": "02-26",
+      "tmax": 36.2,
+      "tmin": 17.5,
+      "tavg": 26.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 58,
+      "date": "02-27",
+      "tmax": 36.7,
+      "tmin": 17.9,
+      "tavg": 27.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 59,
+      "date": "02-28",
+      "tmax": 37.1,
+      "tmin": 18.4,
+      "tavg": 27.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 60,
+      "date": "03-01",
+      "tmax": 37.6,
+      "tmin": 18.8,
+      "tavg": 28.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 61,
+      "date": "03-02",
+      "tmax": 38.1,
+      "tmin": 19.3,
+      "tavg": 28.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 62,
+      "date": "03-03",
+      "tmax": 38.5,
+      "tmin": 19.7,
+      "tavg": 29.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 63,
+      "date": "03-04",
+      "tmax": 39,
+      "tmin": 20.1,
+      "tavg": 29.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 64,
+      "date": "03-05",
+      "tmax": 39.4,
+      "tmin": 20.6,
+      "tavg": 30,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 65,
+      "date": "03-06",
+      "tmax": 39.9,
+      "tmin": 21,
+      "tavg": 30.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 66,
+      "date": "03-07",
+      "tmax": 40.3,
+      "tmin": 21.4,
+      "tavg": 30.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 67,
+      "date": "03-08",
+      "tmax": 40.8,
+      "tmin": 21.9,
+      "tavg": 31.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 68,
+      "date": "03-09",
+      "tmax": 41.2,
+      "tmin": 22.3,
+      "tavg": 31.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 69,
+      "date": "03-10",
+      "tmax": 41.7,
+      "tmin": 22.8,
+      "tavg": 32.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 70,
+      "date": "03-11",
+      "tmax": 42.1,
+      "tmin": 23.2,
+      "tavg": 32.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 71,
+      "date": "03-12",
+      "tmax": 42.6,
+      "tmin": 23.6,
+      "tavg": 33.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 72,
+      "date": "03-13",
+      "tmax": 43,
+      "tmin": 24.1,
+      "tavg": 33.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 73,
+      "date": "03-14",
+      "tmax": 43.5,
+      "tmin": 24.5,
+      "tavg": 34,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 74,
+      "date": "03-15",
+      "tmax": 43.9,
+      "tmin": 25,
+      "tavg": 34.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 75,
+      "date": "03-16",
+      "tmax": 44.4,
+      "tmin": 25.4,
+      "tavg": 34.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 76,
+      "date": "03-17",
+      "tmax": 44.8,
+      "tmin": 25.8,
+      "tavg": 35.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 77,
+      "date": "03-18",
+      "tmax": 45.3,
+      "tmin": 26.1,
+      "tavg": 35.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 78,
+      "date": "03-19",
+      "tmax": 45.7,
+      "tmin": 26.5,
+      "tavg": 36.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 79,
+      "date": "03-20",
+      "tmax": 46.1,
+      "tmin": 26.9,
+      "tavg": 36.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 80,
+      "date": "03-21",
+      "tmax": 46.5,
+      "tmin": 27.2,
+      "tavg": 36.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 81,
+      "date": "03-22",
+      "tmax": 47,
+      "tmin": 27.6,
+      "tavg": 37.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 82,
+      "date": "03-23",
+      "tmax": 47.4,
+      "tmin": 28,
+      "tavg": 37.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 83,
+      "date": "03-24",
+      "tmax": 47.8,
+      "tmin": 28.3,
+      "tavg": 38.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 84,
+      "date": "03-25",
+      "tmax": 48.3,
+      "tmin": 28.7,
+      "tavg": 38.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 85,
+      "date": "03-26",
+      "tmax": 48.7,
+      "tmin": 29.1,
+      "tavg": 38.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 86,
+      "date": "03-27",
+      "tmax": 49.1,
+      "tmin": 29.4,
+      "tavg": 39.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 87,
+      "date": "03-28",
+      "tmax": 49.5,
+      "tmin": 29.8,
+      "tavg": 39.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 88,
+      "date": "03-29",
+      "tmax": 50,
+      "tmin": 30.2,
+      "tavg": 40.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 89,
+      "date": "03-30",
+      "tmax": 50.4,
+      "tmin": 30.5,
+      "tavg": 40.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 90,
+      "date": "03-31",
+      "tmax": 50.8,
+      "tmin": 30.9,
+      "tavg": 40.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 91,
+      "date": "04-01",
+      "tmax": 51.3,
+      "tmin": 31.3,
+      "tavg": 41.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 92,
+      "date": "04-02",
+      "tmax": 51.7,
+      "tmin": 31.7,
+      "tavg": 41.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 93,
+      "date": "04-03",
+      "tmax": 52.1,
+      "tmin": 32,
+      "tavg": 42.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 94,
+      "date": "04-04",
+      "tmax": 52.6,
+      "tmin": 32.4,
+      "tavg": 42.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 95,
+      "date": "04-05",
+      "tmax": 53,
+      "tmin": 32.8,
+      "tavg": 42.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 96,
+      "date": "04-06",
+      "tmax": 53.4,
+      "tmin": 33.1,
+      "tavg": 43.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 97,
+      "date": "04-07",
+      "tmax": 53.8,
+      "tmin": 33.5,
+      "tavg": 43.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 98,
+      "date": "04-08",
+      "tmax": 54.3,
+      "tmin": 33.9,
+      "tavg": 44.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 99,
+      "date": "04-09",
+      "tmax": 54.7,
+      "tmin": 34.2,
+      "tavg": 44.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 100,
+      "date": "04-10",
+      "tmax": 55.1,
+      "tmin": 34.6,
+      "tavg": 44.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 101,
+      "date": "04-11",
+      "tmax": 55.6,
+      "tmin": 35,
+      "tavg": 45.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 102,
+      "date": "04-12",
+      "tmax": 56,
+      "tmin": 35.3,
+      "tavg": 45.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 103,
+      "date": "04-13",
+      "tmax": 56.4,
+      "tmin": 35.7,
+      "tavg": 46.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 104,
+      "date": "04-14",
+      "tmax": 56.8,
+      "tmin": 36.1,
+      "tavg": 46.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 105,
+      "date": "04-15",
+      "tmax": 57.3,
+      "tmin": 36.4,
+      "tavg": 46.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 106,
+      "date": "04-16",
+      "tmax": 57.7,
+      "tmin": 36.8,
+      "tavg": 47.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 107,
+      "date": "04-17",
+      "tmax": 58.1,
+      "tmin": 37.2,
+      "tavg": 47.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 108,
+      "date": "04-18",
+      "tmax": 58.5,
+      "tmin": 37.5,
+      "tavg": 48,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 109,
+      "date": "04-19",
+      "tmax": 58.9,
+      "tmin": 37.9,
+      "tavg": 48.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 110,
+      "date": "04-20",
+      "tmax": 59.3,
+      "tmin": 38.2,
+      "tavg": 48.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 111,
+      "date": "04-21",
+      "tmax": 59.8,
+      "tmin": 38.6,
+      "tavg": 49.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 112,
+      "date": "04-22",
+      "tmax": 60.2,
+      "tmin": 38.9,
+      "tavg": 49.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 113,
+      "date": "04-23",
+      "tmax": 60.6,
+      "tmin": 39.3,
+      "tavg": 50,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 114,
+      "date": "04-24",
+      "tmax": 61,
+      "tmin": 39.7,
+      "tavg": 50.4,
+      "gddTb50": 0.4,
+      "gddBase50": 0.4
+    },
+    {
+      "doy": 115,
+      "date": "04-25",
+      "tmax": 61.4,
+      "tmin": 40,
+      "tavg": 50.7,
+      "gddTb50": 0.7,
+      "gddBase50": 0.7
+    },
+    {
+      "doy": 116,
+      "date": "04-26",
+      "tmax": 61.8,
+      "tmin": 40.4,
+      "tavg": 51.1,
+      "gddTb50": 1.1,
+      "gddBase50": 1.1
+    },
+    {
+      "doy": 117,
+      "date": "04-27",
+      "tmax": 62.2,
+      "tmin": 40.7,
+      "tavg": 51.5,
+      "gddTb50": 1.5,
+      "gddBase50": 1.5
+    },
+    {
+      "doy": 118,
+      "date": "04-28",
+      "tmax": 62.6,
+      "tmin": 41.1,
+      "tavg": 51.9,
+      "gddTb50": 1.9,
+      "gddBase50": 1.9
+    },
+    {
+      "doy": 119,
+      "date": "04-29",
+      "tmax": 63,
+      "tmin": 41.4,
+      "tavg": 52.2,
+      "gddTb50": 2.2,
+      "gddBase50": 2.2
+    },
+    {
+      "doy": 120,
+      "date": "04-30",
+      "tmax": 63.4,
+      "tmin": 41.8,
+      "tavg": 52.6,
+      "gddTb50": 2.6,
+      "gddBase50": 2.6
+    },
+    {
+      "doy": 121,
+      "date": "05-01",
+      "tmax": 63.9,
+      "tmin": 42.2,
+      "tavg": 53.1,
+      "gddTb50": 3.1,
+      "gddBase50": 3.1
+    },
+    {
+      "doy": 122,
+      "date": "05-02",
+      "tmax": 64.3,
+      "tmin": 42.5,
+      "tavg": 53.4,
+      "gddTb50": 3.4,
+      "gddBase50": 3.4
+    },
+    {
+      "doy": 123,
+      "date": "05-03",
+      "tmax": 64.7,
+      "tmin": 42.9,
+      "tavg": 53.8,
+      "gddTb50": 3.8,
+      "gddBase50": 3.8
+    },
+    {
+      "doy": 124,
+      "date": "05-04",
+      "tmax": 65.1,
+      "tmin": 43.2,
+      "tavg": 54.2,
+      "gddTb50": 4.2,
+      "gddBase50": 4.2
+    },
+    {
+      "doy": 125,
+      "date": "05-05",
+      "tmax": 65.5,
+      "tmin": 43.6,
+      "tavg": 54.6,
+      "gddTb50": 4.6,
+      "gddBase50": 4.6
+    },
+    {
+      "doy": 126,
+      "date": "05-06",
+      "tmax": 65.9,
+      "tmin": 43.9,
+      "tavg": 54.9,
+      "gddTb50": 4.9,
+      "gddBase50": 4.9
+    },
+    {
+      "doy": 127,
+      "date": "05-07",
+      "tmax": 66.3,
+      "tmin": 44.3,
+      "tavg": 55.3,
+      "gddTb50": 5.3,
+      "gddBase50": 5.3
+    },
+    {
+      "doy": 128,
+      "date": "05-08",
+      "tmax": 66.7,
+      "tmin": 44.6,
+      "tavg": 55.7,
+      "gddTb50": 5.7,
+      "gddBase50": 5.7
+    },
+    {
+      "doy": 129,
+      "date": "05-09",
+      "tmax": 67.1,
+      "tmin": 45,
+      "tavg": 56.1,
+      "gddTb50": 6.1,
+      "gddBase50": 6.1
+    },
+    {
+      "doy": 130,
+      "date": "05-10",
+      "tmax": 67.5,
+      "tmin": 45.4,
+      "tavg": 56.5,
+      "gddTb50": 6.5,
+      "gddBase50": 6.5
+    },
+    {
+      "doy": 131,
+      "date": "05-11",
+      "tmax": 68,
+      "tmin": 45.7,
+      "tavg": 56.9,
+      "gddTb50": 6.9,
+      "gddBase50": 6.9
+    },
+    {
+      "doy": 132,
+      "date": "05-12",
+      "tmax": 68.4,
+      "tmin": 46.1,
+      "tavg": 57.3,
+      "gddTb50": 7.3,
+      "gddBase50": 7.3
+    },
+    {
+      "doy": 133,
+      "date": "05-13",
+      "tmax": 68.8,
+      "tmin": 46.4,
+      "tavg": 57.6,
+      "gddTb50": 7.6,
+      "gddBase50": 7.6
+    },
+    {
+      "doy": 134,
+      "date": "05-14",
+      "tmax": 69.2,
+      "tmin": 46.8,
+      "tavg": 58,
+      "gddTb50": 8,
+      "gddBase50": 8
+    },
+    {
+      "doy": 135,
+      "date": "05-15",
+      "tmax": 69.6,
+      "tmin": 47.1,
+      "tavg": 58.4,
+      "gddTb50": 8.4,
+      "gddBase50": 8.4
+    },
+    {
+      "doy": 136,
+      "date": "05-16",
+      "tmax": 70,
+      "tmin": 47.5,
+      "tavg": 58.8,
+      "gddTb50": 8.8,
+      "gddBase50": 8.8
+    },
+    {
+      "doy": 137,
+      "date": "05-17",
+      "tmax": 70.3,
+      "tmin": 47.8,
+      "tavg": 59.1,
+      "gddTb50": 9.1,
+      "gddBase50": 9.1
+    },
+    {
+      "doy": 138,
+      "date": "05-18",
+      "tmax": 70.7,
+      "tmin": 48.2,
+      "tavg": 59.5,
+      "gddTb50": 9.5,
+      "gddBase50": 9.5
+    },
+    {
+      "doy": 139,
+      "date": "05-19",
+      "tmax": 71,
+      "tmin": 48.5,
+      "tavg": 59.8,
+      "gddTb50": 9.8,
+      "gddBase50": 9.8
+    },
+    {
+      "doy": 140,
+      "date": "05-20",
+      "tmax": 71.3,
+      "tmin": 48.8,
+      "tavg": 60.1,
+      "gddTb50": 10.1,
+      "gddBase50": 10.1
+    },
+    {
+      "doy": 141,
+      "date": "05-21",
+      "tmax": 71.6,
+      "tmin": 49.1,
+      "tavg": 60.4,
+      "gddTb50": 10.4,
+      "gddBase50": 10.4
+    },
+    {
+      "doy": 142,
+      "date": "05-22",
+      "tmax": 72,
+      "tmin": 49.5,
+      "tavg": 60.8,
+      "gddTb50": 10.8,
+      "gddBase50": 10.8
+    },
+    {
+      "doy": 143,
+      "date": "05-23",
+      "tmax": 72.3,
+      "tmin": 49.8,
+      "tavg": 61.1,
+      "gddTb50": 11.1,
+      "gddBase50": 11.1
+    },
+    {
+      "doy": 144,
+      "date": "05-24",
+      "tmax": 72.6,
+      "tmin": 50.1,
+      "tavg": 61.4,
+      "gddTb50": 11.4,
+      "gddBase50": 11.4
+    },
+    {
+      "doy": 145,
+      "date": "05-25",
+      "tmax": 72.9,
+      "tmin": 50.5,
+      "tavg": 61.7,
+      "gddTb50": 11.7,
+      "gddBase50": 11.7
+    },
+    {
+      "doy": 146,
+      "date": "05-26",
+      "tmax": 73.3,
+      "tmin": 50.8,
+      "tavg": 62.1,
+      "gddTb50": 12.1,
+      "gddBase50": 12.1
+    },
+    {
+      "doy": 147,
+      "date": "05-27",
+      "tmax": 73.6,
+      "tmin": 51.1,
+      "tavg": 62.4,
+      "gddTb50": 12.4,
+      "gddBase50": 12.4
+    },
+    {
+      "doy": 148,
+      "date": "05-28",
+      "tmax": 73.9,
+      "tmin": 51.4,
+      "tavg": 62.7,
+      "gddTb50": 12.7,
+      "gddBase50": 12.7
+    },
+    {
+      "doy": 149,
+      "date": "05-29",
+      "tmax": 74.2,
+      "tmin": 51.8,
+      "tavg": 63,
+      "gddTb50": 13,
+      "gddBase50": 13
+    },
+    {
+      "doy": 150,
+      "date": "05-30",
+      "tmax": 74.6,
+      "tmin": 52.1,
+      "tavg": 63.4,
+      "gddTb50": 13.4,
+      "gddBase50": 13.4
+    },
+    {
+      "doy": 151,
+      "date": "05-31",
+      "tmax": 74.9,
+      "tmin": 52.4,
+      "tavg": 63.7,
+      "gddTb50": 13.7,
+      "gddBase50": 13.7
+    },
+    {
+      "doy": 152,
+      "date": "06-01",
+      "tmax": 75.2,
+      "tmin": 52.8,
+      "tavg": 64,
+      "gddTb50": 14,
+      "gddBase50": 14
+    },
+    {
+      "doy": 153,
+      "date": "06-02",
+      "tmax": 75.5,
+      "tmin": 53.1,
+      "tavg": 64.3,
+      "gddTb50": 14.3,
+      "gddBase50": 14.3
+    },
+    {
+      "doy": 154,
+      "date": "06-03",
+      "tmax": 75.9,
+      "tmin": 53.4,
+      "tavg": 64.7,
+      "gddTb50": 14.7,
+      "gddBase50": 14.7
+    },
+    {
+      "doy": 155,
+      "date": "06-04",
+      "tmax": 76.2,
+      "tmin": 53.8,
+      "tavg": 65,
+      "gddTb50": 15,
+      "gddBase50": 15
+    },
+    {
+      "doy": 156,
+      "date": "06-05",
+      "tmax": 76.5,
+      "tmin": 54.1,
+      "tavg": 65.3,
+      "gddTb50": 15.3,
+      "gddBase50": 15.3
+    },
+    {
+      "doy": 157,
+      "date": "06-06",
+      "tmax": 76.8,
+      "tmin": 54.4,
+      "tavg": 65.6,
+      "gddTb50": 15.6,
+      "gddBase50": 15.6
+    },
+    {
+      "doy": 158,
+      "date": "06-07",
+      "tmax": 77.2,
+      "tmin": 54.7,
+      "tavg": 66,
+      "gddTb50": 16,
+      "gddBase50": 16
+    },
+    {
+      "doy": 159,
+      "date": "06-08",
+      "tmax": 77.5,
+      "tmin": 55.1,
+      "tavg": 66.3,
+      "gddTb50": 16.3,
+      "gddBase50": 16.3
+    },
+    {
+      "doy": 160,
+      "date": "06-09",
+      "tmax": 77.8,
+      "tmin": 55.4,
+      "tavg": 66.6,
+      "gddTb50": 16.6,
+      "gddBase50": 16.6
+    },
+    {
+      "doy": 161,
+      "date": "06-10",
+      "tmax": 78.1,
+      "tmin": 55.7,
+      "tavg": 66.9,
+      "gddTb50": 16.9,
+      "gddBase50": 16.9
+    },
+    {
+      "doy": 162,
+      "date": "06-11",
+      "tmax": 78.5,
+      "tmin": 56.1,
+      "tavg": 67.3,
+      "gddTb50": 17.3,
+      "gddBase50": 17.3
+    },
+    {
+      "doy": 163,
+      "date": "06-12",
+      "tmax": 78.8,
+      "tmin": 56.4,
+      "tavg": 67.6,
+      "gddTb50": 17.6,
+      "gddBase50": 17.6
+    },
+    {
+      "doy": 164,
+      "date": "06-13",
+      "tmax": 79.1,
+      "tmin": 56.7,
+      "tavg": 67.9,
+      "gddTb50": 17.9,
+      "gddBase50": 17.9
+    },
+    {
+      "doy": 165,
+      "date": "06-14",
+      "tmax": 79.4,
+      "tmin": 57,
+      "tavg": 68.2,
+      "gddTb50": 18.2,
+      "gddBase50": 18.2
+    },
+    {
+      "doy": 166,
+      "date": "06-15",
+      "tmax": 79.8,
+      "tmin": 57.4,
+      "tavg": 68.6,
+      "gddTb50": 18.6,
+      "gddBase50": 18.6
+    },
+    {
+      "doy": 167,
+      "date": "06-16",
+      "tmax": 80.1,
+      "tmin": 57.7,
+      "tavg": 68.9,
+      "gddTb50": 18.9,
+      "gddBase50": 18.9
+    },
+    {
+      "doy": 168,
+      "date": "06-17",
+      "tmax": 80.3,
+      "tmin": 57.9,
+      "tavg": 69.1,
+      "gddTb50": 19.1,
+      "gddBase50": 19.1
+    },
+    {
+      "doy": 169,
+      "date": "06-18",
+      "tmax": 80.4,
+      "tmin": 58.1,
+      "tavg": 69.3,
+      "gddTb50": 19.3,
+      "gddBase50": 19.3
+    },
+    {
+      "doy": 170,
+      "date": "06-19",
+      "tmax": 80.6,
+      "tmin": 58.3,
+      "tavg": 69.4,
+      "gddTb50": 19.4,
+      "gddBase50": 19.4
+    },
+    {
+      "doy": 171,
+      "date": "06-20",
+      "tmax": 80.7,
+      "tmin": 58.4,
+      "tavg": 69.6,
+      "gddTb50": 19.6,
+      "gddBase50": 19.6
+    },
+    {
+      "doy": 172,
+      "date": "06-21",
+      "tmax": 80.9,
+      "tmin": 58.6,
+      "tavg": 69.8,
+      "gddTb50": 19.8,
+      "gddBase50": 19.8
+    },
+    {
+      "doy": 173,
+      "date": "06-22",
+      "tmax": 81,
+      "tmin": 58.8,
+      "tavg": 69.9,
+      "gddTb50": 19.9,
+      "gddBase50": 19.9
+    },
+    {
+      "doy": 174,
+      "date": "06-23",
+      "tmax": 81.1,
+      "tmin": 59,
+      "tavg": 70.1,
+      "gddTb50": 20.1,
+      "gddBase50": 20.1
+    },
+    {
+      "doy": 175,
+      "date": "06-24",
+      "tmax": 81.3,
+      "tmin": 59.2,
+      "tavg": 70.3,
+      "gddTb50": 20.3,
+      "gddBase50": 20.3
+    },
+    {
+      "doy": 176,
+      "date": "06-25",
+      "tmax": 81.4,
+      "tmin": 59.4,
+      "tavg": 70.4,
+      "gddTb50": 20.4,
+      "gddBase50": 20.4
+    },
+    {
+      "doy": 177,
+      "date": "06-26",
+      "tmax": 81.6,
+      "tmin": 59.6,
+      "tavg": 70.6,
+      "gddTb50": 20.6,
+      "gddBase50": 20.6
+    },
+    {
+      "doy": 178,
+      "date": "06-27",
+      "tmax": 81.8,
+      "tmin": 59.8,
+      "tavg": 70.8,
+      "gddTb50": 20.8,
+      "gddBase50": 20.8
+    },
+    {
+      "doy": 179,
+      "date": "06-28",
+      "tmax": 81.9,
+      "tmin": 59.9,
+      "tavg": 70.9,
+      "gddTb50": 20.9,
+      "gddBase50": 20.9
+    },
+    {
+      "doy": 180,
+      "date": "06-29",
+      "tmax": 82.1,
+      "tmin": 60.1,
+      "tavg": 71.1,
+      "gddTb50": 21.1,
+      "gddBase50": 21.1
+    },
+    {
+      "doy": 181,
+      "date": "06-30",
+      "tmax": 82.2,
+      "tmin": 60.3,
+      "tavg": 71.3,
+      "gddTb50": 21.3,
+      "gddBase50": 21.3
+    },
+    {
+      "doy": 182,
+      "date": "07-01",
+      "tmax": 82.4,
+      "tmin": 60.5,
+      "tavg": 71.5,
+      "gddTb50": 21.5,
+      "gddBase50": 21.5
+    },
+    {
+      "doy": 183,
+      "date": "07-02",
+      "tmax": 82.5,
+      "tmin": 60.7,
+      "tavg": 71.6,
+      "gddTb50": 21.6,
+      "gddBase50": 21.6
+    },
+    {
+      "doy": 184,
+      "date": "07-03",
+      "tmax": 82.6,
+      "tmin": 60.9,
+      "tavg": 71.8,
+      "gddTb50": 21.8,
+      "gddBase50": 21.8
+    },
+    {
+      "doy": 185,
+      "date": "07-04",
+      "tmax": 82.8,
+      "tmin": 61.1,
+      "tavg": 72,
+      "gddTb50": 22,
+      "gddBase50": 22
+    },
+    {
+      "doy": 186,
+      "date": "07-05",
+      "tmax": 82.9,
+      "tmin": 61.2,
+      "tavg": 72.1,
+      "gddTb50": 22.1,
+      "gddBase50": 22.1
+    },
+    {
+      "doy": 187,
+      "date": "07-06",
+      "tmax": 83.1,
+      "tmin": 61.4,
+      "tavg": 72.3,
+      "gddTb50": 22.3,
+      "gddBase50": 22.3
+    },
+    {
+      "doy": 188,
+      "date": "07-07",
+      "tmax": 83.3,
+      "tmin": 61.6,
+      "tavg": 72.5,
+      "gddTb50": 22.5,
+      "gddBase50": 22.5
+    },
+    {
+      "doy": 189,
+      "date": "07-08",
+      "tmax": 83.4,
+      "tmin": 61.8,
+      "tavg": 72.6,
+      "gddTb50": 22.6,
+      "gddBase50": 22.6
+    },
+    {
+      "doy": 190,
+      "date": "07-09",
+      "tmax": 83.6,
+      "tmin": 62,
+      "tavg": 72.8,
+      "gddTb50": 22.8,
+      "gddBase50": 22.8
+    },
+    {
+      "doy": 191,
+      "date": "07-10",
+      "tmax": 83.7,
+      "tmin": 62.2,
+      "tavg": 73,
+      "gddTb50": 23,
+      "gddBase50": 23
+    },
+    {
+      "doy": 192,
+      "date": "07-11",
+      "tmax": 83.9,
+      "tmin": 62.4,
+      "tavg": 73.2,
+      "gddTb50": 23.2,
+      "gddBase50": 23.2
+    },
+    {
+      "doy": 193,
+      "date": "07-12",
+      "tmax": 84,
+      "tmin": 62.6,
+      "tavg": 73.3,
+      "gddTb50": 23.3,
+      "gddBase50": 23.3
+    },
+    {
+      "doy": 194,
+      "date": "07-13",
+      "tmax": 84.1,
+      "tmin": 62.7,
+      "tavg": 73.4,
+      "gddTb50": 23.4,
+      "gddBase50": 23.4
+    },
+    {
+      "doy": 195,
+      "date": "07-14",
+      "tmax": 84.3,
+      "tmin": 62.9,
+      "tavg": 73.6,
+      "gddTb50": 23.6,
+      "gddBase50": 23.6
+    },
+    {
+      "doy": 196,
+      "date": "07-15",
+      "tmax": 84.4,
+      "tmin": 63.1,
+      "tavg": 73.8,
+      "gddTb50": 23.8,
+      "gddBase50": 23.8
+    },
+    {
+      "doy": 197,
+      "date": "07-16",
+      "tmax": 84.6,
+      "tmin": 63.3,
+      "tavg": 73.9,
+      "gddTb50": 23.9,
+      "gddBase50": 23.9
+    },
+    {
+      "doy": 198,
+      "date": "07-17",
+      "tmax": 84.5,
+      "tmin": 63.2,
+      "tavg": 73.9,
+      "gddTb50": 23.9,
+      "gddBase50": 23.9
+    },
+    {
+      "doy": 199,
+      "date": "07-18",
+      "tmax": 84.4,
+      "tmin": 63.2,
+      "tavg": 73.8,
+      "gddTb50": 23.8,
+      "gddBase50": 23.8
+    },
+    {
+      "doy": 200,
+      "date": "07-19",
+      "tmax": 84.4,
+      "tmin": 63.1,
+      "tavg": 73.8,
+      "gddTb50": 23.8,
+      "gddBase50": 23.8
+    },
+    {
+      "doy": 201,
+      "date": "07-20",
+      "tmax": 84.3,
+      "tmin": 63.1,
+      "tavg": 73.7,
+      "gddTb50": 23.7,
+      "gddBase50": 23.7
+    },
+    {
+      "doy": 202,
+      "date": "07-21",
+      "tmax": 84.2,
+      "tmin": 63,
+      "tavg": 73.6,
+      "gddTb50": 23.6,
+      "gddBase50": 23.6
+    },
+    {
+      "doy": 203,
+      "date": "07-22",
+      "tmax": 84.1,
+      "tmin": 63,
+      "tavg": 73.6,
+      "gddTb50": 23.6,
+      "gddBase50": 23.6
+    },
+    {
+      "doy": 204,
+      "date": "07-23",
+      "tmax": 84.1,
+      "tmin": 62.9,
+      "tavg": 73.5,
+      "gddTb50": 23.5,
+      "gddBase50": 23.5
+    },
+    {
+      "doy": 205,
+      "date": "07-24",
+      "tmax": 84,
+      "tmin": 62.8,
+      "tavg": 73.4,
+      "gddTb50": 23.4,
+      "gddBase50": 23.4
+    },
+    {
+      "doy": 206,
+      "date": "07-25",
+      "tmax": 83.9,
+      "tmin": 62.8,
+      "tavg": 73.4,
+      "gddTb50": 23.4,
+      "gddBase50": 23.4
+    },
+    {
+      "doy": 207,
+      "date": "07-26",
+      "tmax": 83.8,
+      "tmin": 62.7,
+      "tavg": 73.3,
+      "gddTb50": 23.3,
+      "gddBase50": 23.3
+    },
+    {
+      "doy": 208,
+      "date": "07-27",
+      "tmax": 83.7,
+      "tmin": 62.7,
+      "tavg": 73.2,
+      "gddTb50": 23.2,
+      "gddBase50": 23.2
+    },
+    {
+      "doy": 209,
+      "date": "07-28",
+      "tmax": 83.7,
+      "tmin": 62.6,
+      "tavg": 73.2,
+      "gddTb50": 23.2,
+      "gddBase50": 23.2
+    },
+    {
+      "doy": 210,
+      "date": "07-29",
+      "tmax": 83.6,
+      "tmin": 62.5,
+      "tavg": 73.1,
+      "gddTb50": 23.1,
+      "gddBase50": 23.1
+    },
+    {
+      "doy": 211,
+      "date": "07-30",
+      "tmax": 83.5,
+      "tmin": 62.5,
+      "tavg": 73,
+      "gddTb50": 23,
+      "gddBase50": 23
+    },
+    {
+      "doy": 212,
+      "date": "07-31",
+      "tmax": 83.4,
+      "tmin": 62.4,
+      "tavg": 72.9,
+      "gddTb50": 22.9,
+      "gddBase50": 22.9
+    },
+    {
+      "doy": 213,
+      "date": "08-01",
+      "tmax": 83.4,
+      "tmin": 62.4,
+      "tavg": 72.9,
+      "gddTb50": 22.9,
+      "gddBase50": 22.9
+    },
+    {
+      "doy": 214,
+      "date": "08-02",
+      "tmax": 83.3,
+      "tmin": 62.3,
+      "tavg": 72.8,
+      "gddTb50": 22.8,
+      "gddBase50": 22.8
+    },
+    {
+      "doy": 215,
+      "date": "08-03",
+      "tmax": 83.2,
+      "tmin": 62.3,
+      "tavg": 72.8,
+      "gddTb50": 22.8,
+      "gddBase50": 22.8
+    },
+    {
+      "doy": 216,
+      "date": "08-04",
+      "tmax": 83.1,
+      "tmin": 62.2,
+      "tavg": 72.7,
+      "gddTb50": 22.7,
+      "gddBase50": 22.7
+    },
+    {
+      "doy": 217,
+      "date": "08-05",
+      "tmax": 83.1,
+      "tmin": 62.1,
+      "tavg": 72.6,
+      "gddTb50": 22.6,
+      "gddBase50": 22.6
+    },
+    {
+      "doy": 218,
+      "date": "08-06",
+      "tmax": 83,
+      "tmin": 62.1,
+      "tavg": 72.6,
+      "gddTb50": 22.6,
+      "gddBase50": 22.6
+    },
+    {
+      "doy": 219,
+      "date": "08-07",
+      "tmax": 82.9,
+      "tmin": 62,
+      "tavg": 72.5,
+      "gddTb50": 22.5,
+      "gddBase50": 22.5
+    },
+    {
+      "doy": 220,
+      "date": "08-08",
+      "tmax": 82.8,
+      "tmin": 62,
+      "tavg": 72.4,
+      "gddTb50": 22.4,
+      "gddBase50": 22.4
+    },
+    {
+      "doy": 221,
+      "date": "08-09",
+      "tmax": 82.7,
+      "tmin": 61.9,
+      "tavg": 72.3,
+      "gddTb50": 22.3,
+      "gddBase50": 22.3
+    },
+    {
+      "doy": 222,
+      "date": "08-10",
+      "tmax": 82.7,
+      "tmin": 61.8,
+      "tavg": 72.3,
+      "gddTb50": 22.3,
+      "gddBase50": 22.3
+    },
+    {
+      "doy": 223,
+      "date": "08-11",
+      "tmax": 82.6,
+      "tmin": 61.8,
+      "tavg": 72.2,
+      "gddTb50": 22.2,
+      "gddBase50": 22.2
+    },
+    {
+      "doy": 224,
+      "date": "08-12",
+      "tmax": 82.5,
+      "tmin": 61.7,
+      "tavg": 72.1,
+      "gddTb50": 22.1,
+      "gddBase50": 22.1
+    },
+    {
+      "doy": 225,
+      "date": "08-13",
+      "tmax": 82.4,
+      "tmin": 61.7,
+      "tavg": 72.1,
+      "gddTb50": 22.1,
+      "gddBase50": 22.1
+    },
+    {
+      "doy": 226,
+      "date": "08-14",
+      "tmax": 82.4,
+      "tmin": 61.6,
+      "tavg": 72,
+      "gddTb50": 22,
+      "gddBase50": 22
+    },
+    {
+      "doy": 227,
+      "date": "08-15",
+      "tmax": 82.3,
+      "tmin": 61.6,
+      "tavg": 72,
+      "gddTb50": 22,
+      "gddBase50": 22
+    },
+    {
+      "doy": 228,
+      "date": "08-16",
+      "tmax": 82.2,
+      "tmin": 61.5,
+      "tavg": 71.9,
+      "gddTb50": 21.9,
+      "gddBase50": 21.9
+    },
+    {
+      "doy": 229,
+      "date": "08-17",
+      "tmax": 81.9,
+      "tmin": 61.2,
+      "tavg": 71.6,
+      "gddTb50": 21.6,
+      "gddBase50": 21.6
+    },
+    {
+      "doy": 230,
+      "date": "08-18",
+      "tmax": 81.6,
+      "tmin": 60.9,
+      "tavg": 71.3,
+      "gddTb50": 21.3,
+      "gddBase50": 21.3
+    },
+    {
+      "doy": 231,
+      "date": "08-19",
+      "tmax": 81.3,
+      "tmin": 60.6,
+      "tavg": 71,
+      "gddTb50": 21,
+      "gddBase50": 21
+    },
+    {
+      "doy": 232,
+      "date": "08-20",
+      "tmax": 80.9,
+      "tmin": 60.2,
+      "tavg": 70.6,
+      "gddTb50": 20.6,
+      "gddBase50": 20.6
+    },
+    {
+      "doy": 233,
+      "date": "08-21",
+      "tmax": 80.6,
+      "tmin": 59.9,
+      "tavg": 70.3,
+      "gddTb50": 20.3,
+      "gddBase50": 20.3
+    },
+    {
+      "doy": 234,
+      "date": "08-22",
+      "tmax": 80.3,
+      "tmin": 59.6,
+      "tavg": 70,
+      "gddTb50": 20,
+      "gddBase50": 20
+    },
+    {
+      "doy": 235,
+      "date": "08-23",
+      "tmax": 80,
+      "tmin": 59.3,
+      "tavg": 69.7,
+      "gddTb50": 19.7,
+      "gddBase50": 19.7
+    },
+    {
+      "doy": 236,
+      "date": "08-24",
+      "tmax": 79.7,
+      "tmin": 59,
+      "tavg": 69.4,
+      "gddTb50": 19.4,
+      "gddBase50": 19.4
+    },
+    {
+      "doy": 237,
+      "date": "08-25",
+      "tmax": 79.4,
+      "tmin": 58.7,
+      "tavg": 69.1,
+      "gddTb50": 19.1,
+      "gddBase50": 19.1
+    },
+    {
+      "doy": 238,
+      "date": "08-26",
+      "tmax": 79.1,
+      "tmin": 58.3,
+      "tavg": 68.7,
+      "gddTb50": 18.7,
+      "gddBase50": 18.7
+    },
+    {
+      "doy": 239,
+      "date": "08-27",
+      "tmax": 78.8,
+      "tmin": 58,
+      "tavg": 68.4,
+      "gddTb50": 18.4,
+      "gddBase50": 18.4
+    },
+    {
+      "doy": 240,
+      "date": "08-28",
+      "tmax": 78.4,
+      "tmin": 57.7,
+      "tavg": 68.1,
+      "gddTb50": 18.1,
+      "gddBase50": 18.1
+    },
+    {
+      "doy": 241,
+      "date": "08-29",
+      "tmax": 78.1,
+      "tmin": 57.4,
+      "tavg": 67.8,
+      "gddTb50": 17.8,
+      "gddBase50": 17.8
+    },
+    {
+      "doy": 242,
+      "date": "08-30",
+      "tmax": 77.8,
+      "tmin": 57.1,
+      "tavg": 67.5,
+      "gddTb50": 17.5,
+      "gddBase50": 17.5
+    },
+    {
+      "doy": 243,
+      "date": "08-31",
+      "tmax": 77.5,
+      "tmin": 56.8,
+      "tavg": 67.2,
+      "gddTb50": 17.2,
+      "gddBase50": 17.2
+    },
+    {
+      "doy": 244,
+      "date": "09-01",
+      "tmax": 77.2,
+      "tmin": 56.4,
+      "tavg": 66.8,
+      "gddTb50": 16.8,
+      "gddBase50": 16.8
+    },
+    {
+      "doy": 245,
+      "date": "09-02",
+      "tmax": 76.9,
+      "tmin": 56.1,
+      "tavg": 66.5,
+      "gddTb50": 16.5,
+      "gddBase50": 16.5
+    },
+    {
+      "doy": 246,
+      "date": "09-03",
+      "tmax": 76.6,
+      "tmin": 55.8,
+      "tavg": 66.2,
+      "gddTb50": 16.2,
+      "gddBase50": 16.2
+    },
+    {
+      "doy": 247,
+      "date": "09-04",
+      "tmax": 76.2,
+      "tmin": 55.5,
+      "tavg": 65.9,
+      "gddTb50": 15.9,
+      "gddBase50": 15.9
+    },
+    {
+      "doy": 248,
+      "date": "09-05",
+      "tmax": 75.9,
+      "tmin": 55.2,
+      "tavg": 65.6,
+      "gddTb50": 15.6,
+      "gddBase50": 15.6
+    },
+    {
+      "doy": 249,
+      "date": "09-06",
+      "tmax": 75.6,
+      "tmin": 54.9,
+      "tavg": 65.3,
+      "gddTb50": 15.3,
+      "gddBase50": 15.3
+    },
+    {
+      "doy": 250,
+      "date": "09-07",
+      "tmax": 75.3,
+      "tmin": 54.5,
+      "tavg": 64.9,
+      "gddTb50": 14.9,
+      "gddBase50": 14.9
+    },
+    {
+      "doy": 251,
+      "date": "09-08",
+      "tmax": 75,
+      "tmin": 54.2,
+      "tavg": 64.6,
+      "gddTb50": 14.6,
+      "gddBase50": 14.6
+    },
+    {
+      "doy": 252,
+      "date": "09-09",
+      "tmax": 74.7,
+      "tmin": 53.9,
+      "tavg": 64.3,
+      "gddTb50": 14.3,
+      "gddBase50": 14.3
+    },
+    {
+      "doy": 253,
+      "date": "09-10",
+      "tmax": 74.4,
+      "tmin": 53.6,
+      "tavg": 64,
+      "gddTb50": 14,
+      "gddBase50": 14
+    },
+    {
+      "doy": 254,
+      "date": "09-11",
+      "tmax": 74.1,
+      "tmin": 53.3,
+      "tavg": 63.7,
+      "gddTb50": 13.7,
+      "gddBase50": 13.7
+    },
+    {
+      "doy": 255,
+      "date": "09-12",
+      "tmax": 73.7,
+      "tmin": 53,
+      "tavg": 63.4,
+      "gddTb50": 13.4,
+      "gddBase50": 13.4
+    },
+    {
+      "doy": 256,
+      "date": "09-13",
+      "tmax": 73.4,
+      "tmin": 52.6,
+      "tavg": 63,
+      "gddTb50": 13,
+      "gddBase50": 13
+    },
+    {
+      "doy": 257,
+      "date": "09-14",
+      "tmax": 73.1,
+      "tmin": 52.3,
+      "tavg": 62.7,
+      "gddTb50": 12.7,
+      "gddBase50": 12.7
+    },
+    {
+      "doy": 258,
+      "date": "09-15",
+      "tmax": 72.8,
+      "tmin": 52,
+      "tavg": 62.4,
+      "gddTb50": 12.4,
+      "gddBase50": 12.4
+    },
+    {
+      "doy": 259,
+      "date": "09-16",
+      "tmax": 72.4,
+      "tmin": 51.6,
+      "tavg": 62,
+      "gddTb50": 12,
+      "gddBase50": 12
+    },
+    {
+      "doy": 260,
+      "date": "09-17",
+      "tmax": 71.9,
+      "tmin": 51.3,
+      "tavg": 61.6,
+      "gddTb50": 11.6,
+      "gddBase50": 11.6
+    },
+    {
+      "doy": 261,
+      "date": "09-18",
+      "tmax": 71.5,
+      "tmin": 50.9,
+      "tavg": 61.2,
+      "gddTb50": 11.2,
+      "gddBase50": 11.2
+    },
+    {
+      "doy": 262,
+      "date": "09-19",
+      "tmax": 71.1,
+      "tmin": 50.6,
+      "tavg": 60.9,
+      "gddTb50": 10.9,
+      "gddBase50": 10.9
+    },
+    {
+      "doy": 263,
+      "date": "09-20",
+      "tmax": 70.7,
+      "tmin": 50.2,
+      "tavg": 60.5,
+      "gddTb50": 10.5,
+      "gddBase50": 10.5
+    },
+    {
+      "doy": 264,
+      "date": "09-21",
+      "tmax": 70.2,
+      "tmin": 49.9,
+      "tavg": 60.1,
+      "gddTb50": 10.1,
+      "gddBase50": 10.1
+    },
+    {
+      "doy": 265,
+      "date": "09-22",
+      "tmax": 69.8,
+      "tmin": 49.5,
+      "tavg": 59.7,
+      "gddTb50": 9.7,
+      "gddBase50": 9.7
+    },
+    {
+      "doy": 266,
+      "date": "09-23",
+      "tmax": 69.4,
+      "tmin": 49.1,
+      "tavg": 59.3,
+      "gddTb50": 9.3,
+      "gddBase50": 9.3
+    },
+    {
+      "doy": 267,
+      "date": "09-24",
+      "tmax": 68.9,
+      "tmin": 48.8,
+      "tavg": 58.9,
+      "gddTb50": 8.9,
+      "gddBase50": 8.9
+    },
+    {
+      "doy": 268,
+      "date": "09-25",
+      "tmax": 68.5,
+      "tmin": 48.4,
+      "tavg": 58.5,
+      "gddTb50": 8.5,
+      "gddBase50": 8.5
+    },
+    {
+      "doy": 269,
+      "date": "09-26",
+      "tmax": 68.1,
+      "tmin": 48.1,
+      "tavg": 58.1,
+      "gddTb50": 8.1,
+      "gddBase50": 8.1
+    },
+    {
+      "doy": 270,
+      "date": "09-27",
+      "tmax": 67.7,
+      "tmin": 47.7,
+      "tavg": 57.7,
+      "gddTb50": 7.7,
+      "gddBase50": 7.7
+    },
+    {
+      "doy": 271,
+      "date": "09-28",
+      "tmax": 67.2,
+      "tmin": 47.3,
+      "tavg": 57.3,
+      "gddTb50": 7.3,
+      "gddBase50": 7.3
+    },
+    {
+      "doy": 272,
+      "date": "09-29",
+      "tmax": 66.8,
+      "tmin": 47,
+      "tavg": 56.9,
+      "gddTb50": 6.9,
+      "gddBase50": 6.9
+    },
+    {
+      "doy": 273,
+      "date": "09-30",
+      "tmax": 66.4,
+      "tmin": 46.6,
+      "tavg": 56.5,
+      "gddTb50": 6.5,
+      "gddBase50": 6.5
+    },
+    {
+      "doy": 274,
+      "date": "10-01",
+      "tmax": 65.9,
+      "tmin": 46.3,
+      "tavg": 56.1,
+      "gddTb50": 6.1,
+      "gddBase50": 6.1
+    },
+    {
+      "doy": 275,
+      "date": "10-02",
+      "tmax": 65.5,
+      "tmin": 45.9,
+      "tavg": 55.7,
+      "gddTb50": 5.7,
+      "gddBase50": 5.7
+    },
+    {
+      "doy": 276,
+      "date": "10-03",
+      "tmax": 65.1,
+      "tmin": 45.6,
+      "tavg": 55.4,
+      "gddTb50": 5.4,
+      "gddBase50": 5.4
+    },
+    {
+      "doy": 277,
+      "date": "10-04",
+      "tmax": 64.6,
+      "tmin": 45.2,
+      "tavg": 54.9,
+      "gddTb50": 4.9,
+      "gddBase50": 4.9
+    },
+    {
+      "doy": 278,
+      "date": "10-05",
+      "tmax": 64.2,
+      "tmin": 44.8,
+      "tavg": 54.5,
+      "gddTb50": 4.5,
+      "gddBase50": 4.5
+    },
+    {
+      "doy": 279,
+      "date": "10-06",
+      "tmax": 63.8,
+      "tmin": 44.5,
+      "tavg": 54.2,
+      "gddTb50": 4.2,
+      "gddBase50": 4.2
+    },
+    {
+      "doy": 280,
+      "date": "10-07",
+      "tmax": 63.4,
+      "tmin": 44.1,
+      "tavg": 53.8,
+      "gddTb50": 3.8,
+      "gddBase50": 3.8
+    },
+    {
+      "doy": 281,
+      "date": "10-08",
+      "tmax": 62.9,
+      "tmin": 43.8,
+      "tavg": 53.4,
+      "gddTb50": 3.4,
+      "gddBase50": 3.4
+    },
+    {
+      "doy": 282,
+      "date": "10-09",
+      "tmax": 62.5,
+      "tmin": 43.4,
+      "tavg": 53,
+      "gddTb50": 3,
+      "gddBase50": 3
+    },
+    {
+      "doy": 283,
+      "date": "10-10",
+      "tmax": 62.1,
+      "tmin": 43,
+      "tavg": 52.6,
+      "gddTb50": 2.6,
+      "gddBase50": 2.6
+    },
+    {
+      "doy": 284,
+      "date": "10-11",
+      "tmax": 61.6,
+      "tmin": 42.7,
+      "tavg": 52.2,
+      "gddTb50": 2.2,
+      "gddBase50": 2.2
+    },
+    {
+      "doy": 285,
+      "date": "10-12",
+      "tmax": 61.2,
+      "tmin": 42.3,
+      "tavg": 51.8,
+      "gddTb50": 1.8,
+      "gddBase50": 1.8
+    },
+    {
+      "doy": 286,
+      "date": "10-13",
+      "tmax": 60.8,
+      "tmin": 42,
+      "tavg": 51.4,
+      "gddTb50": 1.4,
+      "gddBase50": 1.4
+    },
+    {
+      "doy": 287,
+      "date": "10-14",
+      "tmax": 60.4,
+      "tmin": 41.6,
+      "tavg": 51,
+      "gddTb50": 1,
+      "gddBase50": 1
+    },
+    {
+      "doy": 288,
+      "date": "10-15",
+      "tmax": 59.9,
+      "tmin": 41.3,
+      "tavg": 50.6,
+      "gddTb50": 0.6,
+      "gddBase50": 0.6
+    },
+    {
+      "doy": 289,
+      "date": "10-16",
+      "tmax": 59.5,
+      "tmin": 40.9,
+      "tavg": 50.2,
+      "gddTb50": 0.2,
+      "gddBase50": 0.2
+    },
+    {
+      "doy": 290,
+      "date": "10-17",
+      "tmax": 59,
+      "tmin": 40.5,
+      "tavg": 49.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 291,
+      "date": "10-18",
+      "tmax": 58.5,
+      "tmin": 40.2,
+      "tavg": 49.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 292,
+      "date": "10-19",
+      "tmax": 58.1,
+      "tmin": 39.8,
+      "tavg": 49,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 293,
+      "date": "10-20",
+      "tmax": 57.6,
+      "tmin": 39.5,
+      "tavg": 48.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 294,
+      "date": "10-21",
+      "tmax": 57.1,
+      "tmin": 39.1,
+      "tavg": 48.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 295,
+      "date": "10-22",
+      "tmax": 56.6,
+      "tmin": 38.8,
+      "tavg": 47.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 296,
+      "date": "10-23",
+      "tmax": 56.2,
+      "tmin": 38.4,
+      "tavg": 47.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 297,
+      "date": "10-24",
+      "tmax": 55.7,
+      "tmin": 38.1,
+      "tavg": 46.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 298,
+      "date": "10-25",
+      "tmax": 55.2,
+      "tmin": 37.7,
+      "tavg": 46.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 299,
+      "date": "10-26",
+      "tmax": 54.7,
+      "tmin": 37.4,
+      "tavg": 46.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 300,
+      "date": "10-27",
+      "tmax": 54.2,
+      "tmin": 37,
+      "tavg": 45.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 301,
+      "date": "10-28",
+      "tmax": 53.8,
+      "tmin": 36.6,
+      "tavg": 45.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 302,
+      "date": "10-29",
+      "tmax": 53.3,
+      "tmin": 36.3,
+      "tavg": 44.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 303,
+      "date": "10-30",
+      "tmax": 52.8,
+      "tmin": 35.9,
+      "tavg": 44.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 304,
+      "date": "10-31",
+      "tmax": 52.3,
+      "tmin": 35.6,
+      "tavg": 44,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 305,
+      "date": "11-01",
+      "tmax": 51.9,
+      "tmin": 35.2,
+      "tavg": 43.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 306,
+      "date": "11-02",
+      "tmax": 51.4,
+      "tmin": 34.9,
+      "tavg": 43.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 307,
+      "date": "11-03",
+      "tmax": 50.9,
+      "tmin": 34.5,
+      "tavg": 42.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 308,
+      "date": "11-04",
+      "tmax": 50.4,
+      "tmin": 34.2,
+      "tavg": 42.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 309,
+      "date": "11-05",
+      "tmax": 50,
+      "tmin": 33.8,
+      "tavg": 41.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 310,
+      "date": "11-06",
+      "tmax": 49.5,
+      "tmin": 33.4,
+      "tavg": 41.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 311,
+      "date": "11-07",
+      "tmax": 49,
+      "tmin": 33.1,
+      "tavg": 41.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 312,
+      "date": "11-08",
+      "tmax": 48.5,
+      "tmin": 32.7,
+      "tavg": 40.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 313,
+      "date": "11-09",
+      "tmax": 48,
+      "tmin": 32.4,
+      "tavg": 40.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 314,
+      "date": "11-10",
+      "tmax": 47.6,
+      "tmin": 32,
+      "tavg": 39.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 315,
+      "date": "11-11",
+      "tmax": 47.1,
+      "tmin": 31.7,
+      "tavg": 39.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 316,
+      "date": "11-12",
+      "tmax": 46.6,
+      "tmin": 31.3,
+      "tavg": 39,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 317,
+      "date": "11-13",
+      "tmax": 46.1,
+      "tmin": 31,
+      "tavg": 38.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 318,
+      "date": "11-14",
+      "tmax": 45.7,
+      "tmin": 30.6,
+      "tavg": 38.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 319,
+      "date": "11-15",
+      "tmax": 45.2,
+      "tmin": 30.3,
+      "tavg": 37.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 320,
+      "date": "11-16",
+      "tmax": 44.7,
+      "tmin": 29.9,
+      "tavg": 37.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 321,
+      "date": "11-17",
+      "tmax": 44.2,
+      "tmin": 29.4,
+      "tavg": 36.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 322,
+      "date": "11-18",
+      "tmax": 43.8,
+      "tmin": 28.9,
+      "tavg": 36.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 323,
+      "date": "11-19",
+      "tmax": 43.3,
+      "tmin": 28.5,
+      "tavg": 35.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 324,
+      "date": "11-20",
+      "tmax": 42.9,
+      "tmin": 28,
+      "tavg": 35.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 325,
+      "date": "11-21",
+      "tmax": 42.4,
+      "tmin": 27.5,
+      "tavg": 35,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 326,
+      "date": "11-22",
+      "tmax": 41.9,
+      "tmin": 27,
+      "tavg": 34.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 327,
+      "date": "11-23",
+      "tmax": 41.5,
+      "tmin": 26.5,
+      "tavg": 34,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 328,
+      "date": "11-24",
+      "tmax": 41,
+      "tmin": 26.1,
+      "tavg": 33.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 329,
+      "date": "11-25",
+      "tmax": 40.6,
+      "tmin": 25.6,
+      "tavg": 33.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 330,
+      "date": "11-26",
+      "tmax": 40.1,
+      "tmin": 25.1,
+      "tavg": 32.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 331,
+      "date": "11-27",
+      "tmax": 39.6,
+      "tmin": 24.6,
+      "tavg": 32.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 332,
+      "date": "11-28",
+      "tmax": 39.2,
+      "tmin": 24.1,
+      "tavg": 31.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 333,
+      "date": "11-29",
+      "tmax": 38.7,
+      "tmin": 23.7,
+      "tavg": 31.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 334,
+      "date": "11-30",
+      "tmax": 38.3,
+      "tmin": 23.2,
+      "tavg": 30.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 335,
+      "date": "12-01",
+      "tmax": 37.8,
+      "tmin": 22.7,
+      "tavg": 30.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 336,
+      "date": "12-02",
+      "tmax": 37.3,
+      "tmin": 22.2,
+      "tavg": 29.8,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 337,
+      "date": "12-03",
+      "tmax": 36.9,
+      "tmin": 21.7,
+      "tavg": 29.3,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 338,
+      "date": "12-04",
+      "tmax": 36.4,
+      "tmin": 21.3,
+      "tavg": 28.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 339,
+      "date": "12-05",
+      "tmax": 36,
+      "tmin": 20.8,
+      "tavg": 28.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 340,
+      "date": "12-06",
+      "tmax": 35.5,
+      "tmin": 20.3,
+      "tavg": 27.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 341,
+      "date": "12-07",
+      "tmax": 35,
+      "tmin": 19.8,
+      "tavg": 27.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 342,
+      "date": "12-08",
+      "tmax": 34.6,
+      "tmin": 19.3,
+      "tavg": 27,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 343,
+      "date": "12-09",
+      "tmax": 34.1,
+      "tmin": 18.9,
+      "tavg": 26.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 344,
+      "date": "12-10",
+      "tmax": 33.7,
+      "tmin": 18.4,
+      "tavg": 26.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 345,
+      "date": "12-11",
+      "tmax": 33.2,
+      "tmin": 17.9,
+      "tavg": 25.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 346,
+      "date": "12-12",
+      "tmax": 32.7,
+      "tmin": 17.4,
+      "tavg": 25.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 347,
+      "date": "12-13",
+      "tmax": 32.3,
+      "tmin": 16.9,
+      "tavg": 24.6,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 348,
+      "date": "12-14",
+      "tmax": 31.8,
+      "tmin": 16.5,
+      "tavg": 24.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 349,
+      "date": "12-15",
+      "tmax": 31.4,
+      "tmin": 16,
+      "tavg": 23.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 350,
+      "date": "12-16",
+      "tmax": 30.9,
+      "tmin": 15.5,
+      "tavg": 23.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 351,
+      "date": "12-17",
+      "tmax": 30.8,
+      "tmin": 15.3,
+      "tavg": 23.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 352,
+      "date": "12-18",
+      "tmax": 30.7,
+      "tmin": 15.1,
+      "tavg": 22.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 353,
+      "date": "12-19",
+      "tmax": 30.5,
+      "tmin": 14.9,
+      "tavg": 22.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 354,
+      "date": "12-20",
+      "tmax": 30.4,
+      "tmin": 14.6,
+      "tavg": 22.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 355,
+      "date": "12-21",
+      "tmax": 30.3,
+      "tmin": 14.4,
+      "tavg": 22.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 356,
+      "date": "12-22",
+      "tmax": 30.2,
+      "tmin": 14.2,
+      "tavg": 22.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 357,
+      "date": "12-23",
+      "tmax": 30.1,
+      "tmin": 14,
+      "tavg": 22.1,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 358,
+      "date": "12-24",
+      "tmax": 29.9,
+      "tmin": 13.8,
+      "tavg": 21.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 359,
+      "date": "12-25",
+      "tmax": 29.8,
+      "tmin": 13.6,
+      "tavg": 21.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 360,
+      "date": "12-26",
+      "tmax": 29.7,
+      "tmin": 13.3,
+      "tavg": 21.5,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 361,
+      "date": "12-27",
+      "tmax": 29.6,
+      "tmin": 13.1,
+      "tavg": 21.4,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 362,
+      "date": "12-28",
+      "tmax": 29.5,
+      "tmin": 12.9,
+      "tavg": 21.2,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 363,
+      "date": "12-29",
+      "tmax": 29.3,
+      "tmin": 12.7,
+      "tavg": 21,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 364,
+      "date": "12-30",
+      "tmax": 29.2,
+      "tmin": 12.5,
+      "tavg": 20.9,
+      "gddTb50": 0,
+      "gddBase50": 0
+    },
+    {
+      "doy": 365,
+      "date": "12-31",
+      "tmax": 29.1,
+      "tmin": 12.3,
+      "tavg": 20.7,
+      "gddTb50": 0,
+      "gddBase50": 0
+    }
+  ]
+}

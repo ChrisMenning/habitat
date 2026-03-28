@@ -35,7 +35,8 @@ jobs:
         run: |
           tar -czf /tmp/bayhive-deploy.tar.gz \
             --exclude="./.git" \
-            --exclude="./snapshots" \
+            --exclude="./snapshots/cache" \
+            --exclude="./snapshots/inat-*.json" \
             --exclude="./node_modules" \
             .
 
