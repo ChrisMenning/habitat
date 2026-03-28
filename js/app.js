@@ -74,7 +74,7 @@ import { initMap, registerLayer, registerAreaLayer,
          setJourneyNorthVisibility,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
-         setLoading, setStatus, initActivityBar,
+         setLoading, setLoadingProgress, setStatus, initActivityBar,
          buildPopupHTML, buildAreaPopupHTML,
          esc, openLightbox, closeLightbox }                  from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
@@ -103,7 +103,8 @@ import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetc
 import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache, queryParcelsNear, OWNERSHIP_META } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
-         availableYears, renderTrendChart }            from './history.js';
+         availableYears, renderTrendChart,
+         renderMonthlyChart, renderSpeciesTable }      from './history.js';
 import { initHealthCheck }                            from './health.js';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -502,6 +503,13 @@ async function _loadHistoricalInat() {
 
   // Process newest-first so users see recent history appear before older data
   for (let year = currentYear - 1; year >= INAT_HISTORY_START_YEAR; year--) {
+    // Update the Trends panel status indicator
+    const statusEl = document.getElementById('history-load-status');
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = `\u21bb Loading historical records\u2026 ${year}`;
+    }
+
     const cacheKey = `obs/inat/year-${year}`;
     const ttl      = year < currentYear - 1 ? HIST_TTL_OLD : HIST_TTL_PREV;
 
@@ -578,6 +586,10 @@ async function _loadHistoricalInat() {
   if (newSightings.length > 0) {
     updateTimelineBounds(newSightings);
   }
+
+  // Clear the Trends panel status indicator
+  const statusEl = document.getElementById('history-load-status');
+  if (statusEl) statusEl.hidden = true;
 
   if (totalAdded > 0) {
     console.log(`[inat-history] +${totalAdded} historical observations merged`);
@@ -722,6 +734,24 @@ async function loadObservations() {
 
   try {
     // All sources run in parallel. Failures in one never block the others.
+    // Each promise is wrapped to update the loading progress counter as sources settle.
+    const TOTAL_SOURCES = 17;
+    let   _settled      = 0;
+    const _phases       = [
+      // indices 0-4: observations
+      ...[0,1,2,3,4].map(() => 'Fetching observations'),
+      // indices 5-15: area data
+      ...[5,6,7,8,9,10,11,12,13,14,15].map(() => 'Loading area data'),
+      // index 16: pesticide
+      'Loading area data',
+    ];
+    function _tracked(p, idx) {
+      return p.then(
+        v => { setLoadingProgress(++_settled, TOTAL_SOURCES, _phases[idx]); return v; },
+        e => { setLoadingProgress(++_settled, TOTAL_SOURCES, _phases[idx]); return Promise.reject(e); },
+      );
+    }
+
     const [
       inatResult, gbifPollResult, gbifPlantResult, gbifWildlifeResult, beesResult,
       padusResult, snaResult, dnrResult,
@@ -732,60 +762,61 @@ async function loadObservations() {
       // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
       // Caches the fully-processed layer partition so partitionByLayer and
       // observationsToGeoJSON are also skipped on a cache hit.
-      withCache(`obs/inat/all`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/inat/all`, OBS_TTL, async () => {
         const { observations, total } = await fetchObservations(undefined, undefined);
         const geojson  = observationsToGeoJSON(observations);
         const byLayer  = partitionByLayer(geojson, LAYERS.map(l => l.id));
         byLayer._total = total;  // stored alongside layer arrays
         return byLayer;
-      }),
+      }), 0),
 
       // Caches the final GeoJSON features array — resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/v3`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-poll/v3`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
-      }),
+      }), 1),
 
-      withCache(`obs/gbif-plants/v2`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-plants/v2`, OBS_TTL, async () => {
         const { occurrences }       = await fetchGbifPlants(undefined, undefined);
         const { native, nonNative } = await partitionPlantOccurrences(occurrences);
         return {
           native:    gbifToGeoJSON(native,    'gbif-native-plants').features,
           nonNative: gbifToGeoJSON(nonNative, 'gbif-non-native-plants').features,
         };
-      }),
+      }), 2),
 
-      withCache(`obs/gbif-wildlife/v1`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-wildlife/v1`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifWildlife(undefined, undefined);
         return gbifToGeoJSON(occurrences, 'gbif-wildlife').features;
-      }),
+      }), 3),
 
-      withCache(`obs/bees/v1`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/bees/v1`, OBS_TTL, async () => {
         const { occurrences } = await fetchBeesAll(undefined, undefined);
         return beesToGeoJSON(occurrences, 'bees-records').features;
-      }),
+      }), 4),
 
       // ── Static area data (fixed keys, 24 h TTL) ──────────────────────────────────────────────
-      withCache('area/padus',          AREA_TTL, fetchPadUs),
-      withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna),
-      withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands),
-      withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor),
-      withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments),
-      withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards),
-      withCache('area/hnp',            AREA_TTL, fetchHnpYards),
-      withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats),
-      withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
-      withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
+      _tracked(withCache('area/padus',          AREA_TTL, fetchPadUs), 5),
+      _tracked(withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna), 6),
+      _tracked(withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands), 7),
+      _tracked(withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor), 8),
+      _tracked(withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments), 9),
+      _tracked(withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards), 10),
+      _tracked(withCache('area/hnp',            AREA_TTL, fetchHnpYards), 11),
+      _tracked(withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats), 12),
+      _tracked(withCache('area/quickstats',        AREA_TTL, fetchQuickStats), 13),
+      _tracked(withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe), 14),
 
       // ── eBird recent bird observations (1 h TTL, always last 30 days) ───
-      withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()),
+      _tracked(withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()), 15),
 
       // ── Pesticide county choropleth (24 h TTL, static county data) ──────────
-      withCache('area/pesticide', AREA_TTL, fetchPesticideCounties),
+      _tracked(withCache('area/pesticide', AREA_TTL, fetchPesticideCounties), 16),
     ]);
 
+    setLoadingProgress(TOTAL_SOURCES, TOTAL_SOURCES, 'Rendering layers');
     const counts = {};
     let inatObs = 0, inatTotal = 0, gbifCount = 0;
 
@@ -1334,6 +1365,11 @@ async function loadObservations() {
  * Memory policy: holds at most 5 years x 2 sources = 10 small objects.
  * References are nullified after rendering to allow GC.
  */
+// ── Trends panel ──────────────────────────────────────────────────────────────
+// State: 'yearly' | 'monthly'
+let _trendsView     = 'yearly';
+let _trendsMonthYear = null; // selected year for monthly view
+
 async function loadHistoricalTrends() {
   const container = document.getElementById('panel-history-inner');
   if (!container) return;
@@ -1342,132 +1378,145 @@ async function loadHistoricalTrends() {
   try { index = await fetchSnapshotIndex(); }
   catch { index = []; }
 
-  const inatYears = availableYears(index, 'inat').slice(-5);
+  const inatYears = availableYears(index, 'inat').slice(-8).reverse(); // newest first
   const noaaYears = availableYears(index, 'noaa').slice(-5);
 
-  if (inatYears.length < 2 && noaaYears.length < 2) {
-    _renderHarvestUI(container, true);
+  container.innerHTML = '';
+
+  // Status line shown while auto-harvest is still running
+  const statusLine = document.createElement('p');
+  statusLine.id = 'history-load-status';
+  statusLine.className = 'layer-desc trends-status-line';
+  statusLine.hidden = true;
+  container.appendChild(statusLine);
+
+  if (!inatYears.length && noaaYears.length < 2) {
+    statusLine.hidden = false;
+    statusLine.textContent = '↻ Snapshot data is being collected automatically — check back in a few minutes.';
     return;
   }
 
-  // Fetch up to 5 most recent inat years, one at a time (avoid parallel RAM spike)
+  // ── View toggle ────────────────────────────────────────────────────────────
+  const toggleWrap = document.createElement('div');
+  toggleWrap.className = 'trends-toggle';
+  toggleWrap.innerHTML =
+    `<button class="trends-toggle-btn${_trendsView === 'yearly' ? ' trends-toggle-btn--active' : ''}" data-view="yearly">Yearly overview</button>` +
+    `<button class="trends-toggle-btn${_trendsView === 'monthly' ? ' trends-toggle-btn--active' : ''}" data-view="monthly">Monthly detail</button>`;
+  container.appendChild(toggleWrap);
+
+  const chartsArea = document.createElement('div');
+  chartsArea.id = 'trends-charts-area';
+  container.appendChild(chartsArea);
+
+  toggleWrap.querySelectorAll('.trends-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _trendsView = btn.dataset.view;
+      toggleWrap.querySelectorAll('.trends-toggle-btn').forEach(b =>
+        b.classList.toggle('trends-toggle-btn--active', b.dataset.view === _trendsView));
+      _renderTrendsCharts(chartsArea, inatYears, noaaYears);
+    });
+  });
+
+  await _renderTrendsCharts(chartsArea, inatYears, noaaYears);
+}
+
+async function _renderTrendsCharts(area, inatYears, noaaYears) {
+  area.innerHTML = '';
+
+  if (_trendsView === 'yearly') {
+    await _renderYearlyView(area, inatYears, noaaYears);
+  } else {
+    await _renderMonthlyView(area, inatYears);
+  }
+}
+
+async function _renderYearlyView(area, inatYears, noaaYears) {
+  // Fetch up to 8 inat years — use pollinators+native-plants for the y-value
+  // (scoped count: ignores other-plants and other-wildlife)
   let inatPoints = null;
   if (inatYears.length >= 2) {
     inatPoints = [];
-    for (const yr of inatYears) {
+    for (const yr of [...inatYears].reverse()) { // chronological order for chart
       const snap = await fetchSnapshot('inat', yr);
-      if (snap) inatPoints.push({ year: yr, value: snap.total ?? 0 });
+      if (snap) {
+        const v = (snap.byLayer?.pollinators ?? 0) + (snap.byLayer?.['native-plants'] ?? 0);
+        inatPoints.push({ year: yr, value: v || (snap.total ?? 0) });
+      }
     }
   }
-
-  // Fetch up to 5 most recent noaa years sequentially
-  let noaaPoints = null;
-  if (noaaYears.length >= 2) {
-    noaaPoints = [];
-    for (const yr of noaaYears) {
-      const snap = await fetchSnapshot('noaa', yr);
-      if (snap) noaaPoints.push({ year: yr, value: snap.gddTotal ?? 0 });
-    }
-  }
-
-  container.innerHTML = '';
 
   if (inatPoints && inatPoints.length >= 2) {
     const wrap = document.createElement('div');
     wrap.className = 'history-chart-block';
     wrap.innerHTML =
-      '<p class="layer-group-label" style="margin:0.5rem 0 0.25rem;">iNat pollinator sightings</p>' +
+      '<p class="layer-group-label" style="margin:0.5rem 0 0.25rem;">Pollinator &amp; native plant sightings by year</p>' +
       '<div id="history-chart-inat"></div>';
-    container.appendChild(wrap);
-    renderTrendChart('history-chart-inat', inatPoints, 'iNaturalist pollinator sighting totals by year');
+    area.appendChild(wrap);
+    renderTrendChart('history-chart-inat', inatPoints, 'Pollinator and native plant sighting totals by year');
   }
 
-  if (noaaPoints && noaaPoints.length >= 2) {
-    const wrap = document.createElement('div');
-    wrap.className = 'history-chart-block';
-    wrap.innerHTML =
-      '<p class="layer-group-label" style="margin:0.75rem 0 0.25rem;">GDD accumulation (base 50 °F)</p>' +
-      '<div id="history-chart-noaa"></div>';
-    container.appendChild(wrap);
-    renderTrendChart('history-chart-noaa', noaaPoints, 'Annual growing degree day totals by year');
+  const noaaYearsAsc = [...(noaaYears ?? [])].sort((a, b) => a - b);
+  if (noaaYearsAsc.length >= 2) {
+    const noaaPoints = [];
+    for (const yr of noaaYearsAsc) {
+      const snap = await fetchSnapshot('noaa', yr);
+      if (snap) noaaPoints.push({ year: yr, value: snap.gddTotal ?? 0 });
+    }
+    if (noaaPoints.length >= 2) {
+      const wrap = document.createElement('div');
+      wrap.className = 'history-chart-block';
+      wrap.innerHTML =
+        '<p class="layer-group-label" style="margin:0.75rem 0 0.25rem;">GDD accumulation (base 50 °F)</p>' +
+        '<div id="history-chart-noaa"></div>';
+      area.appendChild(wrap);
+      renderTrendChart('history-chart-noaa', noaaPoints, 'Annual growing degree day totals by year');
+    }
   }
 
-  // Nullify refs to allow GC
-  inatPoints = null;
-  noaaPoints = null;
-
-  // Append harvest-more control below charts
-  const moreWrap = document.createElement('div');
-  moreWrap.className = 'history-harvest-more';
-  moreWrap.innerHTML = '<button class="harvest-more-btn">+ Harvest more years</button>';
-  container.appendChild(moreWrap);
-  moreWrap.querySelector('.harvest-more-btn').addEventListener('click', () => {
-    moreWrap.replaceWith(_renderHarvestUI(null, false));
-  });
+  if (!area.firstChild) {
+    area.innerHTML = '<p class="layer-desc trends-status-line">↻ Snapshots are being collected — check back soon.</p>';
+  }
 }
 
-// ── Harvest UI ────────────────────────────────────────────────────────────────
-function _renderHarvestUI(container, isEmpty) {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let y = currentYear; y >= 2015; y--) years.push(y);
-
-  const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
-
-  const el = document.createElement('div');
-  el.className = 'harvest-ui';
-  el.innerHTML = `
-    ${isEmpty ? '<p class="layer-desc" style="margin:0 0 0.75rem;">No trend data yet. Harvest at least two years to see charts.</p>' : ''}
-    <div class="harvest-form">
-      <select class="harvest-select harvest-source">
-        <option value="inat">iNaturalist</option>
-        <option value="gbif">GBIF</option>
-        <option value="noaa">NOAA (GDD)</option>
-        <option value="nass">NASS Crops</option>
-      </select>
-      <select class="harvest-select harvest-year">${yearOptions}</select>
-      <button class="harvest-run-btn">Run</button>
-    </div>
-    <p class="harvest-status"></p>`;
-
-  if (container) {
-    container.innerHTML = '';
-    container.appendChild(el);
+async function _renderMonthlyView(area, inatYears) {
+  if (!inatYears.length) {
+    area.innerHTML = '<p class="layer-desc trends-status-line">No iNaturalist snapshots yet.</p>';
+    return;
   }
 
-  el.querySelector('.harvest-run-btn').addEventListener('click', async () => {
-    const source = el.querySelector('.harvest-source').value;
-    const year   = parseInt(el.querySelector('.harvest-year').value, 10);
-    const btn    = el.querySelector('.harvest-run-btn');
-    const status = el.querySelector('.harvest-status');
+  // Year selector
+  if (!_trendsMonthYear || !inatYears.includes(_trendsMonthYear)) {
+    _trendsMonthYear = inatYears[0]; // default to most recent
+  }
 
-    btn.disabled = true;
-    btn.textContent = 'Running…';
-    status.textContent = `Harvesting ${source} ${year} — this may take up to a minute…`;
+  const yearOpts = inatYears.map(y =>
+    `<option value="${y}"${y === _trendsMonthYear ? ' selected' : ''}>${y}</option>`
+  ).join('');
 
-    try {
-      const res = await fetch('/api/harvest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source, year }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        status.textContent = `\u2713 Saved ${json.file} (${json.records ?? '?'} records). Reloading trends…`;
-        setTimeout(() => loadHistoricalTrends(), 1200);
-      } else {
-        status.textContent = `Error: ${json.error ?? 'unknown error'}`;
-        btn.disabled = false;
-        btn.textContent = 'Run';
-      }
-    } catch (err) {
-      status.textContent = `Request failed: ${err.message}`;
-      btn.disabled = false;
-      btn.textContent = 'Run';
-    }
+  const selRow = document.createElement('div');
+  selRow.className = 'trends-year-row';
+  selRow.innerHTML =
+    `<label class="layer-desc" style="margin:0.4rem 0;">Year: <select class="trends-month-select" id="trends-year-picker">${yearOpts}</select></label>`;
+  area.appendChild(selRow);
+
+  const chartArea = document.createElement('div');
+  chartArea.className = 'history-chart-block';
+  chartArea.innerHTML = '<div id="history-chart-monthly"></div><div id="history-species-table"></div>';
+  area.appendChild(chartArea);
+
+  const loadYear = async (yr) => {
+    chartArea.querySelector('#history-chart-monthly').innerHTML = '<p class="layer-desc" style="color:#6b7280;font-size:11px;">Loading…</p>';
+    const snap = await fetchSnapshot('inat', yr);
+    renderMonthlyChart('history-chart-monthly', snap?.byLayerByMonth ?? null, yr);
+    renderSpeciesTable('history-species-table', snap?.topPollinators, snap?.topNativePlants);
+  };
+
+  await loadYear(_trendsMonthYear);
+
+  selRow.querySelector('#trends-year-picker').addEventListener('change', async e => {
+    _trendsMonthYear = parseInt(e.target.value, 10);
+    await loadYear(_trendsMonthYear);
   });
-
-  return el;
 }
 
 

@@ -1914,13 +1914,26 @@ function _jsonRes(res, status, obj) {
 }
 
 // ── Harvest: iNat ─────────────────────────────────────────────────────────────
+// Month keys for byLayerByMonth initialisation
+const _MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+function _emptyMonthMap() {
+  return Object.fromEntries(_MONTHS.map(m => [m, 0]));
+}
+
 async function _harvestInat(year) {
   const CENTER_LAT = 44.5133, CENTER_LNG = -88.0133, RADIUS_KM = 15;
   const PER_PAGE = 200, MAX_OBS = 5000;
 
   const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  // Per-layer monthly breakdown — only pollinators + native-plants tracked
+  const byLayerByMonth = {
+    pollinators:    _emptyMonthMap(),
+    'native-plants': _emptyMonthMap(),
+  };
   const byMonth = {};
   const speciesFreq = {};
+  // Per-layer species maps (pollinators + native-plants only)
+  const speciesByLayer = { pollinators: {}, 'native-plants': {} };
   let total = 0, fetched = 0, idBelow = null;
 
   while (fetched < MAX_OBS) {
@@ -1946,6 +1959,11 @@ async function _harvestInat(year) {
       if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
       const sp = obs.taxon?.preferred_common_name || obs.taxon?.name;
       if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+      // Track per-layer monthly + species only for relevant layers
+      if (layer === 'pollinators' || layer === 'native-plants') {
+        if (mk) byLayerByMonth[layer][mk]++;
+        if (sp) speciesByLayer[layer][sp] = (speciesByLayer[layer][sp] || 0) + 1;
+      }
       idBelow = idBelow ? Math.min(idBelow, obs.id) : obs.id;
     }
     fetched += results.length;
@@ -1953,10 +1971,14 @@ async function _harvestInat(year) {
   }
 
   return {
+    schemaVersion: 2,
     source: 'inat', year, harvestedAt: new Date().toISOString(),
     total: fetched, byLayer,
+    byLayerByMonth,
     speciesRichness: Object.keys(speciesFreq).length,
     topSpecies: _topN(speciesFreq, 10),
+    topPollinators:  _topN(speciesByLayer.pollinators, 10),
+    topNativePlants: _topN(speciesByLayer['native-plants'], 10),
     byMonth,
   };
 }
@@ -1973,8 +1995,13 @@ async function _harvestGbif(year) {
 
   const PER_PAGE = 300, MAX_OBS = 1200;
   const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  const byLayerByMonth = {
+    pollinators:    _emptyMonthMap(),
+    'native-plants': _emptyMonthMap(),
+  };
   const byMonth = {};
   const speciesFreq = {};
+  const speciesByLayer = { pollinators: {}, 'native-plants': {} };
   let fetched = 0, offset = 0;
 
   while (fetched < MAX_OBS) {
@@ -2000,6 +2027,10 @@ async function _harvestGbif(year) {
       if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
       const sp = occ.vernacularName || occ.species;
       if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+      if (layer === 'pollinators' || layer === 'native-plants') {
+        if (mk) byLayerByMonth[layer][mk]++;
+        if (sp) speciesByLayer[layer][sp] = (speciesByLayer[layer][sp] || 0) + 1;
+      }
     }
     fetched += batch.length;
     if (data.endOfRecords || fetched >= MAX_OBS) break;
@@ -2007,10 +2038,14 @@ async function _harvestGbif(year) {
   }
 
   return {
+    schemaVersion: 2,
     source: 'gbif', year, harvestedAt: new Date().toISOString(),
     total: fetched, byLayer,
+    byLayerByMonth,
     speciesRichness: Object.keys(speciesFreq).length,
     topSpecies: _topN(speciesFreq, 10),
+    topPollinators:  _topN(speciesByLayer.pollinators, 10),
+    topNativePlants: _topN(speciesByLayer['native-plants'], 10),
     byMonth,
   };
 }
@@ -2121,6 +2156,270 @@ async function _harvestCdl(year) {
 
   const rows = (parsed.rows ?? []).map(r => ({ category: r.Category ?? r.category ?? '', acreage: +(r.Acreage ?? r.acreage ?? 0) }));
   return { source: 'cdl', year, harvestedAt: new Date().toISOString(), rows };
+}
+
+// ── Server-side auto-harvesting ───────────────────────────────────────────────
+//
+// Runs at startup (after a 20-second delay) and fills in any missing or stale
+// snapshot files without requiring manual intervention.
+//
+// Rate-limit safety:
+//   iNat / GBIF : 1.5 s between paginated pages; 8 s between years
+//   NOAA CDO    : 8 s between years  (hard limit 1,000 req/day)
+//   NASS / CDL  : 5 s between years  (no documented limit; polite minimum)
+//
+// Keyed sources (NOAA, NASS) are skipped gracefully when the API key is absent.
+// All harvesting is sequential — never parallel — to honour rate limits.
+
+const AUTO_HARVEST_START_YEAR  = 2015;
+const AUTO_HARVEST_DELAYS_MS   = { inat: 8000, gbif: 8000, noaa: 8000, nass: 5000, cdl: 5000 };
+const AUTO_HARVEST_STALE_DAYS  = { historical: 30, current: 1 }; // days before re-harvest
+
+let _autoHarvestStatus = { running: false, queue: [], lastCompleted: null, lastError: null };
+
+async function _autoHarvestMissing() {
+  if (_autoHarvestStatus.running) return;
+  _autoHarvestStatus.running = true;
+  _autoHarvestStatus.queue   = [];
+
+  const currentYear = new Date().getFullYear();
+  const now         = Date.now();
+
+  // Read existing snapshot files
+  let existing;
+  try { existing = new Set(fs.readdirSync(SNAPSHOTS_DIR).filter(f => /^[a-z]+-\d{4}\.json$/.test(f))); }
+  catch { existing = new Set(); }
+
+  /** Returns true when a snapshot should be (re-)harvested */
+  function _needsHarvest(source, year) {
+    const file = `${source}-${year}.json`;
+    if (!existing.has(file)) return true;
+    try {
+      const stat = fs.statSync(path.join(SNAPSHOTS_DIR, file));
+      const ageDays = (now - stat.mtimeMs) / 86400000;
+      const threshold = year < currentYear ? AUTO_HARVEST_STALE_DAYS.historical : AUTO_HARVEST_STALE_DAYS.current;
+      return ageDays > threshold;
+    } catch { return true; }
+  }
+
+  // Build queue: all sources × all years, newest first, keyed sources gated on key presence
+  const sources = ['inat', 'gbif'];
+  if (getNoaaToken())   sources.push('noaa');
+  if (getNassApiKey())  sources.push('nass');
+  sources.push('cdl');
+
+  const queue = [];
+  for (const source of sources) {
+    for (let year = currentYear; year >= AUTO_HARVEST_START_YEAR; year--) {
+      if (_needsHarvest(source, year)) queue.push({ source, year });
+    }
+  }
+  _autoHarvestStatus.queue = queue.map(q => `${q.source}-${q.year}`);
+
+  console.log(`[auto-harvest] ${queue.length} snapshot(s) to refresh`);
+
+  for (const { source, year } of queue) {
+    const label = `${source}-${year}`;
+    try {
+      let snapshot;
+      switch (source) {
+        case 'inat': snapshot = await _harvestInat(year); break;
+        case 'gbif': snapshot = await _harvestGbif(year); break;
+        case 'noaa': snapshot = await _harvestNoaa(year); break;
+        case 'nass': snapshot = await _harvestNass(year); break;
+        case 'cdl':  snapshot = await _harvestCdl(year);  break;
+      }
+      if (snapshot?.available === false) {
+        console.log(`[auto-harvest] ${label} → skipped (${snapshot.reason})`);
+      } else {
+        const dest = path.join(SNAPSHOTS_DIR, `${label}.json`);
+        fs.writeFileSync(dest, JSON.stringify(snapshot, null, 2));
+        existing.add(`${label}.json`);
+        const pollinators   = snapshot.byLayer?.pollinators   ?? '?';
+        const nativePlants  = snapshot.byLayer?.['native-plants'] ?? '?';
+        console.log(`[auto-harvest] ${label} → done (${pollinators} pollinators, ${nativePlants} native-plants)`);
+      }
+      _autoHarvestStatus.lastCompleted = label;
+      _autoHarvestStatus.queue = _autoHarvestStatus.queue.filter(q => q !== label);
+    } catch (err) {
+      console.warn(`[auto-harvest] ${label} → error: ${err.message}`);
+      _autoHarvestStatus.lastError = `${label}: ${err.message}`;
+    }
+    // Rate-limit pause between harvests
+    await new Promise(r => setTimeout(r, AUTO_HARVEST_DELAYS_MS[source] ?? 5000));
+  }
+
+  _autoHarvestStatus.running = false;
+  console.log('[auto-harvest] run complete');
+}
+
+// ── Server-side Commons photo snapshot ───────────────────────────────────────
+//
+// Fetches Wikimedia Commons geotagged photos near Green Bay server-side and
+// caches the result in snapshots/cache/commons-photos.json.  This allows the
+// client to retrieve pre-filtered images from one local endpoint instead of
+// making 5 parallel CORS requests to Wikimedia on each page load.
+//
+// Refreshed at startup (after 30 s) and then weekly.
+
+const COMMONS_SNAPSHOT_PATH = path.join(_DISK_CACHE_DIR, 'commons-photos.json');
+const COMMONS_SNAPSHOT_TTL  = 7 * 24 * 60 * 60 * 1000; // 7 days
+const COMMONS_CENTER_LAT    = 44.5133;
+const COMMONS_CENTER_LNG    = -88.0133;
+const COMMONS_GEO_API       = 'commons.wikimedia.org';
+
+async function _fetchCommonsPage(lat, lng, radiusM, gcontinue) {
+  const params = new URLSearchParams({
+    action:       'query',
+    generator:    'geosearch',
+    ggscoord:     `${lat}|${lng}`,
+    ggsradius:    String(Math.min(radiusM, 10000)),
+    ggsnamespace: '6',
+    ggslimit:     '500',
+    prop:         'imageinfo|coordinates',
+    iiprop:       'url|extmetadata',
+    iiurlwidth:   '400',
+    format:       'json',
+    origin:       '*',
+  });
+  if (gcontinue) { for (const [k, v] of Object.entries(gcontinue)) params.set(k, v); }
+  const buf = await httpsGetBuf(COMMONS_GEO_API, `/w/api.php?${params}`);
+  return JSON.parse(buf.toString());
+}
+
+/** Server-side relevance filter — mirrors the client isRelevant logic. */
+function _commonsIsRelevant(page) {
+  const ii  = page.imageinfo?.[0];
+  if (!ii?.extmetadata?.LicenseShortName?.value) return false;
+  if (!ii.thumburl) return false;
+  return true;
+}
+
+/** Haversine distance in km. */
+function _commonsHaversine(lat1, lng1, lat2, lng2) {
+  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function _refreshCommonsSnapshot() {
+  console.log('[commons-snapshot] refreshing…');
+  const RADIUS_KM = 15;
+  const offsetKm  = 8;
+  const dLat = offsetKm / 111.32;
+  const dLng = offsetKm / (111.32 * Math.cos(COMMONS_CENTER_LAT * Math.PI / 180));
+  const queryPoints = [
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT + dLat,   COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT - dLat,   COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG + dLng  ],
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG - dLng  ],
+  ];
+
+  const seen = new Set();
+  const results = [];
+
+  for (const [qLat, qLng] of queryPoints) {
+    let gcontinue = null, pages = 0;
+    while (pages < 3) {
+      try {
+        const data  = await _fetchCommonsPage(qLat, qLng, 10000, gcontinue);
+        const batch = Object.values(data?.query?.pages ?? {});
+        for (const page of batch) {
+          if (seen.has(page.pageid)) continue;
+          seen.add(page.pageid);
+          if (!_commonsIsRelevant(page)) continue;
+          const coord = page.coordinates?.[0];
+          if (!coord?.lat || !coord?.lon) continue;
+          if (_commonsHaversine(COMMONS_CENTER_LAT, COMMONS_CENTER_LNG, +coord.lat, +coord.lon) > RADIUS_KM) continue;
+          const ii  = page.imageinfo?.[0] ?? {};
+          const ext = ii.extmetadata ?? {};
+          const strip = s => String(s ?? '').replace(/<[^>]*>/g, '').trim();
+          results.push({
+            pageId:      page.pageid,
+            title:       (page.title ?? '').replace(/^File:/, ''),
+            thumburl:    ii.thumburl    ?? '',
+            thumbwidth:  ii.thumbwidth  ?? 400,
+            thumbheight: ii.thumbheight ?? 300,
+            descurl:     ii.descriptionurl ?? '',
+            description: strip(ext.ImageDescription?.value) || (page.title ?? '').replace(/^File:/, ''),
+            artist:      strip(ext.Artist?.value) || 'Unknown',
+            license:     strip(ext.LicenseShortName?.value) || '',
+            lat:         +coord.lat,
+            lng:         +coord.lon,
+          });
+        }
+        pages++;
+        if (!data.continue) break;
+        gcontinue = data.continue;
+      } catch (err) {
+        console.warn(`[commons-snapshot] query error: ${err.message}`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 500)); // polite pause between pages
+    }
+    await new Promise(r => setTimeout(r, 1000)); // polite pause between query points
+  }
+
+  try {
+    fs.mkdirSync(_DISK_CACHE_DIR, { recursive: true });
+    _saveToDisk(COMMONS_SNAPSHOT_PATH, { refreshedAt: new Date().toISOString(), images: results });
+    console.log(`[commons-snapshot] saved ${results.length} images`);
+  } catch (err) {
+    console.warn(`[commons-snapshot] save error: ${err.message}`);
+  }
+}
+
+function _scheduleCommonsSnapshot() {
+  const exists = fs.existsSync(COMMONS_SNAPSHOT_PATH);
+  let stale = true;
+  if (exists) {
+    try {
+      const age = Date.now() - fs.statSync(COMMONS_SNAPSHOT_PATH).mtimeMs;
+      stale = age > COMMONS_SNAPSHOT_TTL;
+    } catch { /* stale = true */ }
+  }
+  if (stale) {
+    setTimeout(_refreshCommonsSnapshot, 30000);
+  } else {
+    console.log('[commons-snapshot] cache fresh, skipping initial refresh');
+  }
+  // Re-check weekly regardless
+  setInterval(_refreshCommonsSnapshot, COMMONS_SNAPSHOT_TTL);
+}
+
+function handleCommonsSnapshot(res) {
+  try {
+    if (fs.existsSync(COMMONS_SNAPSHOT_PATH)) {
+      const raw    = JSON.parse(fs.readFileSync(COMMONS_SNAPSHOT_PATH, 'utf8'));
+      const images = raw.images ?? [];
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'public, max-age=3600',
+      });
+      res.end(JSON.stringify(images));
+    } else {
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'no-cache',
+      });
+      res.end(JSON.stringify([]));
+    }
+  } catch (err) {
+    res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
+function handleHarvestStatus(res) {
+  _jsonRes(res, 200, {
+    running:       _autoHarvestStatus.running,
+    queue:         _autoHarvestStatus.queue,
+    lastCompleted: _autoHarvestStatus.lastCompleted,
+    lastError:     _autoHarvestStatus.lastError,
+  });
 }
 
 // ── POST /api/harvest ─────────────────────────────────────────────────────────
@@ -2244,6 +2543,18 @@ const server = http.createServer((req, res) => {
       return;
     }
     handleHarvest(req, res);
+    return;
+  }
+
+  // Auto-harvest status (for debugging)
+  if (pathname === '/api/harvest-status') {
+    handleHarvestStatus(res);
+    return;
+  }
+
+  // Server-side Commons photo snapshot (pre-filtered, cached weekly)
+  if (pathname === '/api/commons-snapshot') {
+    handleCommonsSnapshot(res);
     return;
   }
 
@@ -2423,4 +2734,9 @@ server.listen(PORT, '127.0.0.1', () => {
   // Years fetch newest-first; each year takes a few seconds + 3 s pause.
   // Already-cached years are skipped; TTL: 30 days (old years), 12 h (prev year).
   setTimeout(_warmInatHistory, 10000);
+  // Auto-harvest missing/stale snapshot files for the trends panel.
+  // Runs after the iNat history warmer starts, sequentially with rate-limit pauses.
+  setTimeout(_autoHarvestMissing, 20000);
+  // Refresh the server-side Wikimedia Commons photo snapshot (weekly).
+  _scheduleCommonsSnapshot();
 });
