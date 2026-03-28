@@ -563,6 +563,10 @@ p { color: var(--fog); }
 .contrib-icon { font-size: 1.3rem; flex-shrink: 0; width: 2rem; text-align: center; }
 .contrib-body strong { display: block; font-weight: 500; font-size: 0.88rem; color: var(--wax); margin-bottom: 0.3rem; }
 .contrib-body p { font-size: 0.8rem; line-height: 1.6; color: var(--mist); }
+.contrib-actions { display: flex; align-items: center; gap: 1rem; margin-top: 0.9rem; flex-wrap: wrap; }
+.btn-sm { padding: 0.5rem 1rem; font-size: 0.62rem; }
+.contrib-mailto { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--mist); text-decoration: none; opacity: 0.7; }
+.contrib-mailto:hover { color: var(--honey); opacity: 1; }
 
 /* â”€â”€â”€ TECH STRIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tech-strip {
