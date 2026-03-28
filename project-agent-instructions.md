@@ -6,7 +6,7 @@
 
 ## What This Project Is
 
-**Bay Hive** is a browser-based public-data intelligence tool for pollinator habitat in the Green Bay, WI area. It is a civic OSINT tool, not a nature dashboard.
+**Bay Hive** is a browser-based public-data intelligence tool for pollinator habitat in the Green Bay, WI area. 
 
 It runs entirely as static files served by a minimal Node.js server (`serve.js`). There is no build step, no bundler, no framework, no npm install. All JavaScript is ES modules loaded directly in the browser.
 
