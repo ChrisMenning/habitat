@@ -331,6 +331,11 @@ p { color: var(--fog); }
   background: var(--bark);
 }
 
+#note {
+  padding: var(--gap-xl) 4rem;
+  background: var(--bark);
+}
+
 .problem-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -740,7 +745,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   .hero-content { grid-column: 1; padding: 7rem 1.5rem 3rem; }
   .hero-right { display: none; }
   h1 { font-size: 3.2rem; }
-  #problem, #alerts, #users, #contribute { padding: 4rem 1.5rem; }
+  #problem, #note, #alerts, #users, #contribute { padding: 4rem 1.5rem; }
   #tool, #data, #governance { padding: 4rem 1.5rem; }
   .problem-grid, .tool-intro, .data-intro, .users-header,
   .gov-grid, .contribute-header, .alerts-layout { grid-template-columns: 1fr; gap: 2rem; }
