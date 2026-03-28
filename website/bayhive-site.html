@@ -51,9 +51,9 @@
     <h1 id="hero-h1">Bay<br><span class="hl">Hive</span></h1>
     <span class="h1-tagline">Pollinator Habitat Intelligence</span>
     <p class="hero-desc">
-      A browser-based intelligence platform that fuses seventeen authoritative public 
-      datasets into a single, continuously refreshed map of the Green Bay pollinator corridor 
-      — and turns it into actionable spatial alerts.
+      A browser-based mapping tool that pulls together seventeen public datasets into a single 
+      view of the Green Bay pollinator corridor — with spatial proximity checks that can help 
+      surface questions worth looking into.
     </p>
     <div class="hero-actions">
       <a href="/app" class="btn btn-primary">↗ Launch the Tool</a>
@@ -63,7 +63,7 @@
 
   <div class="hero-right">
     <div class="intel-card">
-      <div class="card-header">Intelligence Summary · Live</div>
+      <div class="card-header">Corridor Snapshot · Live</div>
       <div class="stat-row">
         <span class="stat-label">Corridor Sites</span>
         <span class="stat-value" id="stat-val-corridor">—</span>
@@ -103,37 +103,40 @@
 <section id="problem" aria-labelledby="problem-h2">
   <div class="problem-grid">
     <div class="problem-left reveal">
-      <div class="sec-label">The Problem</div>
-      <h2 id="problem-h2">The data exists.<br><em>The view doesn't.</em></h2>
-      <p class="lead">Pollinator conservation in northeastern Wisconsin is fragmented across agencies, organizations, and data systems.</p>
+      <h2 id="problem-h2">Early stage.<br><em>Genuinely useful.</em></h2>
+      <p class="lead">Bay Hive is an open-source tool built by one person, in public, with the conservation community in mind.</p>
       <p>
-        The Green Bay Conservation Corps manages a regional corridor. The Wisconsin Department of Natural Resources (WI DNR) oversees state
-        natural areas and managed lands. Federal datasets track protected areas and bee distributions. 
-        Community scientists log tens of thousands of sightings annually — but no unified tool brings 
-        these sources together at the local scale. Without a shared spatial view, decision-making about 
-        where to invest restoration effort is more intuition than evidence.
+        The alert thresholds are a first pass — reasonable defaults built from published literature, 
+        not field-validated by corridor practitioners. The suitability models are directional indicators, 
+        not peer-reviewed outputs. The data it draws on is authoritative; the conclusions it draws from 
+        that data benefit from scrutiny.
+      </p>
+      <p>
+        What's here is genuinely useful for seeing patterns that are otherwise invisible at the local scale. 
+        It becomes more useful — and more trustworthy — with input from people who know this landscape. 
+        That's the ask.
       </p>
     </div>
     <div class="problem-right reveal d2">
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Neglected habitat sites</strong>
-          <p>Sites that receive no documented pollinator activity may be unknowingly overlooked, with no systematic way to identify them.</p>
+          <strong>Alert logic needs field review</strong>
+          <p>The fourteen spatial alerts represent a first pass. Practitioners with corridor knowledge can identify false positives, missing conditions, and thresholds that don't match reality on the ground.</p>
         </div>
       </div>
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Unflagged hazard proximity</strong>
-          <p>Contamination from per- and polyfluoroalkyl substances (PFAS) near sensitive habitat is not systematically cross-referenced with corridor boundaries or waystations.</p>
+          <strong>Models are directional, not definitive</strong>
+          <p>The InVEST pollinator index and nesting suitability scores indicate relative conditions across the landscape. They are starting points for investigation, not conclusions.</p>
         </div>
       </div>
       <div class="blind-spot">
         <span class="blind-spot-icon">◎</span>
         <div class="blind-spot-text">
-          <strong>Invisible restoration candidates</strong>
-          <p>High-sighting parcels with no formal habitat designation — the best restoration candidates — remain invisible without a unified spatial view.</p>
+          <strong>Built to be extended</strong>
+          <p>The codebase is modular and dependency-free. New data sources, refined alert conditions, and additional layers can be added without toolchain setup. Contributions are welcome.</p>
         </div>
       </div>
     </div>
@@ -195,7 +198,7 @@
     <div class="feature-cell">
       <div class="feature-num">08</div>
       <h3>Problem area diagnostics</h3>
-      <p>Seven automated problem conditions checked against every Corridor site in real time: PFAS proximity, pollinator absence, isolation, weak connections, poor nesting habitat, excessive shade, and high pesticide pressure. Updated whenever data refreshes.</p>
+      <p>Seven heuristic checks run against Corridor site data whenever the app loads — PFAS proximity, absence of nearby sightings, isolation, weak connections, nesting habitat scores, shade, and county-level pesticide pressure. These flag patterns worth looking into, not definitive diagnoses.</p>
     </div>
     <div class="feature-cell">
       <div class="feature-num">09</div>
@@ -212,14 +215,14 @@
   <div class="users-layout">
     <div class="users-header reveal">
       <div>
-        <div class="sec-label">Who It Serves</div>
-        <h2 id="users-h2">Built for the people<br><em>doing the work.</em></h2>
+        <div class="sec-label">Who It's For</div>
+        <h2 id="users-h2">Built to start<br><em>conversations.</em></h2>
       </div>
       <div>
         <p>
-          Bay Hive is designed for a range of users across the conservation and land management ecosystem — 
-          from corridor coordinators and agency biologists to community scientists and municipal planners 
-          identifying restoration parcels.
+          Bay Hive is an early-stage tool. The people described below are the audiences we hope to 
+          be useful to — and would genuinely like to hear from. If you work in any of these areas 
+          and see something worth improving, that feedback matters.
         </p>
       </div>
     </div>
@@ -227,12 +230,12 @@
       <div class="user-card reveal">
         <span class="user-card-icon">⬡</span>
         <h3>Habitat Coordinators</h3>
-        <p>GBCC staff monitoring corridor health, identifying connectivity gaps, and targeting restoration outreach with evidence rather than intuition.</p>
+        <p>Staff managing corridor planting programs who might want a spatial view of how sites relate to each other, what the observation record looks like nearby, and where the data raises questions worth investigating in the field.</p>
       </div>
       <div class="user-card reveal d1">
         <span class="user-card-icon">⬡</span>
         <h3>Agency Biologists</h3>
-        <p>WI DNR staff reviewing State Natural Area coverage, PFAS proximity alerts, and cross-referencing managed lands with pollinator pressure data.</p>
+        <p>Resource managers who already work with several of the underlying datasets and might find value in seeing them overlaid alongside community observation records in a single regional view.</p>
       </div>
       <div class="user-card reveal d2">
         <span class="user-card-icon">⬡</span>
@@ -242,7 +245,7 @@
       <div class="user-card reveal">
         <span class="user-card-icon">⬡</span>
         <h3>Municipal Planners</h3>
-        <p>City and county parks staff using opportunity zone alerts to identify publicly owned parcels that could anchor new habitat nodes.</p>
+        <p>Parks and planning staff interested in where public land overlaps with areas that have active pollinator sightings but no formal habitat designation — a starting point for conversation, not a site recommendation.</p>
       </div>
       <div class="user-card reveal d1">
         <span class="user-card-icon">⬡</span>
@@ -252,12 +255,125 @@
       <div class="user-card reveal d2">
         <span class="user-card-icon">⬡</span>
         <h3>Researchers</h3>
-        <p>Ecologists, biologists, and field researchers wanting to see how documented species distributions connect to habitat programs and restoration outcomes in the Green Bay region.</p>
+        <p>Anyone curious about how community-sourced observation data overlaps with formal habitat programs in the Green Bay region. The tool assembles the public record; field expertise is what makes it meaningful.</p>
       </div>
     </div>
   </div>
 </section>
+<!-- GOVERNANCE -->
+<section id="governance" aria-labelledby="gov-h2">
+  <div class="sec-label reveal">Governance</div>
+  <h2 id="gov-h2" class="reveal">Open by design.<br><em>Local by intent.</em></h2>
 
+  <div class="gov-grid">
+    <div class="gov-left reveal">
+      <blockquote class="origin">
+        "Bay Hive began as a personal project: one person, one afternoon, one question about where pollinators 
+        were showing up relative to the habitat people were building for them."
+      </blockquote>
+      <p>
+        Bay Hive is released under an open license, ensuring it remains a public good even if adapted 
+        or stewarded by another organization. Bay Hive is deliberately local. The 15 km radius, the GBCC 
+        corridor data, the Brown County parcel integration — all of it is calibrated to this place. 
+        A local conservation organization stewarding a local tool is the right outcome. The goal is a tool 
+        that the Green Bay pollinator community owns, understands, and can maintain without depending on any 
+        single person.
+      </p>
+      <div class="gov-maintainer">
+        <span class="gov-maintainer-label">Current Maintainer</span>
+        <span class="gov-maintainer-name">Chris Menning</span>
+      </div>
+    </div>
+
+    <div class="gov-right reveal d1">
+      <div class="principle">
+        <h3>Public data belongs to the public</h3>
+        <p>Every layer is sourced from publicly available APIs and datasets. No proprietary data, no lock-in. The only thing Bay Hive adds is the assembly.</p>
+      </div>
+      <div class="principle">
+        <h3>The tool serves the corridor, not the maintainer</h3>
+        <p>Decisions about direction should be made in conversation with the people doing habitat work — coordinators, waystation holders, city planners, and researchers. That's a goal, not a current state.</p>
+      </div>
+      <div class="principle">
+        <h3>Transparency by default</h3>
+        <p>The code is open. The data sources are documented. The alert algorithms are explained in plain language in the app itself. There is no black box.</p>
+      </div>
+      <div class="principle">
+        <h3>No growth for its own sake</h3>
+        <p>The right question for any proposed feature: does this help someone doing habitat work make a better decision? Scope creep that serves ambition is not welcome.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pathways-intro reveal">
+    <h3>Paths to stewardship</h3>
+      <p>
+      A single-maintainer structure is fine for an early-stage project. If Bay Hive ever grows into
+      something the corridor community genuinely finds useful, the right long-term home for it is with 
+      that community. The question worth spending real time on 
+      is not whether Bay Hive should eventually be stewarded by a community organization &#8212; it should 
+      &#8212; but what kind of organization and what kind of relationship. Three pathways are currently under 
+      consideration, each suited to a different stage of the project&#8217;s maturity and a different level 
+      of organizational investment.
+      </p>
+  </div>
+
+  <div class="pathways reveal">
+    <div class="pathway">
+      <div class="pathway-num">Pathway 01</div>
+      <h3>Local Nonprofit Stewardship</h3>
+      <p>Bay Hive&#8217;s codebase and development become the responsibility of an existing organization doing corridor work &#8212; most naturally the Green Bay Conservation Corps (GBCC). The cleanest transfer of stewardship: the people closest to the work maintain the tool that serves it.</p>
+    </div>
+    <div class="pathway">
+      <div class="pathway-num">Pathway 02</div>
+      <h3>Purpose-Built Organization</h3>
+      <p>A governing body with representation from GBCC, a conservation nonprofit, a local government partner, and a technical maintainer. Appropriate if the tool grows to serve a broader region.</p>
+    </div>
+    <div class="pathway">
+      <div class="pathway-num">See Also</div>
+      <h3>Open Source Governance</h3>
+      <p>Details on the open license, technical architecture, fiscal sponsorship options, and how to self-host or adapt Bay Hive for another region are on the <a href="/open-source.html">Open Source</a> page.</p>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- GET INVOLVED -->
+<section id="contribute" aria-labelledby="contrib-h2">
+  <div class="contribute-inner">
+    <div class="contribute-header reveal">
+      <div>
+        <div class="sec-label">Get Involved</div>
+        <h2 id="contrib-h2">The data is already<br><em>public.</em></h2>
+      </div>
+      <div>
+        <p>
+          The most valuable near-term contributions are field review of the automated alert algorithms — 
+          identifying false positives or missing conditions that practitioners recognize in the corridor — 
+          and integration of additional Wisconsin DNR or locally maintained datasets.
+        </p>
+      </div>
+    </div>
+
+    <div class="contribution-types">
+      <div class="contrib-item reveal">
+        <span class="contrib-icon">⚐</span>
+        <div class="contrib-body">
+          <strong>Alert Field Review</strong>
+          <p>Practitioners with field knowledge of the corridor can identify false positive patterns or alert conditions that the current algorithms miss. This is the highest-value contribution Bay Hive can receive.</p>
+        </div>
+      </div>
+      <div class="contrib-item reveal d1">
+        <span class="contrib-icon">⊕</span>
+        <div class="contrib-body">
+          <strong>Data Integration</strong>
+          <p>Additional Wisconsin DNR datasets, parcel ownership records, or locally maintained habitat inventories can be incorporated as new layers or alert inputs by any contributor.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 </main>
 
