@@ -1,0 +1,61 @@
+name: Deploy to Aspire
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Bay Hive
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          version: latest
+
+      - name: Write SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Create deploy archive
+        run: |
+          tar -czf /tmp/bayhive-deploy.tar.gz \
+            --exclude="./.git" \
+            --exclude="./snapshots" \
+            --exclude="./node_modules" \
+            .
+
+      - name: Upload archive
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            /tmp/bayhive-deploy.tar.gz \
+            mcmudgeon@${{ secrets.DEPLOY_HOST }}:/tmp/bayhive-deploy.tar.gz
+
+      - name: Extract and restart
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            mcmudgeon@${{ secrets.DEPLOY_HOST }} \
+            "cd /home/mcmudgeon/bayhive \
+              && tar -xzf /tmp/bayhive-deploy.tar.gz --strip-components=1 \
+              && rm /tmp/bayhive-deploy.tar.gz \
+              && sudo systemctl restart bayhive \
+              && echo 'Deploy complete'"
+
+      - name: Verify service
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            mcmudgeon@${{ secrets.DEPLOY_HOST }} \
+            "systemctl is-active bayhive && echo 'bayhive is running'"
