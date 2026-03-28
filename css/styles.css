@@ -744,6 +744,77 @@ body {
   box-shadow: 0 0 0 2px #0d1f12;
 }
 
+/* ── Layer preset tiles (Views pane) ───────────────────────────────────────── */
+.preset-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 3px solid transparent;
+  border-radius: 5px;
+  color: #d1d5db;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.preset-tile:hover {
+  background: rgba(52,211,153,0.07);
+  border-color: rgba(52,211,153,0.2);
+  border-left-color: rgba(52,211,153,0.5);
+  color: #e5e7eb;
+}
+.preset-tile:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+.preset-tile--active {
+  background: rgba(52,211,153,0.10);
+  border-color: rgba(52,211,153,0.25);
+  border-left-color: #34d399;
+  color: #ecfdf5;
+}
+.preset-tile--reset {
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 0.7rem;
+  color: #9ca3af;
+  border-left-color: transparent;
+}
+.preset-tile--reset:hover {
+  border-left-color: rgba(156,163,175,0.5);
+  color: #d1d5db;
+}
+.preset-tile-icon {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  margin-top: 0.05rem;
+  color: #34d399;
+  opacity: 0.8;
+}
+.preset-tile--reset .preset-tile-icon { color: #9ca3af; }
+.preset-tile-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.preset-tile-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #f3f4f6;
+}
+.preset-tile--reset .preset-tile-label { color: #9ca3af; }
+.preset-tile-desc {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.35;
+}
+
 #panel-alerts { padding: 4px 0 6px; }
 
 /* Badge inside the alerts pane header */
@@ -1571,7 +1642,7 @@ details[open] .alert-group-chevron { transform: rotate(90deg); }
   background: #0d1f12;
   border-left: 1px solid #1e3a22;
   box-shadow: -4px 0 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(52,211,153,0.06);
-  z-index: 200;
+  z-index: 10500;
   transform: translateX(100%);
   transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
   overflow-y: auto;
@@ -2494,3 +2565,57 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
   font-size: 12px;
   padding: 16px 0;
 }
+
+.climate-disruption-notice {
+  background: rgba(234,179,8,0.08);
+  border: 1px solid rgba(234,179,8,0.25);
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: #d1d5c8;
+}
+.climate-disruption-notice strong {
+  display: block;
+  color: #fbbf24;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.climate-disruption-notice p {
+  margin: 0 0 6px;
+  color: #9ca3af;
+}
+.climate-disruption-notice p:last-child { margin-bottom: 0; }
+.climate-disruption-notice a { color: #6ee7b7; text-decoration: underline; }
+.climate-disruption-notice a:hover { color: #a7f3d0; }
+/* -- Harvest UI (Trends pane) ---------------------------------------- */
+.harvest-ui { padding: 0.5rem 0.25rem; }
+.harvest-form {
+  display: flex; gap: 6px; align-items: center;
+  flex-wrap: wrap; margin-bottom: 0.5rem;
+}
+.harvest-select {
+  background: #1a1f12; color: #d1d5c8;
+  border: 1px solid rgba(184,196,160,0.2);
+  border-radius: 3px; padding: 4px 6px;
+  font-size: 0.73rem; font-family: inherit;
+  cursor: pointer;
+}
+.harvest-run-btn {
+  background: rgba(212,146,26,0.15); color: #d4921a;
+  border: 1px solid rgba(212,146,26,0.35);
+  border-radius: 3px; padding: 4px 10px;
+  font-size: 0.73rem; font-family: inherit;
+  cursor: pointer; transition: background 0.15s;
+}
+.harvest-run-btn:hover:not(:disabled) { background: rgba(212,146,26,0.28); }
+.harvest-run-btn:disabled { opacity: 0.5; cursor: default; }
+.harvest-status { font-size: 0.7rem; color: #9ca3af; margin: 0; min-height: 1em; }
+.history-harvest-more { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(184,196,160,0.08); }
+.harvest-more-btn {
+  background: none; border: none; color: rgba(212,146,26,0.6);
+  font-size: 0.72rem; cursor: pointer; padding: 0;
+  font-family: inherit; letter-spacing: 0.04em;
+}
+.harvest-more-btn:hover { color: #d4921a; }

@@ -238,7 +238,7 @@ export function corridorCentroids(geojson) {
 
 /**
  * Fetches GBCC habitat restoration treatment polygons for the app's bounding box.
- * These mark areas where invasive species removal and re-planting has occurred.
+ * The public feature service currently contains cut-stump and foliar treatment records.
  *
  * @returns {Promise<GeoJSON.FeatureCollection>}
  */

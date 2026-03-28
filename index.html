@@ -97,6 +97,16 @@
   <!-- ── Icon Activity Bar ─────────────────────────────────────────────────── -->
   <nav id="activity-bar" aria-label="Map layer controls">
 
+    <button class="ab-btn" id="ab-btn-views"
+        data-flyout="pane-views"
+        aria-pressed="false"
+        aria-controls="pane-views"
+        aria-expanded="false"
+        title="Layer Views — saved layer combinations">
+      <span class="ab-icon" aria-hidden="true"><i class="ph ph-squares-four"></i></span>
+      <span class="ab-label">Views</span>
+    </button>
+
     <button class="ab-btn" id="ab-btn-habitat"
         data-flyout="pane-habitat"
         aria-pressed="false"
@@ -192,6 +202,20 @@
   <!-- ── Slide-out flyout container ────────────────────────────────────────── -->
   <div id="panel-flyout">
 
+    <!-- Pane: Views (Layer Presets) ──────────────────────────────────────── -->
+    <div class="flyout-pane" id="pane-views"
+        role="region" aria-label="Layer Views"
+        aria-hidden="true" inert>
+      <div class="flyout-pane-header">
+        <span class="flyout-pane-title" id="pane-views-title"><i class="ph ph-squares-four" aria-hidden="true"></i> Views</span>
+        <button class="flyout-pane-close" aria-label="Close Views panel">✕</button>
+      </div>
+      <div class="flyout-pane-body">
+        <p class="panel-section-note">Apply a saved layer combination. All other layers are turned off. Your current state is preserved in the URL via the Link button.</p>
+        <div id="panel-presets-inner"><!-- populated by app.js --></div>
+      </div>
+    </div>
+
     <!-- Pane: Habitat Sites ──────────────────────────────────────────────── -->
     <div class="flyout-pane" id="pane-habitat"
         role="region" aria-label="Habitat Sites"
@@ -236,7 +260,7 @@
         <p class="layer-group-label">Activity Heatmap</p>
         <label class="layer-row" for="toggle-heatmap-traffic">
           <div class="toggle">
-            <input type="checkbox" id="toggle-heatmap-traffic" checked
+            <input type="checkbox" id="toggle-heatmap-traffic"
                    aria-label="Pollinator Activity Heat Map">
             <div class="toggle-track" aria-hidden="true"></div>
           </div>
@@ -433,7 +457,7 @@
         <li><strong>NE WI Pollinator Corridor (GBCC)</strong> — amber filled polygons with circular site markers. Formal restoration plantings managed by the Green Bay Conservation Corps on public parks, rights-of-way, and institutional properties. Click any marker to open the full site dossier.</li>
         <li><strong>Monarch Watch Waystations</strong> — violet circles. 56 privately certified habitat sites; Monarch Watch certification requires a minimum milkweed and nectar planting.</li>
         <li><strong>Homegrown National Park yards</strong> — teal triangles. Self-reported native plant yards from Doug Tallamy's HNP initiative. No inspection required — homeowner commitments to plant native species that support local food webs.</li>
-        <li><strong>GBCC Habitat Treatments</strong> — teal polygon outlines. Sites where GBCC has performed invasive removal, prescribed burns, or replanting — the active restoration footprint separate from established corridor plantings.</li>
+        <li><strong>GBCC Habitat Treatments</strong> — teal polygon outlines. Sites where GBCC has recorded restoration treatments in their public feature service. Current data includes cut-stump and foliar treatments — the active restoration footprint separate from established corridor plantings.</li>
       </ul>
       <p><strong>Site marker outer ring:</strong> Encodes establishment status from source data — green = native/established planting, orange = introduced or early-stage, gray = status not recorded. This is a data attribute, not a quality rating assigned by Bay Hive.</p>
       <p><strong>Nesting suitability badge:</strong> A small colored circle on each corridor marker shows a 0–100 score (see Site Detail Drawer for formula). Appears when any NLCD layer is active.</p>
@@ -580,9 +604,15 @@
       <!-- SVG inserted by climate.js -->
     </div>
     <div class="climate-ribbon-legend" aria-hidden="true">
-      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#6ee7b7" stroke-width="2"/></svg> Avg temp</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#6ee7b7" stroke-width="2"/></svg> 1991–2020 avg</span>
       <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#6b7280" stroke-width="2" stroke-dasharray="4,3"/></svg> Normal GDD</span>
       <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#f59e0b" stroke-width="2"/></svg> Current GDD</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#a78bfa" stroke-width="1.5" opacity="0.8"/></svg> 2021</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#f472b6" stroke-width="1.5" opacity="0.8"/></svg> 2022</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#fb923c" stroke-width="1.5" opacity="0.8"/></svg> 2023</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#38bdf8" stroke-width="1.5" opacity="0.8"/></svg> 2024</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#facc15" stroke-width="1.5" opacity="0.8"/></svg> 2025</span>
+      <span class="crl-item"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="#86efac" stroke-width="1.5" opacity="0.8"/></svg> 2026</span>
       <span class="crl-item"><svg width="10" height="10"><rect width="10" height="10" fill="rgba(96,165,250,0.4)"/></svg> Spring frost risk</span>
       <span class="crl-item"><svg width="10" height="10"><rect width="10" height="10" fill="rgba(251,191,36,0.4)"/></svg> Fall frost risk</span>
     </div>

@@ -20,7 +20,7 @@
  * cacheGet returns null (cache miss), cacheSet is a silent no-op.
  */
 
-const CACHE_NAME = 'bayhive-v1';
+const CACHE_NAME = 'bayhive-v2';
 const KEY_BASE   = '/cache/';
 
 /**

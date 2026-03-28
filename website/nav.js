@@ -36,6 +36,7 @@ class BhNav extends HTMLElement {
     ${item('/', 'Overview')}
     ${item('/guide.html', 'Map Guide')}
     ${item('/reference.html', 'Reference')}
+    ${item('/open-source.html', 'Open Source')}
     ${item('/app', 'Launch &#x2197;', 'nav-cta')}
   </ul>
 </nav>`;

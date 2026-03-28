@@ -472,7 +472,7 @@ p { color: var(--fog); }
   letter-spacing: 0.05em; color: var(--mist);
   display: flex; gap: 1rem; align-items: flex-start;
 }
-.data-note::before { content: 'â†’'; color: var(--honey); flex-shrink: 0; }
+.data-note::before { content: '\2192'; color: var(--honey); flex-shrink: 0; }
 
 /* â”€â”€â”€ WHO IT SERVES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #users { background: var(--bark); padding: var(--gap-xl) 4rem; }
@@ -524,6 +524,12 @@ p { color: var(--fog); }
 .principle:hover::before { background: var(--honey); }
 .principle h3 { font-size: 0.9rem; font-family: var(--font-body); font-weight: 500; color: var(--wax); margin-bottom: 0.4rem; }
 .principle p { font-size: 0.8rem; line-height: 1.6; color: var(--mist); }
+
+.pathways-intro {
+  margin-top: 3rem; max-width: 680px;
+}
+.pathways-intro h3 { font-size: 0.7rem; font-family: var(--font-mono); letter-spacing: 0.15em; text-transform: uppercase; color: var(--honey); margin-bottom: 0.75rem; }
+.pathways-intro p { font-size: 0.9rem; line-height: 1.8; color: var(--mist); }
 
 .pathways {
   margin-top: 3rem;
@@ -625,6 +631,9 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
 }
 .guide-header p { font-size: 0.97rem; line-height: 1.8; margin-top: 1.5rem; }
 
+.guide-hero-img { margin: 2.5rem 0 0; border: 1px solid rgba(184,196,160,0.1); overflow: hidden; }
+.guide-hero-img img { display: block; width: 100%; height: auto; }
+
 .guide-block { margin-top: var(--gap-lg); }
 .guide-block-label {
   font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.2em;
@@ -700,7 +709,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
 
 /* â”€â”€â”€ RESPONSIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 900px) {
-  nav { padding: 1rem 1.5rem; position: relative; }
+  nav { padding: 1rem 1.5rem; }
   .nav-hamburger {
     display: flex; flex-direction: column; justify-content: center; gap: 5px;
     background: transparent; border: none; cursor: pointer; padding: 6px;

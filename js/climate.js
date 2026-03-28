@@ -45,6 +45,9 @@ const GDD_THRESHOLDS = [
 
 let _climateState = null;
 
+/** 'live' | 'bundled' | null — set after fetchNoaaNormals resolves */
+export let normalsSource = null;
+
 /** Returns the most recently computed climate state object, or null if not yet loaded. */
 export function getClimateState() { return _climateState; }
 
@@ -70,16 +73,43 @@ export function getGddIntelStat() {
 // ── NOAA fetch helpers ────────────────────────────────────────────────────────
 
 /**
+ * Fetches bundled 1991-2020 daily normals from the local server fallback.
+ * Used when the NOAA NCEI API returns empty data due to federal service disruption.
+ * @returns {Promise<Array<{doy,date,tmax,tmin,tavg,gddTb50,gddBase50}>|null>}
+ */
+async function fetchBundledNormals() {
+  try {
+    const res = await fetch('/api/climate-normals');
+    if (!res.ok) return null;
+    const json = await res.json();
+    return Array.isArray(json.records) && json.records.length ? json.records : null;
+  } catch (e) {
+    console.warn('[climate] bundled normals fetch error:', e.message);
+    return null;
+  }
+}
+
+/**
  * Fetches NOAA 1991–2020 Daily Climate Normals for the Green Bay station.
- * No auth token needed; NCEI Access Data Service is CORS-open.
+ * Tries the NCEI live API first; falls back to bundled data if the API
+ * returns empty results (NOAA public data access disrupted 2025).
  * Cached 30 days in the browser Cache API.
  *
  * @returns {Promise<Array<{doy,date,tmax,tmin,tavg,gddTb50,gddBase50}>|null>}
  */
 export async function fetchNoaaNormals() {
   const cacheKey = `noaa-normals-${STATION_ID}`;
-  const cached   = await cacheGet(cacheKey);
-  if (cached) return cached;
+  const cached = await cacheGet(cacheKey);
+  if (cached) {
+    // Validate cached data actually has temperature values — guard against stale null entries
+    const hasValues = Array.isArray(cached?.records ?? cached) &&
+      (cached?.records ?? cached).some(r => r.tmax !== null);
+    if (hasValues) {
+      normalsSource = cached.source ?? 'bundled';
+      return cached.records ?? cached;
+    }
+    // Stale/invalid cache — fall through to re-fetch
+  }
 
   const params = new URLSearchParams({
     dataset:   'normals-daily-1991-2020',
@@ -91,21 +121,38 @@ export async function fetchNoaaNormals() {
     dataTypes: 'dly-tmax-normal,dly-tmin-normal,dly-tavg-normal,dly-grdd-tb5086,dly-grdd-base50',
   });
 
+  let parsed = null;
   try {
     const res = await fetch(`${NCEI_BASE}?${params}`);
-    if (!res.ok) { console.warn('[climate] normals HTTP', res.status); return null; }
-    const raw = await res.json();
-    if (!Array.isArray(raw) || raw.length === 0) return null;
-    const parsed = parseNormalsRows(raw);
-    await cacheSet(cacheKey, parsed, NORMALS_TTL_MS);
-    // Spot-check: log a mid-summer value to verify ÷10 unit conversion is correct.
-    const jul15 = parsed.find(r => r.doy === 196);
-    if (jul15) console.debug('[climate] normals spot-check Jul 15:', jul15);
-    return parsed;
+    if (res.ok) {
+      const raw = await res.json();
+      if (Array.isArray(raw) && raw.length > 0) {
+        const attempt = parseNormalsRows(raw);
+        // Check that we actually got temperature data (not just empty station rows)
+        const hasValues = attempt.some(r => r.tmax !== null);
+        if (hasValues) {
+          parsed = attempt;
+          normalsSource = 'live';
+          const jul15 = parsed.find(r => r.doy === 196);
+          if (jul15) console.debug('[climate] normals spot-check Jul 15:', jul15);
+        } else {
+          console.warn('[climate] NCEI returned rows with no temperature values — using bundled fallback');
+        }
+      }
+    } else {
+      console.warn('[climate] normals HTTP', res.status, '— using bundled fallback');
+    }
   } catch (e) {
-    console.warn('[climate] normals fetch error:', e.message);
-    return null;
+    console.warn('[climate] normals fetch error:', e.message, '— using bundled fallback');
   }
+
+  if (!parsed) {
+    parsed = await fetchBundledNormals();
+    if (parsed) normalsSource = 'bundled';
+  }
+
+  if (parsed) await cacheSet(cacheKey, { records: parsed, source: normalsSource }, NORMALS_TTL_MS);
+  return parsed;
 }
 
 /**
@@ -136,6 +183,21 @@ export async function fetchFrostNormals() {
     return parsed;
   } catch (e) {
     console.warn('[climate] frost normals fetch error:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Fetches observed daily temps for a given year from the IEM-sourced archive.
+ * @returns {Promise<Array<{doy,date,tmax,tmin,tavg,gddBase50}>|null>}
+ */
+async function fetchObservedYear(year) {
+  try {
+    const res = await fetch(`/api/observed-temps/${year}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return Array.isArray(json.records) && json.records.length ? json.records : null;
+  } catch (e) {
     return null;
   }
 }
@@ -348,6 +410,8 @@ let _ribbonBtn = null;
  * Called once from app.js after map.on('load').
  */
 export async function initClimatePanel() {
+  const currentYear = new Date().getFullYear();
+  // Fetch normals + frost + GHCND in parallel, then observed years non-blocking
   const [normals, frost, ghcnd] = await Promise.all([
     fetchNoaaNormals(),
     fetchFrostNormals(),
@@ -361,13 +425,37 @@ export async function initClimatePanel() {
     ? ((current.accumulatedGDD - normalGdd) / normalGdd) * 100
     : null;
 
-  _climateState = { normals, frost, ghcnd, current, normalGdd, pctDeviation: pctDev, doy };
+  _climateState = { normals, frost, ghcnd, current, normalGdd, pctDeviation: pctDev, doy, observedYears: {} };
 
   // Wire the modal close button (the modal is still in the HTML for the ribbon chart)
   const modal    = document.getElementById('modal-climate');
   const closeBtn = modal?.querySelector('.modal-close');
   closeBtn?.addEventListener('click', closeClimateModal);
   modal?.addEventListener('click', e => { if (e.target === modal) closeClimateModal(); });
+
+  // Fetch IEM observed years asynchronously (non-blocking — enhances ribbon when ready)
+  const obsYears = [];
+  for (let y = 2021; y <= currentYear; y++) obsYears.push(y);
+  const obsResults = await Promise.all(obsYears.map(y => fetchObservedYear(y)));
+  const observedYears = {};
+  obsYears.forEach((y, i) => { if (obsResults[i]) observedYears[y] = obsResults[i]; });
+  _climateState.observedYears = observedYears;
+
+  // Prefer IEM observed data for current-year GDD when available — more reliable than GHCND
+  // (NOAA CDO/GHCND may return real rows with 0 GDD if all days are below 50°F, hiding IEM data)
+  const currentYearObs = observedYears[currentYear];
+  if (currentYearObs) {
+    const iemGdd = currentYearObs.reduce((sum, r) => sum + (r.gddBase50 ?? 0), 0);
+    const lastRec = currentYearObs[currentYearObs.length - 1];
+    _climateState.current = { accumulatedGDD: iemGdd, latestDate: lastRec?.date ?? null, source: 'iem' };
+    const normalGddUpd = normals ? computeNormalGdd(normals, doy) : null;
+    _climateState.normalGdd = normalGddUpd;
+    _climateState.pctDeviation = (normalGddUpd && normalGddUpd > 0)
+      ? ((iemGdd - normalGddUpd) / normalGddUpd) * 100
+      : null;
+  } else if (!_climateState.current?.latestDate) {
+    // IEM also unavailable — current stays as GHCND result (may be 0 or null)
+  }
 }
 
 // ── Panel DOM rendering ───────────────────────────────────────────────────────
@@ -448,10 +536,38 @@ export function openClimateRibbon(state) {
   if (!modal || !body) return;
 
   body.innerHTML = '';
+
+  // Disruption notice when using bundled fallback data
+  if (normalsSource === 'bundled' || (!state?.normals?.length && normalsSource !== 'live')) {
+    const notice = document.createElement('div');
+    notice.className = 'climate-disruption-notice';
+    notice.innerHTML = `
+      <strong>⚠ NOAA public climate data access disrupted</strong>
+      <p>The NOAA National Centers for Environmental Information (NCEI) API that Bay Hive uses for 
+      1991–2020 temperature normals stopped returning data following federal agency staffing and 
+      budget cuts in 2025. The climate ribbon below is drawn from a pre-disruption archived copy 
+      of those normals — the underlying science is the same, but it cannot be updated until 
+      public access is restored.</p>
+      <p>Live current-year GDD readings (via NOAA CDO) may also be affected depending on your token 
+      status. Observed daily temperatures for 2021–2026 are sourced from the 
+      <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">Iowa Environmental Mesonet (IEM)</a> 
+      at Iowa State University — an independent archive not affected by federal disruption. 
+      <a href="https://www.weather.gov/gbr/" target="_blank" rel="noopener">NOAA Green Bay Forecast Office</a> 
+      and <a href="https://www.ncei.noaa.gov/" target="_blank" rel="noopener">NCEI</a> remain the 
+      authoritative sources if access is restored. To advocate for open government climate data, 
+      contact your representatives or support the 
+      <a href="https://www.ametsoc.org/" target="_blank" rel="noopener">American Meteorological Society</a> 
+      and <a href="https://www.esipfed.org/" target="_blank" rel="noopener">ESIP Federation</a>.</p>`;
+    body.appendChild(notice);
+  }
+
   if (state?.normals?.length) {
     body.appendChild(buildRibbonSvg(state));
   } else {
-    body.innerHTML = '<p class="climate-ribbon-empty">Climate normals data not yet available. Check the browser console for details.</p>';
+    const empty = document.createElement('p');
+    empty.className = 'climate-ribbon-empty';
+    empty.textContent = 'Temperature normals could not be loaded — neither the NOAA API nor the local fallback returned data.';
+    body.appendChild(empty);
   }
 
   modal.removeAttribute('hidden');
@@ -493,7 +609,7 @@ const px = doy => ML + (doy - 1) / 365 * PW;
 const pyScale = (v, vMin, vMax) => MT + PH * (1 - (v - vMin) / (vMax - vMin));
 
 function buildRibbonSvg(state) {
-  const { normals, frost, ghcnd, pctDeviation, doy } = state;
+  const { normals, frost, ghcnd, pctDeviation, doy, observedYears } = state;
 
   const svgNS = 'http://www.w3.org/2000/svg';
 
@@ -628,6 +744,22 @@ function buildRibbonSvg(state) {
   const todayShort = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   add(svgEl('line', { x1: todayX, y1: MT, x2: todayX, y2: MT + PH, stroke: '#f87171', 'stroke-width': 1.5 }));
   add(svgEl('text', { x: todayX + 3, y: MT + 9, fill: '#f87171', 'font-size': 9, 'font-weight': 'bold' }, todayShort));
+
+  // ── 7. Observed year tavg lines (IEM archive, 2021–present) ──────────────
+  // Muted palette — distinct but secondary to normals
+  const obsColors = { 2021: '#a78bfa', 2022: '#f472b6', 2023: '#fb923c', 2024: '#38bdf8', 2025: '#facc15', 2026: '#86efac' };
+  const obsEntries = Object.entries(observedYears || {}).sort((a, b) => a[0] - b[0]);
+  for (const [yrStr, records] of obsEntries) {
+    const yr    = parseInt(yrStr, 10);
+    const color = obsColors[yr] ?? '#d1d5c8';
+    const pts   = records.filter(r => r.tavg !== null && r.doy <= 365);
+    if (pts.length < 10) continue;
+    const d = pts.map((r, i) => `${i === 0 ? 'M' : 'L'}${px(r.doy).toFixed(1)},${pyT(r.tavg).toFixed(1)}`).join(' ');
+    add(svgEl('path', { d, fill: 'none', stroke: color, 'stroke-width': 1, opacity: '0.6' }));
+    // Year label at last data point
+    const last = pts[pts.length - 1];
+    add(svgEl('text', { x: px(last.doy) + 3, y: pyT(last.tavg) + 3, fill: color, 'font-size': 8, opacity: '0.85' }, String(yr)));
+  }
 
   // ── Axes ──────────────────────────────────────────────────────────────────
   // Axis box
