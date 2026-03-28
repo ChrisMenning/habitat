@@ -1815,6 +1815,32 @@ details[open] .alert-group-chevron { transform: rotate(90deg); }
   border-radius: 3px;
 }
 
+/* ── Corridor drawer: overlapping alert context banner ───────────────────── */
+.drawer-alert-context {
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.drawer-alert-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-left: 3px solid;
+  background: rgba(255,255,255,0.05);
+  border-radius: 0 4px 4px 0;
+}
+.drawer-alert-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.drawer-alert-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
 /* ── Analysis drawer: severity badge ─────────────────────────────────────── */
 .drawer-severity-badge {
   display: flex;
@@ -2705,6 +2731,15 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
   margin: 0.25rem 0 0.5rem;
   min-height: 1.2em;
 }
+.trends-bias-note {
+  font-size: 0.68rem;
+  color: #6b7280;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.trends-bias-note a { color: #6b7280; }
+.trends-bias-note a:hover { color: #9ca3af; }
+
 
 /* Species top-10 table */
 .species-table {

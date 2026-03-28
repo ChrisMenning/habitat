@@ -1,0 +1,23 @@
+{
+  "source": "noaa",
+  "year": 2026,
+  "harvestedAt": "2026-03-28T19:58:02.023Z",
+  "gddTotal": null,
+  "byMonth": {
+    "01": {
+      "avgTmax": null,
+      "avgTmin": null,
+      "gdd": null
+    },
+    "02": {
+      "avgTmax": 9.74354475122009e+53,
+      "avgTmin": null,
+      "gdd": null
+    },
+    "03": {
+      "avgTmax": 1.1361942153822231e+48,
+      "avgTmin": 5.2731701133729256e+45,
+      "gdd": 50345.5
+    }
+  }
+}

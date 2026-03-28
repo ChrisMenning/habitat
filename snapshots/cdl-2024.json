@@ -1,0 +1,227 @@
+{
+  "source": "cdl",
+  "year": 2024,
+  "harvestedAt": "2026-03-28T20:01:12.028Z",
+  "rows": [
+    {
+      "category": "Corn",
+      "acreage": 61844.8
+    },
+    {
+      "category": "Sorghum",
+      "acreage": 810
+    },
+    {
+      "category": "Soybeans",
+      "acreage": 18051.8
+    },
+    {
+      "category": "Sunflowers",
+      "acreage": 16.2
+    },
+    {
+      "category": "Sweet Corn",
+      "acreage": 68.3
+    },
+    {
+      "category": "Barley",
+      "acreage": 37.4
+    },
+    {
+      "category": "Spring Wheat",
+      "acreage": 0.7
+    },
+    {
+      "category": "Winter Wheat",
+      "acreage": 10888.7
+    },
+    {
+      "category": "Dbl Crop WinWht/Soybeans",
+      "acreage": 6.7
+    },
+    {
+      "category": "Rye",
+      "acreage": 109.4
+    },
+    {
+      "category": "Oats",
+      "acreage": 194.4
+    },
+    {
+      "category": "Millet",
+      "acreage": 0.7
+    },
+    {
+      "category": "Alfalfa",
+      "acreage": 42275
+    },
+    {
+      "category": "Other Hay/Non Alfalfa",
+      "acreage": 905.4
+    },
+    {
+      "category": "Buckwheat",
+      "acreage": 8
+    },
+    {
+      "category": "Sugarbeets",
+      "acreage": 161
+    },
+    {
+      "category": "Dry Beans",
+      "acreage": 224
+    },
+    {
+      "category": "Potatoes",
+      "acreage": 21.6
+    },
+    {
+      "category": "Other Crops",
+      "acreage": 96.5
+    },
+    {
+      "category": "Misc Vegs & Fruits",
+      "acreage": 21.6
+    },
+    {
+      "category": "Cucumbers",
+      "acreage": 2.9
+    },
+    {
+      "category": "Peas",
+      "acreage": 19.6
+    },
+    {
+      "category": "Hops",
+      "acreage": 2.9
+    },
+    {
+      "category": "Herbs",
+      "acreage": 0.4
+    },
+    {
+      "category": "Clover/Wildflowers",
+      "acreage": 27.6
+    },
+    {
+      "category": "Sod/Grass Seed",
+      "acreage": 60.7
+    },
+    {
+      "category": "Switchgrass",
+      "acreage": 52.9
+    },
+    {
+      "category": "Fallow/Idle Cropland",
+      "acreage": 10708.1
+    },
+    {
+      "category": "Cherries",
+      "acreage": 1.1
+    },
+    {
+      "category": "Apples",
+      "acreage": 75.4
+    },
+    {
+      "category": "Grapes",
+      "acreage": 1.1
+    },
+    {
+      "category": "Christmas Trees",
+      "acreage": 34
+    },
+    {
+      "category": "Other Tree Crops",
+      "acreage": 0.4
+    },
+    {
+      "category": "Open Water",
+      "acreage": 4277.3
+    },
+    {
+      "category": "Developed/Open Space",
+      "acreage": 20494.3
+    },
+    {
+      "category": "Developed/Low Intensity",
+      "acreage": 32702.7
+    },
+    {
+      "category": "Developed/Medium Intensity",
+      "acreage": 17918.8
+    },
+    {
+      "category": "Developed/High Intensity",
+      "acreage": 7579.9
+    },
+    {
+      "category": "Barren",
+      "acreage": 1832.5
+    },
+    {
+      "category": "Deciduous Forest",
+      "acreage": 19354.1
+    },
+    {
+      "category": "Evergreen Forest",
+      "acreage": 611.6
+    },
+    {
+      "category": "Mixed Forest",
+      "acreage": 69.2
+    },
+    {
+      "category": "Shrubland",
+      "acreage": 0.4
+    },
+    {
+      "category": "Grass/Pasture",
+      "acreage": 36927.7
+    },
+    {
+      "category": "Woody Wetlands",
+      "acreage": 50333.7
+    },
+    {
+      "category": "Herbaceous Wetlands",
+      "acreage": 2804.2
+    },
+    {
+      "category": "Triticale",
+      "acreage": 8.5
+    },
+    {
+      "category": "Carrots",
+      "acreage": 2
+    },
+    {
+      "category": "Strawberries",
+      "acreage": 30.5
+    },
+    {
+      "category": "Squash",
+      "acreage": 15.6
+    },
+    {
+      "category": "Dbl Crop WinWht/Corn",
+      "acreage": 18.7
+    },
+    {
+      "category": "Dbl Crop Oats/Corn",
+      "acreage": 5.6
+    },
+    {
+      "category": "Dbl Crop Triticale/Corn",
+      "acreage": 103.6
+    },
+    {
+      "category": "Pumpkins",
+      "acreage": 52.9
+    },
+    {
+      "category": "Cabbage",
+      "acreage": 13.3
+    }
+  ]
+}

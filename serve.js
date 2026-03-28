@@ -1881,7 +1881,10 @@ function _classifyInat(obs) {
 // ── GBIF classification helper ────────────────────────────────────────────────
 function _classifyGbif(occ) {
   const kingdom = (occ.kingdom ?? '').toLowerCase();
+  const family  = (occ.family  ?? '').toLowerCase();
   const cn      = (occ.vernacularName ?? occ.species ?? '').toLowerCase();
+  // Syrphidae (hoverflies) checked explicitly — vernacular names are unreliable in GBIF
+  if (family === 'syrphidae') return 'pollinators';
   if (INSECT_POLLINATOR_RE.test(cn)) return 'pollinators';
   if (kingdom === 'plantae') {
     const status = (occ.establishmentMeans ?? '').toLowerCase();
@@ -2002,6 +2005,10 @@ async function _harvestGbif(year) {
   const byMonth = {};
   const speciesFreq = {};
   const speciesByLayer = { pollinators: {}, 'native-plants': {} };
+  // Coordinate deduplication — GBIF contains ~77-81% duplicate lat/lng pairs
+  // (Rahimi & Jung 2025, doi:10.3390/insects16080769). Track seen coord pairs
+  // so each unique location is counted at most once per species.
+  const seenCoords = new Set();
   let fetched = 0, offset = 0;
 
   while (fetched < MAX_OBS) {
@@ -2021,6 +2028,11 @@ async function _harvestGbif(year) {
     if (!batch.length) break;
 
     for (const occ of batch) {
+      // Skip exact coordinate duplicates (same species at identical lat/lng)
+      const coordKey = `${occ.decimalLatitude},${occ.decimalLongitude},${occ.species ?? occ.genericName ?? ''}`;
+      if (seenCoords.has(coordKey)) continue;
+      seenCoords.add(coordKey);
+
       const layer = _classifyGbif(occ);
       byLayer[layer]++;
       const mk = _monthKey(occ.eventDate);

@@ -1,0 +1,227 @@
+{
+  "source": "cdl",
+  "year": 2020,
+  "harvestedAt": "2026-03-28T20:01:34.001Z",
+  "rows": [
+    {
+      "category": "Corn",
+      "acreage": 71605.3
+    },
+    {
+      "category": "Sorghum",
+      "acreage": 1566.3
+    },
+    {
+      "category": "Soybeans",
+      "acreage": 17369.7
+    },
+    {
+      "category": "Sunflowers",
+      "acreage": 5.1
+    },
+    {
+      "category": "Sweet Corn",
+      "acreage": 24
+    },
+    {
+      "category": "Mint",
+      "acreage": 0.4
+    },
+    {
+      "category": "Barley",
+      "acreage": 154.8
+    },
+    {
+      "category": "Spring Wheat",
+      "acreage": 46
+    },
+    {
+      "category": "Winter Wheat",
+      "acreage": 1633
+    },
+    {
+      "category": "Dbl Crop WinWht/Soybeans",
+      "acreage": 1.6
+    },
+    {
+      "category": "Rye",
+      "acreage": 149.2
+    },
+    {
+      "category": "Oats",
+      "acreage": 8330.2
+    },
+    {
+      "category": "Millet",
+      "acreage": 4.2
+    },
+    {
+      "category": "Canola",
+      "acreage": 0.9
+    },
+    {
+      "category": "Alfalfa",
+      "acreage": 59122.7
+    },
+    {
+      "category": "Other Hay/Non Alfalfa",
+      "acreage": 5292.1
+    },
+    {
+      "category": "Buckwheat",
+      "acreage": 0.2
+    },
+    {
+      "category": "Sugarbeets",
+      "acreage": 29.1
+    },
+    {
+      "category": "Dry Beans",
+      "acreage": 233.5
+    },
+    {
+      "category": "Potatoes",
+      "acreage": 9.8
+    },
+    {
+      "category": "Other Crops",
+      "acreage": 0.7
+    },
+    {
+      "category": "Misc Vegs & Fruits",
+      "acreage": 0.2
+    },
+    {
+      "category": "Onions",
+      "acreage": 0.4
+    },
+    {
+      "category": "Cucumbers",
+      "acreage": 2.9
+    },
+    {
+      "category": "Peas",
+      "acreage": 76.9
+    },
+    {
+      "category": "Herbs",
+      "acreage": 0.2
+    },
+    {
+      "category": "Clover/Wildflowers",
+      "acreage": 24.2
+    },
+    {
+      "category": "Sod/Grass Seed",
+      "acreage": 9.3
+    },
+    {
+      "category": "Fallow/Idle Cropland",
+      "acreage": 1925.3
+    },
+    {
+      "category": "Cherries",
+      "acreage": 63.6
+    },
+    {
+      "category": "Apples",
+      "acreage": 9.6
+    },
+    {
+      "category": "Christmas Trees",
+      "acreage": 42
+    },
+    {
+      "category": "Open Water",
+      "acreage": 3840.5
+    },
+    {
+      "category": "Developed/Open Space",
+      "acreage": 22747
+    },
+    {
+      "category": "Developed/Low Intensity",
+      "acreage": 31317.8
+    },
+    {
+      "category": "Developed/Medium Intensity",
+      "acreage": 15371.9
+    },
+    {
+      "category": "Developed/High Intensity",
+      "acreage": 6133.6
+    },
+    {
+      "category": "Barren",
+      "acreage": 1388.4
+    },
+    {
+      "category": "Deciduous Forest",
+      "acreage": 24688.9
+    },
+    {
+      "category": "Evergreen Forest",
+      "acreage": 352.7
+    },
+    {
+      "category": "Mixed Forest",
+      "acreage": 849.5
+    },
+    {
+      "category": "Shrubland",
+      "acreage": 211.1
+    },
+    {
+      "category": "Grass/Pasture",
+      "acreage": 20874.4
+    },
+    {
+      "category": "Woody Wetlands",
+      "acreage": 41008.7
+    },
+    {
+      "category": "Herbaceous Wetlands",
+      "acreage": 5329.7
+    },
+    {
+      "category": "Triticale",
+      "acreage": 6.9
+    },
+    {
+      "category": "Carrots",
+      "acreage": 1.6
+    },
+    {
+      "category": "Greens",
+      "acreage": 0.2
+    },
+    {
+      "category": "Strawberries",
+      "acreage": 0.9
+    },
+    {
+      "category": "Squash",
+      "acreage": 0.2
+    },
+    {
+      "category": "Dbl Crop Oats/Corn",
+      "acreage": 0.4
+    },
+    {
+      "category": "Pumpkins",
+      "acreage": 15.1
+    },
+    {
+      "category": "Blueberries",
+      "acreage": 0.2
+    },
+    {
+      "category": "Cabbage",
+      "acreage": 12.2
+    },
+    {
+      "category": "Cranberries",
+      "acreage": 0.2
+    }
+  ]
+}

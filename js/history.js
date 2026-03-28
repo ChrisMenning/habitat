@@ -136,7 +136,11 @@ export function renderTrendChart(containerId, snapshots, label) {
   }
 
   svgParts.push('</svg>');
-  container.innerHTML = svgParts.join('');
+  container.innerHTML = svgParts.join('')
+    + '<p class="trends-bias-note">Counts reflect recorded observations, not true population levels. '
+    + 'Data volume increases sharply from 2022 onward as iNaturalist participation grew '
+    + '\u2014 earlier years appear lower due to fewer observers, not fewer pollinators. '
+    + '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12386186/" target="_blank" rel="noopener">Rahimi &amp; Jung 2025</a></p>';
 }
 
 // ── Formatting helpers ────────────────────────────────────────────────────────

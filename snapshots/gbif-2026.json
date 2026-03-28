@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 2,
+  "source": "gbif",
+  "year": 2026,
+  "harvestedAt": "2026-03-28T19:55:16.595Z",
+  "total": 71,
+  "byLayer": {
+    "pollinators": 0,
+    "native-plants": 0,
+    "other-plants": 14,
+    "other-wildlife": 57
+  },
+  "byLayerByMonth": {
+    "pollinators": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    },
+    "native-plants": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    }
+  },
+  "speciesRichness": 39,
+  "topSpecies": [
+    {
+      "name": "Pinus strobus",
+      "count": 6
+    },
+    {
+      "name": "Anas platyrhynchos",
+      "count": 5
+    },
+    {
+      "name": "Passer domesticus",
+      "count": 4
+    },
+    {
+      "name": "Meleagris gallopavo",
+      "count": 4
+    },
+    {
+      "name": "Odocoileus virginianus",
+      "count": 4
+    },
+    {
+      "name": "Haliaeetus leucocephalus",
+      "count": 4
+    },
+    {
+      "name": "Branta canadensis",
+      "count": 3
+    },
+    {
+      "name": "Accipiter striatus",
+      "count": 3
+    },
+    {
+      "name": "Cardinalis cardinalis",
+      "count": 3
+    },
+    {
+      "name": "Sciurus carolinensis",
+      "count": 2
+    }
+  ],
+  "topPollinators": [],
+  "topNativePlants": [],
+  "byMonth": {
+    "01": 38,
+    "02": 9,
+    "03": 24
+  }
+}

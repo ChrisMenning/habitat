@@ -65,7 +65,7 @@ import { initMap, registerLayer, registerAreaLayer,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
-         showPopup, closePopup, wireInteractions, wireParcelClick,
+         showPopup, closePopup, wireInteractions, wireHoverCursors, wireParcelClick,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
          setWaystationApproxStyle,
@@ -2166,27 +2166,43 @@ map.on('load', async () => {
   // Wire click interactions on all layers (points + polygon fills)
   const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
-  wireInteractions(
-    [...areaLayerIds, ...pointLayerIds],
-    (lngLat, props, feature) => {
-      // Cluster aggregate — zoom in to expand
-      if (props.cluster) {
-        zoomToCluster(feature.layer.source, props.cluster_id, feature.geometry.coordinates);
-        return;
-      }
-      if (isDrawerFeature(props)) {
-        openDrawer(feature ?? { properties: props, geometry: { type: 'Point', coordinates: [lngLat.lng, lngLat.lat] } });
-      } else {
-        const html = props.data_source ? buildAreaPopupHTML(props) : buildPopupHTML(props);
-        showPopup(lngLat, html);
-      }
-    }
-  );
+  const alertLayerIds = ['points-expansion-opportunities', 'points-problem-areas'];
 
-  // Wire clicks for analysis layers → intel drawer
-  wireInteractions(
-    ['points-expansion-opportunities', 'points-problem-areas'],
-    (_lngLat, props) => {
+  // Wire hover cursors for all interactive layers (no click listener here)
+  wireHoverCursors([...areaLayerIds, ...pointLayerIds, ...alertLayerIds]);
+
+  // Single unified click dispatcher — one query, one decision tree, no double-firing
+  getMap().on('click', e => {
+    const allHits = getMap().queryRenderedFeatures(e.point, {
+      layers: [...areaLayerIds, ...pointLayerIds, ...alertLayerIds],
+    });
+    if (!allHits.length) return;
+
+    const lngLat = e.lngLat;
+
+    // Cluster — zoom in to expand (check first; cluster marker sits in pointLayerIds)
+    const clusterHit = allHits.find(f => f.properties.cluster);
+    if (clusterHit) {
+      zoomToCluster(clusterHit.layer.source, clusterHit.properties.cluster_id, clusterHit.geometry.coordinates);
+      return;
+    }
+
+    // Split hits into drawer-worthy features vs alert annotations
+    const drawerHit   = allHits.find(f => isDrawerFeature(f.properties));
+    const alertHits   = allHits.filter(f =>
+      f.properties.layer_id === 'problem-areas' ||
+      f.properties.layer_id === 'expansion-opportunities'
+    );
+
+    // Corridor / waystation / protected area — open dossier, inject any alert context
+    if (drawerHit) {
+      openDrawer(drawerHit, alertHits);
+      return;
+    }
+
+    // Alert-only click (no drawer feature underneath) — open intel drawer for topmost
+    if (alertHits.length) {
+      const props = alertHits[0].properties;
       if (props.layer_id === 'expansion-opportunities') {
         const score    = props.score ?? 0;
         const suit     = props.suitability ?? 'moderate';
@@ -2246,7 +2262,7 @@ map.on('load', async () => {
             ${_expansionFactorRow('Low pesticide pressure', pestPts, 5, barColor)}
             ${_expansionFactorRow('Pollinator activity (supporting)', pollPts, 5, barColor)}
           </div>
-          ${_buildExpansionPublicLandSection(_lngLat)}`;
+          ${_buildExpansionPublicLandSection(lngLat)}`;
         openIntelDrawer(
           props.name ?? 'Expansion Opportunity',
           body,
@@ -2276,8 +2292,14 @@ map.on('load', async () => {
           { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Problem Area' }
         );
       }
+      return;
     }
-  );
+
+    // Regular popup — topmost non-alert, non-drawer feature
+    const topProps = allHits[0].properties;
+    const html = topProps.data_source ? buildAreaPopupHTML(topProps) : buildPopupHTML(topProps);
+    showPopup(lngLat, html);
+  });
 
   // Wire clicks on public land parcels → contact info drawer
   wireParcelClick((_lngLat, props) => {

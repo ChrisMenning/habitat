@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "source": "gbif",
+  "year": 2025,
+  "harvestedAt": "2026-03-28T19:55:29.404Z",
+  "total": 1200,
+  "byLayer": {
+    "pollinators": 0,
+    "native-plants": 0,
+    "other-plants": 201,
+    "other-wildlife": 999
+  },
+  "byLayerByMonth": {
+    "pollinators": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    },
+    "native-plants": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    }
+  },
+  "speciesRichness": 283,
+  "topSpecies": [
+    {
+      "name": "Sciurus carolinensis",
+      "count": 75
+    },
+    {
+      "name": "Anas platyrhynchos",
+      "count": 58
+    },
+    {
+      "name": "Turdus migratorius",
+      "count": 58
+    },
+    {
+      "name": "Branta canadensis",
+      "count": 48
+    },
+    {
+      "name": "Zenaida macroura",
+      "count": 41
+    },
+    {
+      "name": "Pelecanus erythrorhynchos",
+      "count": 35
+    },
+    {
+      "name": "Passer domesticus",
+      "count": 27
+    },
+    {
+      "name": "Odocoileus virginianus",
+      "count": 27
+    },
+    {
+      "name": "Agelaius phoeniceus",
+      "count": 21
+    },
+    {
+      "name": "Quiscalus quiscula",
+      "count": 21
+    }
+  ],
+  "topPollinators": [],
+  "topNativePlants": [],
+  "byMonth": {
+    "01": 79,
+    "02": 43,
+    "03": 186,
+    "04": 892
+  }
+}

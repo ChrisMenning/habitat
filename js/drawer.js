@@ -349,7 +349,7 @@ function _buildNearbyPhotosSection(coord) {
  * Open the drawer with the given feature's dossier.
  * @param {GeoJSON.Feature} feature
  */
-export function openDrawer(feature) {
+export function openDrawer(feature, alertFeatures = []) {
   const drawer = document.getElementById('site-drawer');
   const body   = document.getElementById('site-drawer-body');
   if (!drawer || !body) return;
@@ -643,12 +643,38 @@ export function openDrawer(feature) {
     return `<p style="margin:0 0 8px;padding:3px 9px;font-size:11px;line-height:1.45;border-radius:4px;color:#6b7280;">Fall migration window: Aug 28 \u2013 Sep 15 (Green Bay area)</p>`;
   })();
 
+  // ── Alert context (problem-area / expansion-opportunity overlaps) ────────────
+  const alertContextHtml = alertFeatures.length ? (() => {
+    const rows = alertFeatures.map(f => {
+      const ap = f.properties;
+      if (ap.layer_id === 'problem-areas') {
+        const sev      = ap.severity ?? 'medium';
+        const sevColor = sev === 'high' ? '#dc2626' : sev === 'medium' ? '#d97706' : '#6b7280';
+        const typeLabel = _problemTypeLabel(ap.problem_type ?? '');
+        return `<div class="drawer-alert-row" style="border-left-color:${sevColor}">
+          <span class="drawer-alert-label" style="color:${sevColor}">&#x26A0; Problem Area &mdash; ${typeLabel}</span>
+          ${ap.common ? `<span class="drawer-alert-sub">${esc(ap.common)}</span>` : ''}
+        </div>`;
+      }
+      if (ap.layer_id === 'expansion-opportunities') {
+        const suit     = ap.suitability ?? 'moderate';
+        const barColor = suit === 'good' ? '#10b981' : suit === 'moderate' ? '#f59e0b' : '#ef4444';
+        return `<div class="drawer-alert-row" style="border-left-color:${barColor}">
+          <span class="drawer-alert-label" style="color:${barColor}">&#x26A1; Expansion Opportunity &mdash; ${suit} suitability (${ap.score ?? 0}/100)</span>
+        </div>`;
+      }
+      return '';
+    }).filter(Boolean).join('');
+    return rows ? `<div class="drawer-alert-context">${rows}</div>` : '';
+  })() : '';
+
   body.innerHTML = `
     <div class="drawer-header" style="background:${headerColor};">
       <div class="drawer-header-label">${esc(titleLabel)}</div>
       <h2 class="drawer-title">${esc(p.name || p.registrant || 'Site')}</h2>
     </div>
     <div class="drawer-content">
+      ${alertContextHtml}
       ${approxHtml}
       ${metaHtml}
       ${migrationHtml}

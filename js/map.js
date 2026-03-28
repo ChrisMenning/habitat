@@ -1549,6 +1549,19 @@ export function wireInteractions(layerIds, onFeatureClick) {
   }
 }
 
+/**
+ * Wires only hover-cursor handlers (no click listener) onto the given layer ids.
+ * Use this when click dispatch is handled by a separate unified handler.
+ *
+ * @param {string[]} layerIds
+ */
+export function wireHoverCursors(layerIds) {
+  for (const layerId of layerIds) {
+    _map.on('mouseenter', layerId, () => { _map.getCanvas().style.cursor = 'pointer'; });
+    _map.on('mouseleave', layerId, () => { _map.getCanvas().style.cursor = '';        });
+  }
+}
+
 // ── Opacity controls ──────────────────────────────────────────────────────────
 
 /**
