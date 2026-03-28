@@ -12,7 +12,7 @@
 
 import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INAT_HISTORY_START_YEAR,
          LAYER_VINTAGES, LAYER_LABELS, STALENESS_THRESHOLD_YEARS, TEMPORAL_MISMATCH_THRESHOLD_YEARS,
-         CENTER, RADIUS_KM } from './config.js';
+         CENTER, RADIUS_KM, LAYER_PRESETS } from './config.js';
 import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
          partitionByLayer }                            from './api.js';
 import { fetchGbifPollinators, fetchGbifPlants, fetchGbifWildlife,
@@ -258,6 +258,99 @@ function setLayerActive(id, visible) {
   // Sync area-legend button (data-layer-id attribute added by buildAreaLegend)
   const legendBtn = document.querySelector(`[data-layer-id="${id}"]`);
   if (legendBtn) legendBtn.classList.toggle('area-legend-row--off', !visible);
+}
+
+// ── Layer presets ─────────────────────────────────────────────────────────────
+
+/**
+ * All config-driven layer objects in one flat list.
+ * Used by applyPreset() to enumerate every togglable layer.
+ * (Excludes RASTER_LAYERS — empty — and TREE_CANOPY_LAYERS — controlled via
+ *  the 'tree-canopy' hardcoded-cb suffix below, not a standalone config id.)
+ */
+const _ALL_CONFIG_LAYERS = [
+  ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
+  ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+  ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
+  PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+];
+
+/**
+ * Suffixes of hardcoded HTML heatmap checkboxes that are NOT managed by
+ * setLayerActive. Toggle element IDs are `toggle-<suffix>`.
+ * These need their `change` event dispatched directly.
+ */
+const _HARDCODED_CB_SUFFIXES = [
+  'heatmap-traffic',
+  'heatmap-native-plants',
+  'tree-canopy',
+  'cdl-fringe',
+];
+
+/**
+ * Applies a layer preset using full-replace semantics: every known layer is
+ * turned off, then only the layers listed in preset.on are turned on.
+ *
+ * @param {{ id: string|null, on: string[] }} preset
+ */
+function applyPreset(preset) {
+  for (const layer of _ALL_CONFIG_LAYERS) {
+    setLayerActive(layer.id, preset.on.includes(layer.id));
+  }
+  for (const suffix of _HARDCODED_CB_SUFFIXES) {
+    const cb = document.getElementById(`toggle-${suffix}`);
+    if (!cb) continue;
+    cb.checked = preset.on.includes(suffix);
+    cb.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  // Sync active-tile highlight in the Views pane
+  document.querySelectorAll('.preset-tile').forEach(btn => {
+    btn.classList.toggle('preset-tile--active', btn.dataset.presetId === (preset.id ?? ''));
+  });
+}
+
+/**
+ * Builds preset tiles into #panel-presets-inner.
+ * Called once during map init after panels are built.
+ */
+function renderPresets() {
+  const container = document.getElementById('panel-presets-inner');
+  if (!container) return;
+
+  for (const preset of LAYER_PRESETS) {
+    const btn = document.createElement('button');
+    btn.type             = 'button';
+    btn.className        = 'preset-tile';
+    btn.dataset.presetId = preset.id;
+    btn.setAttribute('aria-label', `Apply ${preset.label} layer view`);
+    btn.innerHTML =
+      `<span class="preset-tile-icon" aria-hidden="true"><i class="ph ph-${preset.icon}"></i></span>` +
+      `<span class="preset-tile-text">` +
+        `<span class="preset-tile-label">${preset.label}</span>` +
+        `<span class="preset-tile-desc">${preset.description}</span>` +
+      `</span>`;
+    btn.addEventListener('click', () => applyPreset(preset));
+    container.appendChild(btn);
+  }
+
+  // Reset to defaults button
+  const defaultOn = [
+    ..._ALL_CONFIG_LAYERS.filter(l => l.defaultOn).map(l => l.id),
+    'cdl-fringe',  // only hardcoded-cb that has checked in HTML
+  ];
+  const resetBtn = document.createElement('button');
+  resetBtn.type             = 'button';
+  resetBtn.className        = 'preset-tile preset-tile--reset';
+  resetBtn.dataset.presetId = '';
+  resetBtn.setAttribute('aria-label', 'Reset all layers to default state');
+  resetBtn.innerHTML =
+    `<span class="preset-tile-icon" aria-hidden="true"><i class="ph ph-arrow-counter-clockwise"></i></span>` +
+    `<span class="preset-tile-text">` +
+      `<span class="preset-tile-label">Reset to Defaults</span>` +
+      `<span class="preset-tile-desc">Restore the app to its initial layer state.</span>` +
+    `</span>`;
+  resetBtn.addEventListener('click', () => applyPreset({ id: null, on: defaultOn }));
+  container.appendChild(resetBtn);
 }
 
 // ── Map setup ─────────────────────────────────────────────────────────────────
@@ -997,6 +1090,28 @@ async function loadObservations() {
         padding: { top: 80, bottom: 100, left: 540, right: 80 },
         maxZoom: isGap ? 12 : 15,
       });
+      // Public land gap: also open a contextual info drawer
+      if (alert.key?.startsWith('public-land-gap')) {
+        const [lng, lat] = alert.coords[0];
+        const parcelText = alert.text.startsWith('High-Value Public Land Gap:')
+          ? alert.text.replace(/^High-Value Public Land Gap:\s*/, '').replace(/\s*\u2014\s*no habitat.*$/i, '')
+          : alert.text;
+        const publicLandHtml = _buildExpansionPublicLandSection({ lng, lat });
+        const body = `
+          <div class="drawer-severity-badge" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35);color:#f59e0b">
+            <span class="drawer-severity-dot" style="background:#f59e0b"></span>
+            HIGH-VALUE OPPORTUNITY
+          </div>
+          <div class="drawer-section-label">Location</div>
+          <p class="drawer-intel-note" style="margin-top:4px">${parcelText}</p>
+          <div class="drawer-section-label">Why This Is Actionable</div>
+          <p class="drawer-intel-note">This parcel sits in an active pollinator opportunity zone — an area with documented pollinators but no formal habitat program within 800 m. Because it is publicly owned, no private negotiation is needed. Habitat improvements can be proposed directly through the parks department or municipal planning process.</p>
+          ${publicLandHtml || '<p class="drawer-intel-note" style="margin-top:8px;color:#6b7280">Enable the Parcel Ownership layer and zoom to level 13 or higher to load contact details for this location.</p>'}`;
+        openIntelDrawer('High-Value Public Land Gap', body, {
+          headerStyle: 'background:#451a03',
+          labelHtml:   '<i class="ph ph-buildings"></i> Opportunity',
+        });
+      }
     };
     renderAlerts(alerts, _alertFocusHandler);
 
@@ -1223,11 +1338,7 @@ async function loadHistoricalTrends() {
   const noaaYears = availableYears(index, 'noaa').slice(-5);
 
   if (inatYears.length < 2 && noaaYears.length < 2) {
-    container.innerHTML =
-      '<p class="layer-desc" style="margin:0.5rem 0.25rem;">No trend data yet.<br>' +
-      'Trigger a harvest via:<br>' +
-      '<code style="font-size:0.72rem;word-break:break-all;">POST /api/harvest ' +
-      '{ &quot;source&quot;: &quot;inat&quot;, &quot;year&quot;: 2025 }</code></p>';
+    _renderHarvestUI(container, true);
     return;
   }
 
@@ -1276,6 +1387,79 @@ async function loadHistoricalTrends() {
   // Nullify refs to allow GC
   inatPoints = null;
   noaaPoints = null;
+
+  // Append harvest-more control below charts
+  const moreWrap = document.createElement('div');
+  moreWrap.className = 'history-harvest-more';
+  moreWrap.innerHTML = '<button class="harvest-more-btn">+ Harvest more years</button>';
+  container.appendChild(moreWrap);
+  moreWrap.querySelector('.harvest-more-btn').addEventListener('click', () => {
+    moreWrap.replaceWith(_renderHarvestUI(null, false));
+  });
+}
+
+// ── Harvest UI ────────────────────────────────────────────────────────────────
+function _renderHarvestUI(container, isEmpty) {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear; y >= 2015; y--) years.push(y);
+
+  const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+  const el = document.createElement('div');
+  el.className = 'harvest-ui';
+  el.innerHTML = `
+    ${isEmpty ? '<p class="layer-desc" style="margin:0 0 0.75rem;">No trend data yet. Harvest at least two years to see charts.</p>' : ''}
+    <div class="harvest-form">
+      <select class="harvest-select harvest-source">
+        <option value="inat">iNaturalist</option>
+        <option value="gbif">GBIF</option>
+        <option value="noaa">NOAA (GDD)</option>
+        <option value="nass">NASS Crops</option>
+      </select>
+      <select class="harvest-select harvest-year">${yearOptions}</select>
+      <button class="harvest-run-btn">Run</button>
+    </div>
+    <p class="harvest-status"></p>`;
+
+  if (container) {
+    container.innerHTML = '';
+    container.appendChild(el);
+  }
+
+  el.querySelector('.harvest-run-btn').addEventListener('click', async () => {
+    const source = el.querySelector('.harvest-source').value;
+    const year   = parseInt(el.querySelector('.harvest-year').value, 10);
+    const btn    = el.querySelector('.harvest-run-btn');
+    const status = el.querySelector('.harvest-status');
+
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+    status.textContent = `Harvesting ${source} ${year} — this may take up to a minute…`;
+
+    try {
+      const res = await fetch('/api/harvest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, year }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        status.textContent = `\u2713 Saved ${json.file} (${json.records ?? '?'} records). Reloading trends…`;
+        setTimeout(() => loadHistoricalTrends(), 1200);
+      } else {
+        status.textContent = `Error: ${json.error ?? 'unknown error'}`;
+        btn.disabled = false;
+        btn.textContent = 'Run';
+      }
+    } catch (err) {
+      status.textContent = `Request failed: ${err.message}`;
+      btn.disabled = false;
+      btn.textContent = 'Run';
+    }
+  });
+
+  return el;
 }
 
 
@@ -1505,6 +1689,7 @@ map.on('load', async () => {
   );
   buildEstLegend();
   buildAreaLegend(setLayerActive);
+  renderPresets();
 
   // Seed _activeLayerIds from all layers that are on by default.
   // setLayerActive() keeps the set updated on subsequent toggles.
@@ -1522,7 +1707,13 @@ map.on('load', async () => {
 
   // Permalink — restore state from URL hash, then init sync
   const _permalinkState = parsePermalink();
-  if (_permalinkState) applyPermalinkState(_permalinkState, map);
+  if (_permalinkState) {
+    applyPermalinkState(_permalinkState, map);
+  } else {
+    // Apply the Orientation view as the default starting state
+    const _orientPreset = LAYER_PRESETS.find(p => p.id === 'orientation');
+    if (_orientPreset) applyPreset(_orientPreset);
+  }
 
   // Connectivity mesh follows corridor — no standalone toggle needed.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {

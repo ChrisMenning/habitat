@@ -37,6 +37,12 @@
       </div>
     </div>
 
+    <figure class="guide-hero-img reveal">
+      <img src="/img/three-habitat-networks.jpg"
+           alt="Bay Hive map showing three overlapping habitat networks — GBCC corridor sites (amber), Monarch Watch waystations (violet), and Homegrown National Park yards (green) — connected by foraging-range lines across the Green Bay area."
+           width="1200" loading="lazy">
+    </figure>
+
     <!-- ── Habitat site types ──────────────────────────────────────────── -->
     <div class="guide-block reveal">
       <div class="guide-block-label">Habitat Site Types</div>
@@ -388,8 +394,7 @@
             polygons from the Green Bay Conservation Corps. On by default. The backbone layer for all connectivity analysis.
           </li>
           <li>
-            <strong>Habitat Treatments (GBCC)</strong> &mdash; GBCC restoration interventions (planting, invasive removal,
-            prescribed burn). Shows the active restoration footprint. Off by default.
+            <strong>Habitat Treatments (GBCC)</strong> &mdash; GBCC restoration interventions published to their public feature service. Current data includes cut-stump and foliar treatments. Shows the active restoration footprint. Off by default.
           </li>
         </ul>
       </div>
@@ -480,6 +485,7 @@
         <li><a href="/reference.html#data">Data Sources</a></li>
         <li><a href="/reference.html#governance">Governance</a></li>
         <li><a href="/reference.html#contribute">Get Involved</a></li>
+        <li><a href="/open-source.html">Open Source</a></li>
         <li><a href="https://github.com/ChrisMenning/habitat" target="_blank" rel="noopener">GitHub Repository</a></li>
       </ul>
     </div>
@@ -495,6 +501,48 @@ const observer = new IntersectionObserver((entries) => {
   entries.forEach(el => { if (el.isIntersecting) el.target.classList.add('visible'); });
 }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Live counter data ─────────────────────────────────────────────────────────
+(async function guideStats() {
+  function setVal(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  const LAT = 44.5133, LNG = -88.0133, RADIUS_KM = 15;
+  const DEG_LAT = 1 / 111.32;
+  const DEG_LNG = 1 / (111.32 * Math.cos(LAT * Math.PI / 180));
+  const params = new URLSearchParams({
+    where:             '1=1',
+    geometry:          `${+(LNG - RADIUS_KM * DEG_LNG).toFixed(5)},${+(LAT - RADIUS_KM * DEG_LAT).toFixed(5)},${+(LNG + RADIUS_KM * DEG_LNG).toFixed(5)},${+(LAT + RADIUS_KM * DEG_LAT).toFixed(5)}`,
+    geometryType:      'esriGeometryEnvelope',
+    inSR:              '4326',
+    spatialRel:        'esriSpatialRelIntersects',
+    returnGeometry:    'false',
+    outFields:         'Area',
+    outSR:             '4326',
+    f:                 'geojson',
+    resultRecordCount: '1000',
+  });
+  try {
+    const res  = await fetch(
+      `https://services1.arcgis.com/rR5gshOOu0KM2c4P/arcgis/rest/services/PollinatorCorridor_gdb/FeatureServer/1/query?${params}`,
+      { signal: AbortSignal.timeout(12000) }
+    );
+    const data = res.ok ? await res.json() : {};
+    const features = data.features ?? [];
+    if (features.length > 0) {
+      const totalAcres = (features.reduce((s, f) => s + (+(f.properties?.Area ?? 0)), 0) / 43560).toFixed(1);
+      setVal('guide-val-corridor', features.length);
+      setVal('guide-val-corridor-area', totalAcres);
+    }
+  } catch { /* GBCC service unreachable — keep "—" */ }
+  try {
+    const res   = await fetch('/api/hnp-count', { signal: AbortSignal.timeout(20000) });
+    const data  = res.ok ? await res.json() : {};
+    const count = data.count ?? null;
+    if (count != null) setVal('guide-val-hnp', count);
+  } catch { /* proxy unavailable — keep "—" */ }
+})();
 </script>
 </body>
 </html>

@@ -39,7 +39,7 @@
         <span class="alert-tag tag-pfas">PFAS</span>
         <div class="alert-body">
           <strong>PFAS Near Habitat</strong>
-          <p>Contamination site within 1 km of any corridor node or Monarch Watch Waystation (Haversine distance).</p>
+          <p>Per- and polyfluoroalkyl substance (PFAS) contamination site within 1 km of any corridor node or Monarch Watch Waystation (Haversine distance).</p>
         </div>
       </div>
       <div class="alert-row">
@@ -123,7 +123,7 @@
         <span class="alert-tag tag-site">Site</span>
         <div class="alert-body">
           <strong>Poor Nesting Habitat</strong>
-          <p>Sites scoring below 25/100 on the NLCD-derived nesting suitability index.</p>
+          <p>Sites scoring below 25/100 on the National Land Cover Database (NLCD)-derived nesting suitability index.</p>
         </div>
       </div>
       <div class="alert-row">
@@ -136,8 +136,8 @@
       <div class="alert-row">
         <span class="alert-tag tag-climate">Climate</span>
         <div class="alert-body">
-          <strong>GDD Below Normal</strong>
-          <p>Daily growing-degree accumulation (base 50&deg;F) running below the 30-year normal for the current May&ndash;September window at Green Bay. Requires NOAA optional key; suppressed when the key is absent.</p>
+          <strong>Growing Degree Days (GDD) Below Normal</strong>
+          <p>Daily growing-degree accumulation (base 50&deg;F) running below the 30-year normal for the current May&ndash;September window at Green Bay. GDD is computed from IEM observed temperature data and does not require the NOAA optional key.</p>
         </div>
       </div>
       <div class="alert-row">
@@ -179,24 +179,26 @@
   <div class="sources-grid reveal">
     <div class="source-item"><div class="source-cat">Corridor</div><div class="source-name">GBCC ArcGIS Feature Service</div></div>
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · historical back to 2010</div></div>
-    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">GBIF Occurrence API v1 · up to 600</div></div>
-    <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">FWS Dataset · All 6 Bee Families</div></div>
-    <div class="source-item"><div class="source-cat">Analysis Model</div><div class="source-name">InVEST Pollinator Index · Lonsdorf et al. 2009 · NLCD biophysical scores</div></div>
-    <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">USGS PAD-US v3.0</div></div>
+    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">Global Biodiversity Information Facility (GBIF) Occurrence API v1 · up to 600</div></div>
+    <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">U.S. Fish &amp; Wildlife Service (FWS) Dataset · All 6 Bee Families</div></div>
+    <div class="source-item"><div class="source-cat">Analysis Model</div><div class="source-name">Integrated Valuation of Ecosystem Services and Tradeoffs (InVEST) Pollinator Index · Lonsdorf et al. 2009 · NLCD biophysical scores</div></div>
+    <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">U.S. Geological Survey Protected Areas Database (USGS PAD-US) v3.0</div></div>
     <div class="source-item"><div class="source-cat">Conservation</div><div class="source-name">WI DNR State Natural Areas &amp; Managed Lands</div></div>
     <div class="source-item"><div class="source-cat">Hazards</div><div class="source-name">WI DNR PFAS Contamination Sites</div></div>
     <div class="source-item"><div class="source-cat">Land Cover</div><div class="source-name">NLCD 2021 · MRLC GeoServer · 16 classes</div></div>
     <div class="source-item"><div class="source-cat">Cropland</div><div class="source-name">USDA NASS CropScape WMS</div></div>
-    <div class="source-item"><div class="source-cat">Tree Canopy</div><div class="source-name">WI DNR UTC 2013 / 2020 / 2022</div></div>
+    <div class="source-item"><div class="source-cat">Tree Canopy</div><div class="source-name">WI DNR Urban Tree Canopy (UTC) 2013 / 2020 / 2022</div></div>
     <div class="source-item"><div class="source-cat">Waystations</div><div class="source-name">Monarch Watch · 56 curated sites</div></div>
     <div class="source-item"><div class="source-cat">Habitat Program</div><div class="source-name">Homegrown National Park API</div></div>
     <div class="source-item"><div class="source-cat">Photos</div><div class="source-name">Wikimedia Commons · Proximity filtered</div></div>
     <div class="source-item"><div class="source-cat">Birds</div><div class="source-name">Cornell eBird API</div></div>
     <div class="source-item"><div class="source-cat">Crops · Optional</div><div class="source-name">USDA NASS QuickStats API</div></div>
-    <div class="source-item"><div class="source-cat">Climate · Optional</div><div class="source-name">NOAA CDO / NCEI</div></div>
+    <div class="source-item"><div class="source-cat">Climate Normals</div><div class="source-name">NOAA NCEI 1991&ndash;2020 normals (bundled fallback · USW00014898)</div></div>
+    <div class="source-item"><div class="source-cat">Observed Temps</div><div class="source-name">Iowa Environmental Mesonet (IEM) · Iowa State University · 2021&ndash;present</div></div>
+    <div class="source-item"><div class="source-cat">Frost Forecast · Optional</div><div class="source-name">NOAA CDO / NCEI (token required for live GDD &amp; frost alerts)</div></div>
   </div>
   <div class="data-note reveal">
-    No proprietary datasets required for core functionality. Optional keys (eBird, NASS, NOAA) unlock additional layers; the platform degrades gracefully without them. Observation data cached 1 hour · Area layers cached 24 hours · Cache/live status visible in the intelligence bar.
+    No proprietary datasets required for core functionality. Optional keys (eBird, NASS, NOAA) unlock additional layers; the platform degrades gracefully without them. Climate normals and observed temperatures load from bundled and IEM sources &mdash; the Climate Ribbon works without a NOAA key. Observation data cached 1 hour &middot; Area layers cached 24 hours &middot; Cache/live status visible in the intelligence bar.
   </div>
 </section>
 
@@ -214,16 +216,12 @@
         were showing up relative to the habitat people were building for them."
       </blockquote>
       <p>
-        Tools that serve a community should be governed by that community, not held in trust by whoever happened 
-        to build them first. Bay Hive is released under the GNU General Public License v3.0 — ensuring it 
-        remains a public good even if forked or adapted by another organization. An organization that takes 
-        stewardship cannot close the source, cannot relicense it as proprietary.
-      </p>
-      <p>
-        Bay Hive is deliberately local. The 15 km radius, the GBCC corridor data, the Brown County parcel 
-        integration — all of it is calibrated to this place. A local conservation organization stewarding 
-        a local tool is the right outcome. The goal is a tool that the Green Bay pollinator community owns, 
-        understands, and can maintain without depending on any single person.
+        Bay Hive is released under an open license, ensuring it remains a public good even if adapted 
+        or stewarded by another organization. Bay Hive is deliberately local. The 15 km radius, the GBCC 
+        corridor data, the Brown County parcel integration — all of it is calibrated to this place. 
+        A local conservation organization stewarding a local tool is the right outcome. The goal is a tool 
+        that the Green Bay pollinator community owns, understands, and can maintain without depending on any 
+        single person.
       </p>
       <div class="gov-maintainer">
         <span class="gov-maintainer-label">Current Maintainer</span>
@@ -238,7 +236,7 @@
       </div>
       <div class="principle">
         <h3>The tool serves the corridor, not the maintainer</h3>
-        <p>Decisions about direction should be made in the interest of the people doing habitat work — coordinators, waystation holders, city planners, researchers at UW-Green Bay.</p>
+        <p>Decisions about direction should be made in the interest of the people doing habitat work — coordinators, waystation holders, city planners, and researchers.</p>
       </div>
       <div class="principle">
         <h3>Transparency by default</h3>
@@ -251,21 +249,33 @@
     </div>
   </div>
 
+  <div class="pathways-intro reveal">
+    <h3>Paths to stewardship</h3>
+    <p>
+      A single-maintainer structure is fine for an early-stage project. It is not sustainable for a tool 
+      that a conservation committee, a city parks department, or a grant-funded corridor program might 
+      come to depend on. The question worth spending real time on is not whether Bay Hive should eventually 
+      be stewarded by a community organization &#8212; it should &#8212; but what kind of organization and 
+      what kind of relationship. Three pathways are currently under consideration, each suited to a 
+      different stage of the project&#8217;s maturity and a different level of organizational investment.
+    </p>
+  </div>
+
   <div class="pathways reveal">
     <div class="pathway">
       <div class="pathway-num">Pathway 01</div>
-      <h3>Fiscal Sponsorship</h3>
-      <p>A 501(c) fiscal host administers funds while the project retains operational independence. Enables grant applications and tax-deductible donations. Candidates include Open Source Collective and Aspiration Tech.</p>
+      <h3>Local Nonprofit Stewardship</h3>
+      <p>Bay Hive&#8217;s codebase and development become the responsibility of an existing organization doing corridor work &#8212; most naturally the Green Bay Conservation Corps (GBCC). The cleanest transfer of stewardship: the people closest to the work maintain the tool that serves it.</p>
     </div>
     <div class="pathway">
       <div class="pathway-num">Pathway 02</div>
-      <h3>Local Nonprofit Stewardship</h3>
-      <p>Bay Hive's codebase and development become the responsibility of an existing organization doing corridor work — most naturally the Green Bay Conservation Corps. The cleanest transfer of stewardship.</p>
+      <h3>Purpose-Built Organization</h3>
+      <p>A governing body with representation from GBCC, a conservation nonprofit, a local government partner, and a technical maintainer. Appropriate if the tool grows to serve a broader region.</p>
     </div>
     <div class="pathway">
-      <div class="pathway-num">Pathway 03</div>
-      <h3>Purpose-Built Organization</h3>
-      <p>A governing body with representation from GBCC, a conservation nonprofit, a local government partner, and a technical maintainer seat. Appropriate if the tool grows beyond Green Bay.</p>
+      <div class="pathway-num">See Also</div>
+      <h3>Open Source Governance</h3>
+      <p>Details on the open license, technical architecture, fiscal sponsorship options, and how to self-host or adapt Bay Hive for another region are on the <a href="/open-source.html">Open Source</a> page.</p>
     </div>
   </div>
 </section>
@@ -282,10 +292,9 @@
       </div>
       <div>
         <p>
-          The most valuable near-term contributions are field review of the fourteen alert algorithms — 
+          The most valuable near-term contributions are field review of the automated alert algorithms — 
           identifying false positives or missing conditions that practitioners recognize in the corridor — 
-          and integration of additional WI DNR or locally maintained datasets. The modular codebase requires 
-          no toolchain setup to extend.
+          and integration of additional Wisconsin DNR or locally maintained datasets.
         </p>
       </div>
     </div>
@@ -302,38 +311,12 @@
         <span class="contrib-icon">⊕</span>
         <div class="contrib-body">
           <strong>Data Integration</strong>
-          <p>Additional WI DNR datasets, parcel ownership records, or locally maintained habitat inventories can be incorporated as new layers or alert inputs by any contributor.</p>
-        </div>
-      </div>
-      <div class="contrib-item reveal">
-        <span class="contrib-icon">◷</span>
-        <div class="contrib-body">
-          <strong>Trend Harvesting</strong>
-          <p>Organizations that deploy Bay Hive as a hosted service can schedule regular observation snapshots via <code style="font-family:var(--font-mono);font-size:0.85em;color:var(--honey)">POST /api/harvest</code> to build the longitudinal dataset needed for multi-year trend analysis.</p>
-        </div>
-      </div>
-      <div class="contrib-item reveal d1">
-        <span class="contrib-icon">⌥</span>
-        <div class="contrib-body">
-          <strong>Technical Extension</strong>
-          <p>The modular ES-module architecture makes it straightforward to add new data sources, refine the nesting suitability scoring model, or build new analytical layers — no build step or toolchain setup required.</p>
+          <p>Additional Wisconsin DNR datasets, parcel ownership records, or locally maintained habitat inventories can be incorporated as new layers or alert inputs by any contributor.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
-
-<!-- TECH STRIP -->
-<div class="tech-strip" aria-label="Technical specifications">
-  <div class="tech-item"><span class="tech-item-lbl">Runtime</span><span class="tech-item-val">Node.js 18+</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Dependencies</span><span class="tech-item-val">Zero (npm)</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Mapping</span><span class="tech-item-val">MapLibre GL 3.6.2</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Modules</span><span class="tech-item-val">Native ES Modules</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Caching</span><span class="tech-item-val">IndexedDB</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Accessibility</span><span class="tech-item-val">WCAG 2.2 AA</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">License</span><span class="tech-item-val">GNU GPL v3.0</span></div>
-  <div class="tech-item"><span class="tech-item-lbl">Deploy</span><span class="tech-item-val">node serve.js</span></div>
-</div>
 
 <!-- FOOTER -->
 </main>

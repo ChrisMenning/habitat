@@ -7,3 +7,6 @@ ebird-key.txt
 # SSH keys
 key
 key.pub
+
+# Snapshots — runtime/harvested data, not for version control
+snapshots/

@@ -144,7 +144,7 @@ export const BEE_LAYERS = [
     label:       'Bee Records',
     emoji:       '<i class="ph ph-bee"></i>',
     description: 'All GBIF occurrence records across 6 bee families (Andrenidae, Apidae, Colletidae, Halictidae, Megachilidae, Melittidae) — the same data source as the FWS Bee Distribution Tool, scoped to Brown County.',
-    defaultOn:   true,
+    defaultOn:   false,
     vintage:     null,
   },
   {
@@ -222,8 +222,8 @@ export const AREA_LAYERS = [
     id:           'gbcc-treatment',
     label:        'Habitat Treatments',
     emoji:        '<i class="ph ph-plant"></i>',
-    description:  'GBCC restoration sites · invasive removal & re-planting treatments',
-    defaultOn:    false,
+    description:  'GBCC restoration sites · cut-stump & foliar treatments',
+    defaultOn:    true,
     fillColor:    '#a3e635',
     outlineColor: '#65a30d',
     vintage:      null,
@@ -483,6 +483,95 @@ export const PROBLEM_AREAS_LAYER = [
     description: 'Habitat sites and zones with inferred problems: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates severity.',
     defaultOn:   false,
     vintage:     null,
+  },
+];
+
+// ── Layer presets ("Views") ───────────────────────────────────────────────────
+
+/**
+ * Named layer combinations for the Views flyout pane.
+ *
+ * Each preset carries:
+ *   id          — unique kebab-case key
+ *   label       — short display name
+ *   icon        — Phosphor icon class (no leading "ph ph-")
+ *   description — one-sentence purpose statement
+ *   on          — array of layer ids (from config arrays) AND hardcoded-cb
+ *                 suffixes ('heatmap-traffic', 'heatmap-native-plants',
+ *                 'tree-canopy', 'cdl-fringe') to enable.
+ *                 Everything NOT in this array is turned OFF (full-replace).
+ *
+ * @type {Array<{id:string, label:string, icon:string, description:string, on:string[]}>}
+ */
+export const LAYER_PRESETS = [
+  {
+    id:          'orientation',
+    label:       'Orientation',
+    icon:        'compass',
+    description: 'Network overview with active threats — the recommended first look.',
+    on: [
+      'gbcc-corridor', 'gbcc-treatment', 'waystations', 'hnp',
+      'dnr-pfas', 'problem-areas', 'cdl-fringe',
+    ],
+  },
+  {
+    id:          'site-assessment',
+    label:       'Site Assessment',
+    icon:        'magnifying-glass-plus',
+    description: 'Per-site nesting suitability and land cover — enables nesting score badges.',
+    on: [
+      'gbcc-corridor', 'waystations', 'bees-imperiled',
+      'nlcd-52', 'nlcd-71', 'nlcd-90', 'nlcd-95', 'tree-canopy',
+    ],
+  },
+  {
+    id:          'expansion',
+    label:       'Expansion Planning',
+    icon:        'trend-up',
+    description: 'Where to place new habitat — opportunity zones, public land, and constraints.',
+    on: [
+      'gbcc-corridor', 'waystations', 'pollinators', 'gbif-pollinators',
+      'expansion-opportunities', 'padus', 'dnr-managed',
+      'pesticide', 'dnr-pfas', 'parcels',
+    ],
+  },
+  {
+    id:          'species-monitoring',
+    label:       'Species Monitoring',
+    icon:        'binoculars',
+    description: 'Full sightings picture — pollinators, native plants, and imperiled bees.',
+    on: [
+      'pollinators', 'native-plants', 'gbif-pollinators', 'gbif-native-plants',
+      'bees-imperiled', 'bees-richness', 'gbcc-corridor', 'waystations',
+    ],
+  },
+  {
+    id:          'agricultural',
+    label:       'Agricultural Interface',
+    icon:        'plant',
+    description: 'Crop pressure, pollinator supply model, and where bees are active.',
+    on: [
+      'gbcc-corridor', 'waystations', 'pollinators',
+      'pesticide', 'invest-heat', 'cdl-fringe', 'heatmap-traffic',
+    ],
+  },
+  {
+    id:          'contamination',
+    label:       'Contamination Triage',
+    icon:        'biohazard',
+    description: 'Pure threat view — PFAS, pesticide pressure, and affected sites.',
+    on: [
+      'gbcc-corridor', 'waystations', 'dnr-pfas', 'pesticide', 'problem-areas',
+    ],
+  },
+  {
+    id:          'urban-canopy',
+    label:       'Urban Canopy',
+    icon:        'tree-evergreen',
+    description: 'Tree canopy coverage and its impact on corridor site viability.',
+    on: [
+      'gbcc-corridor', 'waystations', 'problem-areas', 'tree-canopy', 'nlcd-21',
+    ],
   },
 ];
 

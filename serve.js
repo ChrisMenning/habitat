@@ -2247,6 +2247,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Bundled climate normals (NOAA API disrupted 2025)
+  if (pathname === '/api/climate-normals') {
+    const normalsPath = path.join(ROOT, 'snapshots', 'climate-normals-USW00014898.json');
+    fs.readFile(normalsPath, (err, data) => {
+      if (err) { res.writeHead(404); res.end('Not found'); return; }
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=2592000', // 30 days
+      });
+      res.end(data);
+    });
+    return;
+  }
+
+  // Observed temperature archive (IEM-sourced, per-year)
+  const obsMatch = pathname.match(/^\/api\/observed-temps\/(\d{4})$/);
+  if (obsMatch) {
+    const yr = parseInt(obsMatch[1], 10);
+    if (yr < 2021 || yr > 2030) { res.writeHead(404); res.end('Not found'); return; }
+    const obsPath = path.join(ROOT, 'snapshots', `observed-temps-GRB-${yr}.json`);
+    fs.readFile(obsPath, (err, data) => {
+      if (err) { res.writeHead(404); res.end('Not found'); return; }
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=86400', // 1 day (2025 grows during the year)
+      });
+      res.end(data);
+    });
+    return;
+  }
+
   // Snapshot index + individual file serving
   if (pathname === '/api/snapshots') {
     handleSnapshotsIndex(res);
@@ -2349,10 +2380,13 @@ const server = http.createServer((req, res) => {
     ['/app',                 '/index.html'],
     ['/guide.html',          '/website/guide.html'],
     ['/reference.html',      '/website/reference.html'],
+    ['/open-source.html',    '/website/open-source.html'],
     ['/bayhive-styles.css',  '/website/bayhive-styles.css'],
     ['/nav.js',              '/website/nav.js'],
   ]);
-  const relative = WEB_ROUTES.get(pathname) ?? pathname;
+  // Rewrite /img/* → /website/img/* so website images are served correctly
+  const rewritten = pathname.startsWith('/img/') ? '/website' + pathname : pathname;
+  const relative = WEB_ROUTES.get(rewritten) ?? rewritten;
 
   // Prevent directory traversal
   const filePath = path.join(ROOT, path.normalize(relative));
@@ -2368,8 +2402,11 @@ const server = http.createServer((req, res) => {
       res.end(err.code === 'ENOENT' ? 'Not found' : 'Server error');
       return;
     }
-    const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] ?? 'application/octet-stream' });
+    const ext     = path.extname(filePath).toLowerCase();
+    const headers = { 'Content-Type': MIME[ext] ?? 'application/octet-stream' };
+    // JS and CSS files are never browser-cached in dev so code changes take effect immediately
+    if (ext === '.js' || ext === '.css') headers['Cache-Control'] = 'no-store';
+    res.writeHead(200, headers);
     res.end(data);
   });
 });
