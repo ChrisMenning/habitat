@@ -104,7 +104,7 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
-import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap, computeInVESTHeatmapUrban, crosswalkInVESTCorridor, computeForagingBands } from './nesting.js';
+import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap, computeInVESTHeatmapUrban, crosswalkInVESTCorridor, computeForagingBands, computeForagingLandAreaKm2 } from './nesting.js';
 import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache, queryParcelsNear, OWNERSHIP_META } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
@@ -1084,6 +1084,8 @@ async function loadObservations() {
             _urbanNlcdScores    = scores;
             _urbanInVESTGeojson = computeInVESTHeatmapUrban(scores, CENTER[0], CENTER[1], 12);
             console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
+            const foragingArea = computeForagingLandAreaKm2(corridorSites, scores);
+            setExportData({ foragingAreaKm2: foragingArea });
             const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, corridorSites);
             _investCrosswalk = xwalk;
             setDrawerInvestCrosswalkScores(xwalk);

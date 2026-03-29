@@ -723,3 +723,95 @@ export function computeForagingBands(corridorSites) {
 
   return { type: 'FeatureCollection', features };
 }
+
+// ── Navigable foraging land area ──────────────────────────────────────────────
+
+/**
+ * Estimates the combined navigable land area reachable by bumble bees (1.5 km
+ * radius — the outermost foraging envelope) across all corridor sites, with open
+ * water excluded.
+ *
+ * Uses the same 250 m cluster centroids as computeForagingBands so the two
+ * calculations are consistent.  A regular grid of sample points is tested for
+ * (a) membership in any cluster circle and (b) water dominance via NLCD class 11
+ * pixel fraction from the supplied nlcdScoresMap.  The grid-cell area × counted
+ * cells gives the final km² estimate.
+ *
+ * @param {Array<{name:string, coords:[number,number]}>} corridorSites
+ * @param {Map<string, {counts:object, total:number}>} nlcdScoresMap
+ *   — from fetchGridNlcdScores; cell keys are nlcdGridKey strings at 0.006° step
+ * @returns {{ totalKm2: number, landKm2: number, waterKm2: number }}
+ */
+export function computeForagingLandAreaKm2(corridorSites, nlcdScoresMap) {
+  const CLUSTER_KM = 0.25;   // same merge radius as computeForagingBands
+  const RADIUS_KM  = 1.50;   // bumble bee — outermost foraging envelope
+  const STEP       = 0.003;  // ~333 m lat, ~240 m lng at 44.5° N
+
+  // Replicate the 250 m clustering from computeForagingBands
+  const clusters = [];
+  for (const site of corridorSites) {
+    const [lng, lat] = site.coords;
+    let found = null;
+    for (const c of clusters) {
+      const dx = (lng - c.lng) * 111.32 * Math.cos(lat * Math.PI / 180);
+      const dy = (lat - c.lat) * 111.32;
+      if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_KM) { found = c; break; }
+    }
+    if (found) {
+      found.count++;
+      found.lng += (lng - found.lng) / found.count;
+      found.lat += (lat - found.lat) / found.count;
+    } else {
+      clusters.push({ lng, lat, count: 1 });
+    }
+  }
+  if (clusters.length === 0) return { totalKm2: 0, landKm2: 0, waterKm2: 0 };
+
+  // Bounding box of all circles (RADIUS_KM margin on each side)
+  const DEG_LNG = 1 / (111.32 * Math.cos(44.513 * Math.PI / 180)); // ≈ 0.01259 °/km
+  const DEG_LAT = 1 / 111.32;                                        // ≈ 0.00898 °/km
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  for (const c of clusters) {
+    minLng = Math.min(minLng, c.lng - RADIUS_KM * DEG_LNG);
+    maxLng = Math.max(maxLng, c.lng + RADIUS_KM * DEG_LNG);
+    minLat = Math.min(minLat, c.lat - RADIUS_KM * DEG_LAT);
+    maxLat = Math.max(maxLat, c.lat + RADIUS_KM * DEG_LAT);
+  }
+
+  let inCircle = 0, inWater = 0;
+  const hasMap = nlcdScoresMap && nlcdScoresMap.size > 0;
+
+  for (let lat = minLat; lat <= maxLat; lat += STEP) {
+    const cosLat = Math.cos(lat * Math.PI / 180);
+    for (let lng = minLng; lng <= maxLng; lng += STEP) {
+      // Test membership in any cluster circle
+      let inside = false;
+      for (const c of clusters) {
+        const dx = (lng - c.lng) * 111.32 * cosLat;
+        const dy = (lat - c.lat) * 111.32;
+        if (dx * dx + dy * dy <= RADIUS_KM * RADIUS_KM) { inside = true; break; }
+      }
+      if (!inside) continue;
+      inCircle++;
+
+      // Water check: snap to nearest 0.006° NLCD grid cell (same key scheme
+      // as nlcdGridKey / fetchGridNlcdScores).  A cell is "water" when NLCD
+      // class 11 (Open Water) accounts for > 50 % of pixels.
+      if (hasMap) {
+        const snapLng = (Math.round(lng / 0.006) * 0.006).toFixed(3);
+        const snapLat = (Math.round(lat / 0.006) * 0.006).toFixed(3);
+        const cell = nlcdScoresMap.get(`${snapLng},${snapLat}`);
+        if (cell && cell.total > 0 && (cell.counts[11] ?? 0) / cell.total > 0.5) {
+          inWater++;
+        }
+      }
+    }
+  }
+
+  // Each sample cell has this area (km²); midpoint latitude for longitude scaling
+  const midLat      = (minLat + maxLat) / 2;
+  const cellAreaKm2 = (STEP * 111.32) * (STEP * 111.32 * Math.cos(midLat * Math.PI / 180));
+  const totalKm2    = inCircle * cellAreaKm2;
+  const waterKm2    = inWater  * cellAreaKm2;
+  return { totalKm2, landKm2: totalKm2 - waterKm2, waterKm2 };
+}

@@ -103,6 +103,7 @@ export function exportReport() {
     pollinatorCount    = 0,
     nativeSpeciesCount = 0,
     corridorSqFt       = 0,
+    foragingAreaKm2    = null,
     padusCount         = 0,
     snaCount           = 0,
     dnrManagedCount    = 0,
@@ -171,6 +172,22 @@ export function exportReport() {
       ? `${(corridorSqFt / 43560).toLocaleString('en-US', {maximumFractionDigits:1})} ac`
       : '—';
     const gddStr  = gdd !== null ? gdd.toLocaleString() : '—';
+
+    // Foraging reach row — only shown once the InVEST NLCD data has loaded
+    const foragingRow = foragingAreaKm2 ? (() => {
+      const corridorKm2 = corridorSqFt * 9.2903e-8; // ft² → km²
+      const ratioStr = corridorKm2 > 0
+        ? `${Math.round(foragingAreaKm2.landKm2 / corridorKm2)}×`
+        : '—';
+      return `
+    <div class="grid4">
+      <div class="card"><div class="val">${foragingAreaKm2.totalKm2.toFixed(1)} km²</div><div class="lbl">Foraging envelope (1.5 km)</div></div>
+      <div class="card"><div class="val">${foragingAreaKm2.landKm2.toFixed(1)} km²</div><div class="lbl">Navigable land area</div></div>
+      <div class="card"><div class="val">${foragingAreaKm2.waterKm2.toFixed(1)} km²</div><div class="lbl">Open water in range</div></div>
+      <div class="card"><div class="val">${ratioStr}</div><div class="lbl">Foraging reach vs corridor</div></div>
+    </div>`;
+    })() : '';
+
     return `<h2>Situational Summary</h2>
     <div class="grid5">
       <div class="card"><div class="val">${habitatNodeCount.toLocaleString()}</div><div class="lbl">Habitat nodes</div></div>
@@ -185,7 +202,7 @@ export function exportReport() {
       <div class="card"><div class="val">${hnpCount.toLocaleString()}</div><div class="lbl">HNP yards</div></div>
       <div class="card"><div class="val">${ebirdCount.toLocaleString()}</div><div class="lbl">eBird sightings</div></div>
       <div class="card"><div class="val">${gddStr}</div><div class="lbl">GDD base-50</div></div>
-    </div>`;
+    </div>${foragingRow}`;
   }
 
   function alertsSection() {
