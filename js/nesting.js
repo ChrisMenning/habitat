@@ -170,9 +170,10 @@ export async function fetchGridNlcdScores(centerLng, centerLat, radiusKm, gridSt
     }
   }
 
-  // 100 sites × ~90 chars URL-encoded ≈ 9 KB per request — stays well under
-  // Node's default 8 KB URL header limit when percent-encoded floats are short.
-  const BATCH = 100;
+  // 40 sites × ~90 chars URL-encoded ≈ 3.5 KB per request — safely under
+  // nginx's default 8 KB large_client_header_buffers limit.  Requests are
+  // fired in parallel so the extra batches don't add wall time.
+  const BATCH = 40;
   const result = new Map();
 
   // Fire all batches in parallel — typically 10–20 requests, each resolves in

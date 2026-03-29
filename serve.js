@@ -444,7 +444,7 @@ const NESTING_CODES   = { 31: 7, 52: 2, 71: 3 };
 const TRACKED_CODES   = new Set([11, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
 const NESTING_Z       = 13;
 const NESTING_RADIUS  = 300; // metres
-const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
+const NESTING_TTL     = 30 * 24 * 60 * 60 * 1000; // 30 d tile cache (NLCD updates every 2-3 years)
 
 const _nestingTileCache    = new Map(); // key → { palMap, indices, width, height }
 const _nestingTileCacheAge = new Map(); // key → timestamp
@@ -497,7 +497,8 @@ function _buildNestingPaletteMap(plte) {
 /**
  * Fetch and decode an NLCD WMS tile at zoom z.
  * Returns { palMap, indices, width, height } or null on error.
- * Results are cached for 24 h.
+ * Results are cached for 30 days (NLCD is a static dataset).
+ * Falls back to stale cached data if a live re-fetch fails.
  */
 async function _getNlcdTileData(z, tx, ty) {
   const key = `${z}/${tx}/${ty}`;
@@ -505,6 +506,7 @@ async function _getNlcdTileData(z, tx, ty) {
   if (_nestingTileCache.has(key) && now - _nestingTileCacheAge.get(key) < NESTING_TTL) {
     return _nestingTileCache.get(key);
   }
+  const stale = _nestingTileCache.has(key) ? _nestingTileCache.get(key) : null;
   const bbox = tileToBbox3857(z, tx, ty);
   let buf;
   try {
@@ -515,7 +517,7 @@ async function _getNlcdTileData(z, tx, ty) {
       '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
       '&CRS=EPSG%3A3857&STYLES=&WIDTH=256&HEIGHT=256' +
       '&BBOX=' + bbox);
-  } catch { return null; }
+  } catch { return stale; }
 
   let offset = 8, ihdr = null, plte = null;
   const idatBufs = [];
