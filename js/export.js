@@ -114,6 +114,8 @@ export function exportReport() {
     pfasFeatures       = [],
     pesticideCounties  = [],
     nestingScores      = new Map(),
+    canopyScores       = new Map(),
+    investCrosswalk    = [],
     expansionFeatures  = [],
     parcelFeatures     = [],
     // Rolled-up counts by layer
@@ -216,7 +218,17 @@ export function exportReport() {
         const tier = ns.score >= 67 ? 'good' : ns.score >= 34 ? 'moderate' : 'low';
         nestCell = `<span class="tier-${tier}" style="color:${escHtml(color)}">${escHtml(label)} (${ns.score})</span>`;
       }
-      return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td></tr>`;
+      const canopyPct = canopyScores.get(p.name ?? '');
+      const canopyCell = typeof canopyPct === 'number' ? `${canopyPct.toFixed(0)}%` : '—';
+      const xw = investCrosswalk.find(e => e.name === (p.name ?? ''));
+      let uhiCell = '—';
+      if (xw) {
+        const pct = Math.round(xw.investScore * 100);
+        const tier = pct >= 65 ? 'good' : pct >= 35 ? 'moderate' : 'low';
+        const label = pct >= 65 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+        uhiCell = `<span class="tier-${tier}">${escHtml(label)} (${pct})</span>`;
+      }
+      return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td><td class="num">${canopyCell}</td><td>${uhiCell}</td></tr>`;
     }).join('');
 
     // Waystations
@@ -235,8 +247,8 @@ export function exportReport() {
       ${corridorCount} pollinator corridor sites · ${waystationCount} Monarch waystations · ${hnpCount} Homegrown National Park yards
     </p>
     <table>
-      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th></tr></thead>
-      <tbody>${corrRows || `<tr><td colspan="3" class="empty">No corridor data</td></tr>`}</tbody>
+      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
+      <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>
     </table>
     <table>
       <thead><tr><th>Waystation</th><th>Registered</th><th>Size</th></tr></thead>
@@ -865,6 +877,8 @@ export function exportEcologicalAssessment() {
     corridorSqFt = 0,
     corridorFeatures = [], waystationFeatures = [],
     nestingScores = new Map(),
+    canopyScores  = new Map(),
+    investCrosswalk = [],
     inatByLayer = {}, gbifByLayer = {}, topSpecies = [],
     beeRecords = 0, beeImperiled = 0, ebirdCount = 0,
     padusCount = 0, snaCount = 0, dnrManagedCount = 0,
@@ -905,7 +919,17 @@ export function exportEcologicalAssessment() {
       const tier = ns.score >= 67 ? 'good' : ns.score >= 34 ? 'moderate' : 'low';
       nestCell = `<span class="tier-${tier}" style="color:${escHtml(color)}">${escHtml(label)} (${ns.score})</span>`;
     }
-    return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td></tr>`;
+    const canopyPct = canopyScores.get(p.name ?? '');
+    const canopyCell = typeof canopyPct === 'number' ? `${canopyPct.toFixed(0)}%` : '—';
+    const xw = investCrosswalk.find(e => e.name === (p.name ?? ''));
+    let uhiCell = '—';
+    if (xw) {
+      const pct = Math.round(xw.investScore * 100);
+      const tier = pct >= 65 ? 'good' : pct >= 35 ? 'moderate' : 'low';
+      const label = pct >= 65 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+      uhiCell = `<span class="tier-${tier}">${escHtml(label)} (${pct})</span>`;
+    }
+    return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td><td class="num">${canopyCell}</td><td>${uhiCell}</td></tr>`;
   }).join('');
 
   // Biodiversity
@@ -1011,8 +1035,8 @@ export function exportEcologicalAssessment() {
 <h2>Habitat Network</h2>
 <p style="font-size:11px;color:#64748b;margin:0 0 8px">${corridorCount} corridor sites · ${waystationCount} waystations · ${hnpCount} HNP yards · ${areaStr} planted area</p>
 <table>
-  <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th></tr></thead>
-  <tbody>${corrRows || `<tr><td colspan="3" class="empty">No corridor data</td></tr>`}</tbody>
+  <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
+  <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>
 </table>
 <h2>Biodiversity Observations</h2>
 <table>

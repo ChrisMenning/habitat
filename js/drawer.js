@@ -676,7 +676,7 @@ export function openDrawer(feature, alertFeatures = []) {
         const sevColor = sev === 'high' ? '#dc2626' : sev === 'medium' ? '#d97706' : '#6b7280';
         const typeLabel = _problemTypeLabel(ap.problem_type ?? '');
         return `<div class="drawer-alert-row" style="border-left-color:${sevColor}">
-          <span class="drawer-alert-label" style="color:${sevColor}">&#x26A0; Problem Area &mdash; ${typeLabel}</span>
+          <span class="drawer-alert-label" style="color:${sevColor}">&#x26A0; Site Signal &mdash; ${typeLabel}</span>
           ${ap.common ? `<span class="drawer-alert-sub">${esc(ap.common)}</span>` : ''}
         </div>`;
       }

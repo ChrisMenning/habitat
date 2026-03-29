@@ -401,9 +401,10 @@ let _nestingLoaded    = false;        // true once first fetch completes
 let _canopyScores     = new Map();   // site name → canopyPct (0–100)
 let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
 let _alertFocusHandler = null;        // module-level so async callbacks can re-render alerts
-// Urban InVEST fine-grid cache — populated lazily on first toggle
-let _urbanNlcdScores  = null;         // fine-grid Map (430 m) once fetched
+// Urban InVEST fine-grid cache — populated eagerly at corridor load
+let _urbanNlcdScores  = null;         // fine-grid Map (660 m) once fetched
 let _urbanInVESTGeojson = null;       // computed GeoJSON cache so re-toggle is instant
+let _investCrosswalk  = [];           // corridor site UHI scores, populated eagerly at startup
 
 // Parcel and Commons state — populated lazily on first layer enable
 let _parcelFeatures = [];
@@ -673,7 +674,7 @@ const _refreshParcelViewport = _debounce(async () => {
     setDrawerParcelFeatures(feats);
     if (_lastAlertArgs) {
       _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
-      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
+      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
       if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
       // Sync ribbon and export snapshot so all counts agree
       document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
@@ -723,6 +724,7 @@ async function _lazyComputeUrbanInVEST() {
         return { name: f.properties?.Park ?? 'Site', coords: coord };
       });
       const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, sites);
+      _investCrosswalk = xwalk;
       setDrawerInvestCrosswalkScores(xwalk);
       console.debug('[invest-crosswalk] top sites:', [...xwalk].sort((a,b)=>b.investScore-a.investScore).slice(0,10));
     }
@@ -1028,7 +1030,7 @@ async function loadObservations() {
         syncNestingBadgeVisibility();
         // Re-render alerts to include the poor-nesting-habitat alert
         if (_lastAlertArgs) {
-          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores });
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           // Sync ribbon and export snapshot so all counts agree
           _lastAlertCount = updatedAlerts.length;
@@ -1044,13 +1046,13 @@ async function loadObservations() {
         _canopyScores = scores;
         setDrawerCanopyScores(scores);
         if (_lastAlertArgs) {
-          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores });
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores, investCrosswalk: _investCrosswalk });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           _lastAlertCount = updatedAlerts.length;
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
           _updateAlertBadge(updatedAlerts.length);
-          setExportData({ alerts: updatedAlerts });
+          setExportData({ alerts: updatedAlerts, canopyScores: scores });
         }
       }).catch(() => { /* canopy scores unavailable — silent degradation */ });
 
@@ -1075,6 +1077,28 @@ async function loadObservations() {
             return { name: f.properties?.name ?? f.properties?.Park ?? 'Corridor Site', coords: coord };
           });
           updateForagingBands(computeForagingBands(corridorSites));
+
+          // Eager Urban InVEST computation — runs at corridor load without waiting
+          // for the layer toggle, so alerts and export data are always populated.
+          fetchGridNlcdScores(CENTER[0], CENTER[1], 12, 0.006).then(scores => {
+            _urbanNlcdScores    = scores;
+            _urbanInVESTGeojson = computeInVESTHeatmapUrban(scores, CENTER[0], CENTER[1], 12);
+            console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
+            const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, corridorSites);
+            _investCrosswalk = xwalk;
+            setDrawerInvestCrosswalkScores(xwalk);
+            if (_lastAlertArgs) {
+              const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: xwalk });
+              renderAlerts(updatedAlerts, _alertFocusHandler);
+              _lastAlertCount = updatedAlerts.length;
+              document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+              document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+              _updateAlertBadge(updatedAlerts.length);
+              setExportData({ alerts: updatedAlerts, investCrosswalk: xwalk });
+            }
+          }).catch(err => {
+            console.warn('[urban-invest] eager fetch failed:', err.message);
+          });
         }
       }
     } else {
@@ -1224,7 +1248,7 @@ async function loadObservations() {
       activeLayerIds:      [..._activeLayerIds],
       layerVintages:       LAYER_VINTAGES,
     };
-    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
+    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
     _alertFocusHandler = alert => {
       // Activate any heatmaps tied to this alert and sync their toggle checkboxes.
       for (const heatId of alert.heatmaps ?? []) {
@@ -1280,6 +1304,7 @@ async function loadObservations() {
     const _expansionFC = computeExpansionOpportunities({
       ..._analysisCtx,
       nestingScores: _nestingScores,
+      investCrosswalk: _investCrosswalk,
     });
     updateExpansionOpportunitiesLayer(_expansionFC);
     setExportData({ expansionFeatures: _expansionFC.features, parcelFeatures: _parcelFeatures });
@@ -2450,19 +2475,19 @@ map.on('load', async () => {
         const body = `
           <div class="drawer-severity-badge" style="background:${sevColor}22;border-color:${sevColor}66;color:${sevColor}">
             <span class="drawer-severity-dot" style="background:${sevColor}"></span>
-            ${sev.toUpperCase()} SEVERITY
+            ${sev === 'high' ? 'STRONG' : sev === 'medium' ? 'MODERATE' : 'WEAK'} SIGNAL
           </div>
-          <div class="drawer-section-label">Problem Type</div>
+          <div class="drawer-section-label">Signal Type</div>
           <dl class="drawer-meta">
             <dt>Category</dt><dd>${typeLabel}</dd>
             <dt>Details</dt><dd>${props.common ?? ''}</dd>
           </dl>
-          <div class="drawer-section-label">What This Means</div>
+          <div class="drawer-section-label">What This May Indicate</div>
           <p class="drawer-intel-note" style="margin-top:4px">${_problemTypeExplanation(props.problem_type ?? '')}</p>`;
         openIntelDrawer(
-          props.name ?? 'Problem Area',
+          props.name ?? 'Site Signal',
           body,
-          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Problem Area' }
+          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Site Signal' }
         );
       }
       return;
@@ -2686,20 +2711,20 @@ function _problemTypeLabel(type) {
 function _problemTypeExplanation(type) {
   return {
     'pfas-proximity':
-      'A PFAS detection site is within 1 km of this habitat. Per- and polyfluoroalkyl substances persist in soil and water and may affect insect physiology and plant uptake. Monitoring and soil testing are recommended.',
+      'A PFAS detection site is within 1 km of this habitat. Per- and polyfluoroalkyl substances persist in soil and water and may affect insect physiology and plant uptake. Monitoring and soil testing are worth considering.',
     'unsupported-site':
-      'No pollinator sightings (iNaturalist, GBIF) have been recorded within 500 m of this site. This may indicate low visibility, lack of observation effort, or genuinely poor pollinator visitation. Field surveys would help distinguish.',
+      'No pollinator sightings (iNaturalist, GBIF) have been recorded within 500 m of this site. This may reflect low observation effort rather than an absence of pollinators — field surveys would help clarify.',
     'isolated-site':
-      'No other corridor site exists within 2 km — beyond the reliable foraging range of even large bumble bees. This site cannot exchange pollinators with the broader network without a new stepping-stone planting.',
+      'No other corridor site exists within 2 km — beyond the reliable foraging range of even large bumble bees. This site may have limited exchange with the broader network; a stepping-stone planting nearby could help.',
     'weak-node':
-      'The nearest corridor neighbor is 700 m–2 km away, placing this connection at the outer edge of small-bee foraging range. Mining bees, sweat bees, and mason bees may not reliably traverse this gap. A new planting within 700 m would restore optimal connectivity.',
+      'The nearest corridor neighbor is 700 m–2 km away, at the outer edge of small-bee foraging range. Mining bees, sweat bees, and mason bees may not reliably traverse this gap. A new planting within 700 m would strengthen the connection.',
     'poor-nesting':
-      'NLCD land-cover analysis shows low bare ground and sparse grassland cover within 300 m of this site. Ground-nesting species (70% of native bees) may have limited nesting substrate here.',
+      'NLCD land-cover analysis indicates low bare ground and sparse grassland cover within 300 m. Ground-nesting species (about 70% of native bees) may have limited nesting substrate here, though site-level conditions may differ from the remote data.',
     'shaded-habitat':
-      'More than 55% tree canopy coverage within 150 m shades out sun-loving pollinator plants such as wild bergamot, coneflowers, and milkweeds. Selective canopy thinning or edge planting could improve conditions.',
+      'Tree canopy coverage of over 55% within 150 m may reduce sun exposure for pollinator plants such as wild bergamot, coneflowers, and milkweeds. Selective canopy management or edge planting could be worth exploring.',
     'pesticide-high':
-      'This site is located in a county ranked in the top quartile for agricultural pesticide application pressure (USGS NWQP). Sublethal pesticide exposure can impair bee navigation, reproduction, and foraging efficiency.',
-  }[type] ?? 'Review conditions at this site to understand the potential impact on corridor function.';
+      'This site is in a county ranked in the top quartile for agricultural pesticide application pressure (USGS NWQP). Sublethal pesticide exposure can impair bee navigation and foraging; however, county-level data may not reflect conditions at this specific site.',
+  }[type] ?? 'Field assessment is recommended to better understand conditions at this site.';
 }
 
 

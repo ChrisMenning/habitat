@@ -497,16 +497,16 @@ export const FORAGING_BANDS_LAYER = {
 };
 
 /**
- * Problem Areas — corridor sites with inferred issues: PFAS proximity,
+ * Site Signals — corridor sites with inferred indicators worth watching: PFAS proximity,
  * isolation, no sightings, poor nesting, high canopy shading, or pesticide pressure.
  * Severity: red = high, amber = medium, gray = low.
  */
 export const PROBLEM_AREAS_LAYER = [
   {
     id:          'problem-areas',
-    label:       'Problem Areas',
+    label:       'Site Signals',
     emoji:       '<i class="ph ph-warning-circle"></i>',
-    description: 'Habitat sites and zones with inferred problems: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates severity.',
+    description: 'Habitat sites with inferred indicators worth monitoring: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates signal strength.',
     defaultOn:   false,
     vintage:     null,
   },
@@ -597,6 +597,15 @@ export const LAYER_PRESETS = [
     description: 'Tree canopy coverage and its impact on corridor site viability.',
     on: [
       'gbcc-corridor', 'waystations', 'problem-areas', 'tree-canopy', 'nlcd-21',
+    ],
+  },
+  {
+    id:          'urban-analysis',
+    label:       'Urban Analysis',
+    icon:        'city',
+    description: 'Urban habitat quality landscape — InVEST index, foraging range bands, land cover, and canopy.',
+    on: [
+      'gbcc-corridor', 'invest-urban-heat', 'foraging-bands', 'tree-canopy', 'nlcd-21',
     ],
   },
 ];
