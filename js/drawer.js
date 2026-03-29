@@ -615,7 +615,8 @@ export function openDrawer(feature, alertFeatures = []) {
           <div class="score-help-popup" id="shp-canopy" hidden>
             <strong>Tree Canopy Coverage (%)</strong>
             <p>Counts tree-classified pixels within ~150 m of the site centroid from the WI DNR 2022 Urban Tree Canopy raster (1 m resolution, derived from NAIP aerial imagery).</p>
-            <div class="shp-formula">canopy % = treePixels / validPixels × 100<br>Tree pixel: RGBA where R≤15, G=165–195, B≤15<br>(colormap: tree → rgb(0,180,0), non-tree → rgb(100,70,20))</div>
+            <div class="shp-formula">canopy % = treePixels / surveyedPixels × 100<br>Tree pixel: RGBA where R≤15, G=165–195, B≤15<br>(colormap: tree → rgb(0,180,0), non-tree → rgb(100,70,20))</div>
+            <p>Note: impervious surfaces (roads, rooftops, parking) are excluded from the survey — percentages reflect tree cover relative to <em>vegetated/non-impervious land only</em>. Sites in mature parks or residential neighborhoods with full tree canopy commonly read 90–100%.</p>
             <p>Tiers: ≤30% Low (gray), 31–55% Moderate (green), &gt;55% High (dark green). The Shaded Habitat alert fires above 55%. WI DNR advises against directly comparing survey years.</p>
             <p class="shp-source">Source: WI DNR Urban Forestry · FR_Urban_Tree_Canopy_Raster_2022 ImageServer · 64×64 px exportImage · 24 h server cache</p>
           </div>

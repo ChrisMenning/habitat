@@ -740,7 +740,7 @@ async function _getCanopyPixels(lng, lat) {
   const pixels = decodePng(inflated, ihdr.width, ihdr.height, 4 /* RGBA */);
   let treeCount = 0, total = 0;
   for (let i = 0; i < pixels.length; i += 4) {
-    if (pixels[i + 3] === 0) continue; // transparent = noData/out-of-bounds
+    if (pixels[i + 3] < 128) continue; // transparent or semi-transparent = noData/edge artifact
     total++;
     // Tree pixel: R≈0, G≈180, B≈0 (±15 tolerance for any server-side AA variation)
     const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
