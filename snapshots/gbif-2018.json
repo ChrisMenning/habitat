@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "source": "gbif",
+  "year": 2018,
+  "harvestedAt": "2026-03-28T19:56:56.223Z",
+  "total": 1200,
+  "byLayer": {
+    "pollinators": 0,
+    "native-plants": 0,
+    "other-plants": 0,
+    "other-wildlife": 1200
+  },
+  "byLayerByMonth": {
+    "pollinators": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    },
+    "native-plants": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    }
+  },
+  "speciesRichness": 63,
+  "topSpecies": [
+    {
+      "name": "American Crow",
+      "count": 79
+    },
+    {
+      "name": "Black-capped Chickadee",
+      "count": 61
+    },
+    {
+      "name": "Mourning Dove",
+      "count": 58
+    },
+    {
+      "name": "Downy Woodpecker",
+      "count": 57
+    },
+    {
+      "name": "Bald Eagle",
+      "count": 52
+    },
+    {
+      "name": "Red-bellied Woodpecker",
+      "count": 52
+    },
+    {
+      "name": "Red-tailed Hawk",
+      "count": 50
+    },
+    {
+      "name": "Northern Cardinal",
+      "count": 48
+    },
+    {
+      "name": "White-breasted Nuthatch",
+      "count": 45
+    },
+    {
+      "name": "House Sparrow",
+      "count": 44
+    }
+  ],
+  "topPollinators": [],
+  "topNativePlants": [],
+  "byMonth": {
+    "01": 1200
+  }
+}

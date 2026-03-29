@@ -136,7 +136,11 @@ export function renderTrendChart(containerId, snapshots, label) {
   }
 
   svgParts.push('</svg>');
-  container.innerHTML = svgParts.join('');
+  container.innerHTML = svgParts.join('')
+    + '<p class="trends-bias-note">Counts reflect recorded observations, not true population levels. '
+    + 'Data volume increases sharply from 2022 onward as iNaturalist participation grew '
+    + '\u2014 earlier years appear lower due to fewer observers, not fewer pollinators. '
+    + '<a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12386186/" target="_blank" rel="noopener">Rahimi &amp; Jung 2025</a></p>';
 }
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
@@ -153,4 +157,139 @@ function _escAttr(s) {
 
 function _escText(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Monthly grouped bar chart ─────────────────────────────────────────────────
+
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const BAR_COLOR_POLL  = '#6ee7b7'; // emerald-300 — pollinators
+const BAR_COLOR_PLANT = '#86efac'; // green-300   — native plants
+const GROUPED_H       = 130;
+const GROUPED_LABEL_H = 18;
+const GROUPED_VALUE_H = 12;
+
+/**
+ * Render a grouped monthly bar chart (pollinators + native plants) into a container.
+ * Falls back to a single-series chart when only one layer has data.
+ *
+ * @param {string} containerId
+ * @param {{ pollinators: Object<string,number>, 'native-plants': Object<string,number> }} byLayerByMonth
+ * @param {number} year
+ */
+export function renderMonthlyChart(containerId, byLayerByMonth, year) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!byLayerByMonth) {
+    container.innerHTML = '<p class="layer-desc" style="color:#9ca3af;font-size:11px;">Monthly data not available — re-harvest this year to generate it.</p>';
+    return;
+  }
+
+  const pollData  = byLayerByMonth.pollinators    ?? {};
+  const plantData = byLayerByMonth['native-plants'] ?? {};
+
+  const maxVal = Math.max(
+    1,
+    ...Object.values(pollData),
+    ...Object.values(plantData),
+  );
+
+  const n = 12;
+  const totalH   = GROUPED_H + GROUPED_LABEL_H + GROUPED_VALUE_H;
+  const barAreaH = GROUPED_H - GROUPED_VALUE_H;
+  const svgW     = 200;
+  const slotW    = (svgW - PAD_L - PAD_R) / n;
+  const groupGap = slotW * 0.12;
+  const barW     = (slotW - groupGap * 2) / 2;
+
+  const ariaLabel = `Monthly sightings ${year}: ` +
+    MONTHS_SHORT.map((m, i) => {
+      const mk = String(i + 1).padStart(2, '0');
+      return `${m} pollinators ${pollData[mk] ?? 0}, native plants ${plantData[mk] ?? 0}`;
+    }).join('; ');
+
+  const svgParts = [
+    `<svg role="img" aria-label="${_escAttr(ariaLabel)}"`,
+    ` xmlns="http://www.w3.org/2000/svg"`,
+    ` viewBox="0 0 ${svgW} ${totalH}"`,
+    ` preserveAspectRatio="none"`,
+    ` style="width:100%;height:${totalH}px;display:block;">`,
+    `<title>Monthly sightings ${_escText(String(year))}</title>`,
+  ];
+
+  for (let i = 0; i < 12; i++) {
+    const mk    = String(i + 1).padStart(2, '0');
+    const pVal  = pollData[mk]  ?? 0;
+    const nVal  = plantData[mk] ?? 0;
+    const slotX = PAD_L + i * slotW;
+    const cx    = slotX + slotW / 2;
+
+    // Pollinator bar (left)
+    const pBarH = Math.max(pVal > 0 ? 2 : 0, (pVal / maxVal) * barAreaH);
+    const px    = slotX + groupGap;
+    const py    = GROUPED_VALUE_H + (barAreaH - pBarH);
+    svgParts.push(
+      `<rect x="${px.toFixed(1)}" y="${py.toFixed(1)}" width="${barW.toFixed(1)}" height="${pBarH.toFixed(1)}"`,
+      ` fill="${BAR_COLOR_POLL}" rx="1" aria-hidden="true"/>`,
+    );
+
+    // Native-plant bar (right)
+    const nBarH = Math.max(nVal > 0 ? 2 : 0, (nVal / maxVal) * barAreaH);
+    const nx    = slotX + groupGap + barW;
+    const ny    = GROUPED_VALUE_H + (barAreaH - nBarH);
+    svgParts.push(
+      `<rect x="${nx.toFixed(1)}" y="${ny.toFixed(1)}" width="${barW.toFixed(1)}" height="${nBarH.toFixed(1)}"`,
+      ` fill="${BAR_COLOR_PLANT}" rx="1" aria-hidden="true"/>`,
+    );
+
+    // Month label
+    svgParts.push(
+      `<text x="${cx.toFixed(1)}" y="${(GROUPED_H + GROUPED_LABEL_H).toFixed(1)}"`,
+      ` text-anchor="middle" font-size="6.5" fill="#9ca3af" aria-hidden="true">`,
+      _escText(MONTHS_SHORT[i]),
+      `</text>`,
+    );
+  }
+
+  // Legend
+  svgParts.push(
+    `<rect x="${PAD_L}" y="3" width="7" height="5" fill="${BAR_COLOR_POLL}" rx="1"/>`,
+    `<text x="${PAD_L + 9}" y="8" font-size="6.5" fill="#d1fae5">Pollinators</text>`,
+    `<rect x="80" y="3" width="7" height="5" fill="${BAR_COLOR_PLANT}" rx="1"/>`,
+    `<text x="89" y="8" font-size="6.5" fill="#bbf7d0">Native plants</text>`,
+  );
+
+  svgParts.push('</svg>');
+  container.innerHTML = svgParts.join('');
+}
+
+// ── Top-species table ─────────────────────────────────────────────────────────
+
+/**
+ * Render a two-column species table into a container.
+ *
+ * @param {string} containerId
+ * @param {{name:string, count:number}[]} topPollinators
+ * @param {{name:string, count:number}[]} topNativePlants
+ */
+export function renderSpeciesTable(containerId, topPollinators, topNativePlants) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const noData = !topPollinators?.length && !topNativePlants?.length;
+  if (noData) {
+    container.innerHTML = '<p class="layer-desc" style="color:#9ca3af;font-size:11px;">Species data not available — re-harvest this year to generate it.</p>';
+    return;
+  }
+
+  const makeList = (items, label, color) => {
+    if (!items?.length) return '';
+    const rows = items.slice(0, 10).map(({ name, count }) =>
+      `<li class="species-row"><span class="species-name">${_escText(name)}</span><span class="species-count">${_fmt(count)}</span></li>`
+    ).join('');
+    return `<div class="species-col"><p class="species-col-label" style="color:${color};">${_escText(label)}</p><ol class="species-list">${rows}</ol></div>`;
+  };
+
+  container.innerHTML =
+    `<div class="species-table">${makeList(topPollinators, 'Pollinators', '#6ee7b7')}${makeList(topNativePlants, 'Native plants', '#86efac')}</div>`;
 }

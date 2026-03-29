@@ -441,10 +441,10 @@ function tileToBbox3857(z, x, y) {
 //   71  Grassland/Herbaceous — ground-nesting bees                            (weight 3)
 
 const NESTING_CODES   = { 31: 7, 52: 2, 71: 3 };
-const TRACKED_CODES   = new Set([11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
+const TRACKED_CODES   = new Set([11, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]);
 const NESTING_Z       = 13;
 const NESTING_RADIUS  = 300; // metres
-const NESTING_TTL     = 24 * 60 * 60 * 1000; // 24 h tile cache
+const NESTING_TTL     = 30 * 24 * 60 * 60 * 1000; // 30 d tile cache (NLCD updates every 2-3 years)
 
 const _nestingTileCache    = new Map(); // key → { palMap, indices, width, height }
 const _nestingTileCacheAge = new Map(); // key → timestamp
@@ -497,7 +497,8 @@ function _buildNestingPaletteMap(plte) {
 /**
  * Fetch and decode an NLCD WMS tile at zoom z.
  * Returns { palMap, indices, width, height } or null on error.
- * Results are cached for 24 h.
+ * Results are cached for 30 days (NLCD is a static dataset).
+ * Falls back to stale cached data if a live re-fetch fails.
  */
 async function _getNlcdTileData(z, tx, ty) {
   const key = `${z}/${tx}/${ty}`;
@@ -505,6 +506,7 @@ async function _getNlcdTileData(z, tx, ty) {
   if (_nestingTileCache.has(key) && now - _nestingTileCacheAge.get(key) < NESTING_TTL) {
     return _nestingTileCache.get(key);
   }
+  const stale = _nestingTileCache.has(key) ? _nestingTileCache.get(key) : null;
   const bbox = tileToBbox3857(z, tx, ty);
   let buf;
   try {
@@ -515,7 +517,7 @@ async function _getNlcdTileData(z, tx, ty) {
       '&FORMAT=image%2Fpng&TRANSPARENT=TRUE' +
       '&CRS=EPSG%3A3857&STYLES=&WIDTH=256&HEIGHT=256' +
       '&BBOX=' + bbox);
-  } catch { return null; }
+  } catch { return stale; }
 
   let offset = 8, ihdr = null, plte = null;
   const idatBufs = [];
@@ -549,7 +551,7 @@ async function _getNlcdTileData(z, tx, ty) {
  */
 function _countNestingPixels(tile, z, tx, ty, lng, lat, radiusM) {
   const { palMap, indices, width, height } = tile;
-  const counts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
+  const counts = { 11: 0, 21: 0, 22: 0, 23: 0, 24: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
   let total = 0;
   const latR    = lat * Math.PI / 180;
   const cosLat  = Math.cos(latR);
@@ -615,14 +617,14 @@ async function _computeNestingBatch(sites) {
   );
   // Score each site
   return sites.map(s => {
-    const aggCounts = { 11: 0, 21: 0, 22: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
+    const aggCounts = { 11: 0, 21: 0, 22: 0, 23: 0, 24: 0, 31: 0, 41: 0, 42: 0, 43: 0, 52: 0, 71: 0, 81: 0, 82: 0, 90: 0, 95: 0 };
     let aggTotal = 0;
     for (const [tx, ty] of _tilesForRadius(NESTING_Z, s.lng, s.lat, NESTING_RADIUS)) {
       const k = `${NESTING_Z}/${tx}/${ty}`;
       const t = fetched.get(k);
       if (!t) continue;
       const { counts, total } = _countNestingPixels(t.data, NESTING_Z, tx, ty, s.lng, s.lat, NESTING_RADIUS);
-      for (const code of [11, 21, 22, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]) {
+      for (const code of [11, 21, 22, 23, 24, 31, 41, 42, 43, 52, 71, 81, 82, 90, 95]) {
         aggCounts[code] += counts[code] || 0;
       }
       aggTotal += total;
@@ -658,6 +660,7 @@ async function proxyNlcdNesting(req, res) {
     res.writeHead(200, {
       'Content-Type':                'application/json',
       'Access-Control-Allow-Origin': '*',
+
       'Cache-Control':               'public, max-age=86400',
     });
     res.end(JSON.stringify(results));
@@ -785,7 +788,7 @@ async function proxyCanopyCheck(req, res) {
     res.end(JSON.stringify({ error: e.message }));
     return;
   }
-  if (sites.length > 50) {
+  if (sites.length > 200) {
     res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ error: 'batch too large (max 50 sites)' }));
     return;
@@ -1881,7 +1884,10 @@ function _classifyInat(obs) {
 // ── GBIF classification helper ────────────────────────────────────────────────
 function _classifyGbif(occ) {
   const kingdom = (occ.kingdom ?? '').toLowerCase();
+  const family  = (occ.family  ?? '').toLowerCase();
   const cn      = (occ.vernacularName ?? occ.species ?? '').toLowerCase();
+  // Syrphidae (hoverflies) checked explicitly — vernacular names are unreliable in GBIF
+  if (family === 'syrphidae') return 'pollinators';
   if (INSECT_POLLINATOR_RE.test(cn)) return 'pollinators';
   if (kingdom === 'plantae') {
     const status = (occ.establishmentMeans ?? '').toLowerCase();
@@ -1914,13 +1920,26 @@ function _jsonRes(res, status, obj) {
 }
 
 // ── Harvest: iNat ─────────────────────────────────────────────────────────────
+// Month keys for byLayerByMonth initialisation
+const _MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+function _emptyMonthMap() {
+  return Object.fromEntries(_MONTHS.map(m => [m, 0]));
+}
+
 async function _harvestInat(year) {
   const CENTER_LAT = 44.5133, CENTER_LNG = -88.0133, RADIUS_KM = 15;
   const PER_PAGE = 200, MAX_OBS = 5000;
 
   const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  // Per-layer monthly breakdown — only pollinators + native-plants tracked
+  const byLayerByMonth = {
+    pollinators:    _emptyMonthMap(),
+    'native-plants': _emptyMonthMap(),
+  };
   const byMonth = {};
   const speciesFreq = {};
+  // Per-layer species maps (pollinators + native-plants only)
+  const speciesByLayer = { pollinators: {}, 'native-plants': {} };
   let total = 0, fetched = 0, idBelow = null;
 
   while (fetched < MAX_OBS) {
@@ -1946,6 +1965,11 @@ async function _harvestInat(year) {
       if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
       const sp = obs.taxon?.preferred_common_name || obs.taxon?.name;
       if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+      // Track per-layer monthly + species only for relevant layers
+      if (layer === 'pollinators' || layer === 'native-plants') {
+        if (mk) byLayerByMonth[layer][mk]++;
+        if (sp) speciesByLayer[layer][sp] = (speciesByLayer[layer][sp] || 0) + 1;
+      }
       idBelow = idBelow ? Math.min(idBelow, obs.id) : obs.id;
     }
     fetched += results.length;
@@ -1953,10 +1977,14 @@ async function _harvestInat(year) {
   }
 
   return {
+    schemaVersion: 2,
     source: 'inat', year, harvestedAt: new Date().toISOString(),
     total: fetched, byLayer,
+    byLayerByMonth,
     speciesRichness: Object.keys(speciesFreq).length,
     topSpecies: _topN(speciesFreq, 10),
+    topPollinators:  _topN(speciesByLayer.pollinators, 10),
+    topNativePlants: _topN(speciesByLayer['native-plants'], 10),
     byMonth,
   };
 }
@@ -1973,8 +2001,17 @@ async function _harvestGbif(year) {
 
   const PER_PAGE = 300, MAX_OBS = 1200;
   const byLayer = { pollinators: 0, 'native-plants': 0, 'other-plants': 0, 'other-wildlife': 0 };
+  const byLayerByMonth = {
+    pollinators:    _emptyMonthMap(),
+    'native-plants': _emptyMonthMap(),
+  };
   const byMonth = {};
   const speciesFreq = {};
+  const speciesByLayer = { pollinators: {}, 'native-plants': {} };
+  // Coordinate deduplication — GBIF contains ~77-81% duplicate lat/lng pairs
+  // (Rahimi & Jung 2025, doi:10.3390/insects16080769). Track seen coord pairs
+  // so each unique location is counted at most once per species.
+  const seenCoords = new Set();
   let fetched = 0, offset = 0;
 
   while (fetched < MAX_OBS) {
@@ -1994,12 +2031,21 @@ async function _harvestGbif(year) {
     if (!batch.length) break;
 
     for (const occ of batch) {
+      // Skip exact coordinate duplicates (same species at identical lat/lng)
+      const coordKey = `${occ.decimalLatitude},${occ.decimalLongitude},${occ.species ?? occ.genericName ?? ''}`;
+      if (seenCoords.has(coordKey)) continue;
+      seenCoords.add(coordKey);
+
       const layer = _classifyGbif(occ);
       byLayer[layer]++;
       const mk = _monthKey(occ.eventDate);
       if (mk) byMonth[mk] = (byMonth[mk] || 0) + 1;
       const sp = occ.vernacularName || occ.species;
       if (sp) speciesFreq[sp] = (speciesFreq[sp] || 0) + 1;
+      if (layer === 'pollinators' || layer === 'native-plants') {
+        if (mk) byLayerByMonth[layer][mk]++;
+        if (sp) speciesByLayer[layer][sp] = (speciesByLayer[layer][sp] || 0) + 1;
+      }
     }
     fetched += batch.length;
     if (data.endOfRecords || fetched >= MAX_OBS) break;
@@ -2007,10 +2053,14 @@ async function _harvestGbif(year) {
   }
 
   return {
+    schemaVersion: 2,
     source: 'gbif', year, harvestedAt: new Date().toISOString(),
     total: fetched, byLayer,
+    byLayerByMonth,
     speciesRichness: Object.keys(speciesFreq).length,
     topSpecies: _topN(speciesFreq, 10),
+    topPollinators:  _topN(speciesByLayer.pollinators, 10),
+    topNativePlants: _topN(speciesByLayer['native-plants'], 10),
     byMonth,
   };
 }
@@ -2123,6 +2173,270 @@ async function _harvestCdl(year) {
   return { source: 'cdl', year, harvestedAt: new Date().toISOString(), rows };
 }
 
+// ── Server-side auto-harvesting ───────────────────────────────────────────────
+//
+// Runs at startup (after a 20-second delay) and fills in any missing or stale
+// snapshot files without requiring manual intervention.
+//
+// Rate-limit safety:
+//   iNat / GBIF : 1.5 s between paginated pages; 8 s between years
+//   NOAA CDO    : 8 s between years  (hard limit 1,000 req/day)
+//   NASS / CDL  : 5 s between years  (no documented limit; polite minimum)
+//
+// Keyed sources (NOAA, NASS) are skipped gracefully when the API key is absent.
+// All harvesting is sequential — never parallel — to honour rate limits.
+
+const AUTO_HARVEST_START_YEAR  = 2015;
+const AUTO_HARVEST_DELAYS_MS   = { inat: 8000, gbif: 8000, noaa: 8000, nass: 5000, cdl: 5000 };
+const AUTO_HARVEST_STALE_DAYS  = { historical: 30, current: 1 }; // days before re-harvest
+
+let _autoHarvestStatus = { running: false, queue: [], lastCompleted: null, lastError: null };
+
+async function _autoHarvestMissing() {
+  if (_autoHarvestStatus.running) return;
+  _autoHarvestStatus.running = true;
+  _autoHarvestStatus.queue   = [];
+
+  const currentYear = new Date().getFullYear();
+  const now         = Date.now();
+
+  // Read existing snapshot files
+  let existing;
+  try { existing = new Set(fs.readdirSync(SNAPSHOTS_DIR).filter(f => /^[a-z]+-\d{4}\.json$/.test(f))); }
+  catch { existing = new Set(); }
+
+  /** Returns true when a snapshot should be (re-)harvested */
+  function _needsHarvest(source, year) {
+    const file = `${source}-${year}.json`;
+    if (!existing.has(file)) return true;
+    try {
+      const stat = fs.statSync(path.join(SNAPSHOTS_DIR, file));
+      const ageDays = (now - stat.mtimeMs) / 86400000;
+      const threshold = year < currentYear ? AUTO_HARVEST_STALE_DAYS.historical : AUTO_HARVEST_STALE_DAYS.current;
+      return ageDays > threshold;
+    } catch { return true; }
+  }
+
+  // Build queue: all sources × all years, newest first, keyed sources gated on key presence
+  const sources = ['inat', 'gbif'];
+  if (getNoaaToken())   sources.push('noaa');
+  if (getNassApiKey())  sources.push('nass');
+  sources.push('cdl');
+
+  const queue = [];
+  for (const source of sources) {
+    for (let year = currentYear; year >= AUTO_HARVEST_START_YEAR; year--) {
+      if (_needsHarvest(source, year)) queue.push({ source, year });
+    }
+  }
+  _autoHarvestStatus.queue = queue.map(q => `${q.source}-${q.year}`);
+
+  console.log(`[auto-harvest] ${queue.length} snapshot(s) to refresh`);
+
+  for (const { source, year } of queue) {
+    const label = `${source}-${year}`;
+    try {
+      let snapshot;
+      switch (source) {
+        case 'inat': snapshot = await _harvestInat(year); break;
+        case 'gbif': snapshot = await _harvestGbif(year); break;
+        case 'noaa': snapshot = await _harvestNoaa(year); break;
+        case 'nass': snapshot = await _harvestNass(year); break;
+        case 'cdl':  snapshot = await _harvestCdl(year);  break;
+      }
+      if (snapshot?.available === false) {
+        console.log(`[auto-harvest] ${label} → skipped (${snapshot.reason})`);
+      } else {
+        const dest = path.join(SNAPSHOTS_DIR, `${label}.json`);
+        fs.writeFileSync(dest, JSON.stringify(snapshot, null, 2));
+        existing.add(`${label}.json`);
+        const pollinators   = snapshot.byLayer?.pollinators   ?? '?';
+        const nativePlants  = snapshot.byLayer?.['native-plants'] ?? '?';
+        console.log(`[auto-harvest] ${label} → done (${pollinators} pollinators, ${nativePlants} native-plants)`);
+      }
+      _autoHarvestStatus.lastCompleted = label;
+      _autoHarvestStatus.queue = _autoHarvestStatus.queue.filter(q => q !== label);
+    } catch (err) {
+      console.warn(`[auto-harvest] ${label} → error: ${err.message}`);
+      _autoHarvestStatus.lastError = `${label}: ${err.message}`;
+    }
+    // Rate-limit pause between harvests
+    await new Promise(r => setTimeout(r, AUTO_HARVEST_DELAYS_MS[source] ?? 5000));
+  }
+
+  _autoHarvestStatus.running = false;
+  console.log('[auto-harvest] run complete');
+}
+
+// ── Server-side Commons photo snapshot ───────────────────────────────────────
+//
+// Fetches Wikimedia Commons geotagged photos near Green Bay server-side and
+// caches the result in snapshots/cache/commons-photos.json.  This allows the
+// client to retrieve pre-filtered images from one local endpoint instead of
+// making 5 parallel CORS requests to Wikimedia on each page load.
+//
+// Refreshed at startup (after 30 s) and then weekly.
+
+const COMMONS_SNAPSHOT_PATH = path.join(_DISK_CACHE_DIR, 'commons-photos.json');
+const COMMONS_SNAPSHOT_TTL  = 7 * 24 * 60 * 60 * 1000; // 7 days
+const COMMONS_CENTER_LAT    = 44.5133;
+const COMMONS_CENTER_LNG    = -88.0133;
+const COMMONS_GEO_API       = 'commons.wikimedia.org';
+
+async function _fetchCommonsPage(lat, lng, radiusM, gcontinue) {
+  const params = new URLSearchParams({
+    action:       'query',
+    generator:    'geosearch',
+    ggscoord:     `${lat}|${lng}`,
+    ggsradius:    String(Math.min(radiusM, 10000)),
+    ggsnamespace: '6',
+    ggslimit:     '500',
+    prop:         'imageinfo|coordinates',
+    iiprop:       'url|extmetadata',
+    iiurlwidth:   '400',
+    format:       'json',
+    origin:       '*',
+  });
+  if (gcontinue) { for (const [k, v] of Object.entries(gcontinue)) params.set(k, v); }
+  const buf = await httpsGetBuf(COMMONS_GEO_API, `/w/api.php?${params}`);
+  return JSON.parse(buf.toString());
+}
+
+/** Server-side relevance filter — mirrors the client isRelevant logic. */
+function _commonsIsRelevant(page) {
+  const ii  = page.imageinfo?.[0];
+  if (!ii?.extmetadata?.LicenseShortName?.value) return false;
+  if (!ii.thumburl) return false;
+  return true;
+}
+
+/** Haversine distance in km. */
+function _commonsHaversine(lat1, lng1, lat2, lng2) {
+  const R = 6371, dLat = (lat2 - lat1) * Math.PI / 180, dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function _refreshCommonsSnapshot() {
+  console.log('[commons-snapshot] refreshing…');
+  const RADIUS_KM = 15;
+  const offsetKm  = 8;
+  const dLat = offsetKm / 111.32;
+  const dLng = offsetKm / (111.32 * Math.cos(COMMONS_CENTER_LAT * Math.PI / 180));
+  const queryPoints = [
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT + dLat,   COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT - dLat,   COMMONS_CENTER_LNG         ],
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG + dLng  ],
+    [COMMONS_CENTER_LAT,          COMMONS_CENTER_LNG - dLng  ],
+  ];
+
+  const seen = new Set();
+  const results = [];
+
+  for (const [qLat, qLng] of queryPoints) {
+    let gcontinue = null, pages = 0;
+    while (pages < 3) {
+      try {
+        const data  = await _fetchCommonsPage(qLat, qLng, 10000, gcontinue);
+        const batch = Object.values(data?.query?.pages ?? {});
+        for (const page of batch) {
+          if (seen.has(page.pageid)) continue;
+          seen.add(page.pageid);
+          if (!_commonsIsRelevant(page)) continue;
+          const coord = page.coordinates?.[0];
+          if (!coord?.lat || !coord?.lon) continue;
+          if (_commonsHaversine(COMMONS_CENTER_LAT, COMMONS_CENTER_LNG, +coord.lat, +coord.lon) > RADIUS_KM) continue;
+          const ii  = page.imageinfo?.[0] ?? {};
+          const ext = ii.extmetadata ?? {};
+          const strip = s => String(s ?? '').replace(/<[^>]*>/g, '').trim();
+          results.push({
+            pageId:      page.pageid,
+            title:       (page.title ?? '').replace(/^File:/, ''),
+            thumburl:    ii.thumburl    ?? '',
+            thumbwidth:  ii.thumbwidth  ?? 400,
+            thumbheight: ii.thumbheight ?? 300,
+            descurl:     ii.descriptionurl ?? '',
+            description: strip(ext.ImageDescription?.value) || (page.title ?? '').replace(/^File:/, ''),
+            artist:      strip(ext.Artist?.value) || 'Unknown',
+            license:     strip(ext.LicenseShortName?.value) || '',
+            lat:         +coord.lat,
+            lng:         +coord.lon,
+          });
+        }
+        pages++;
+        if (!data.continue) break;
+        gcontinue = data.continue;
+      } catch (err) {
+        console.warn(`[commons-snapshot] query error: ${err.message}`);
+        break;
+      }
+      await new Promise(r => setTimeout(r, 500)); // polite pause between pages
+    }
+    await new Promise(r => setTimeout(r, 1000)); // polite pause between query points
+  }
+
+  try {
+    fs.mkdirSync(_DISK_CACHE_DIR, { recursive: true });
+    _saveToDisk(COMMONS_SNAPSHOT_PATH, { refreshedAt: new Date().toISOString(), images: results });
+    console.log(`[commons-snapshot] saved ${results.length} images`);
+  } catch (err) {
+    console.warn(`[commons-snapshot] save error: ${err.message}`);
+  }
+}
+
+function _scheduleCommonsSnapshot() {
+  const exists = fs.existsSync(COMMONS_SNAPSHOT_PATH);
+  let stale = true;
+  if (exists) {
+    try {
+      const age = Date.now() - fs.statSync(COMMONS_SNAPSHOT_PATH).mtimeMs;
+      stale = age > COMMONS_SNAPSHOT_TTL;
+    } catch { /* stale = true */ }
+  }
+  if (stale) {
+    setTimeout(_refreshCommonsSnapshot, 30000);
+  } else {
+    console.log('[commons-snapshot] cache fresh, skipping initial refresh');
+  }
+  // Re-check weekly regardless
+  setInterval(_refreshCommonsSnapshot, COMMONS_SNAPSHOT_TTL);
+}
+
+function handleCommonsSnapshot(res) {
+  try {
+    if (fs.existsSync(COMMONS_SNAPSHOT_PATH)) {
+      const raw    = JSON.parse(fs.readFileSync(COMMONS_SNAPSHOT_PATH, 'utf8'));
+      const images = raw.images ?? [];
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'public, max-age=3600',
+      });
+      res.end(JSON.stringify(images));
+    } else {
+      res.writeHead(200, {
+        'Content-Type':                'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control':               'no-cache',
+      });
+      res.end(JSON.stringify([]));
+    }
+  } catch (err) {
+    res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: err.message }));
+  }
+}
+
+function handleHarvestStatus(res) {
+  _jsonRes(res, 200, {
+    running:       _autoHarvestStatus.running,
+    queue:         _autoHarvestStatus.queue,
+    lastCompleted: _autoHarvestStatus.lastCompleted,
+    lastError:     _autoHarvestStatus.lastError,
+  });
+}
+
 // ── POST /api/harvest ─────────────────────────────────────────────────────────
 function handleHarvest(req, res) {
   let body = '';
@@ -2225,6 +2539,137 @@ function handleHealth(res) {
   res.end(JSON.stringify(payload));
 }
 
+// ── Journey North monarch data (one-time server-side download) ────────────────
+// Ported from scripts/fetch-journeynorth.js (which is an ES module and cannot
+// be required here).  Downloads the EDI CSV on first startup and writes it to
+// data/journeynorth_monarchs.json.  Skipped on subsequent starts if the file
+// already exists — the dataset (1996–2020, version 1) never changes.
+
+const JN_DATA_URL  = 'https://pasta.lternet.edu/package/data/eml/edi/949/1/02f2be4d90198702c46fa36556f3749a';
+const JN_OUT_PATH  = path.join(ROOT, 'data', 'journeynorth_monarchs.json');
+const JN_LAT_MIN   = 43.0, JN_LAT_MAX = 46.0;
+const JN_LON_MIN   = -90.5, JN_LON_MAX = -86.0;
+
+function _jnObsType(species) {
+  const s = (species || '').toLowerCase();
+  if (s.includes('roost'))                      return 'roost';
+  if (s.includes('egg') || s.includes('larva')) return 'egg_larva';
+  if (s.includes('milkweed'))                   return 'milkweed';
+  return 'adult';
+}
+
+function _jnParseCsvFields(line) {
+  const fields = [];
+  let field = '', inQuote = false;
+  for (let i = 0; i <= line.length; i++) {
+    const ch = line[i];
+    if (inQuote) {
+      if (ch === '"' && line[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"')           { inQuote = false; }
+      else if (ch !== undefined)     { field += ch; }
+    } else {
+      if (ch === '"')                { inQuote = true; }
+      else if (ch === ',' || ch === undefined) { fields.push(field); field = ''; }
+      else                           { field += ch; }
+    }
+  }
+  return fields;
+}
+
+function _jnStreamCsvLines(inStream, onLine) {
+  return new Promise((resolve, reject) => {
+    let buf = '';
+    inStream.on('data', chunk => {
+      buf += chunk.toString('utf8');
+      let nl;
+      while ((nl = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, nl).replace(/\r$/, '');
+        buf = buf.slice(nl + 1);
+        if (line.trim()) onLine(line);
+      }
+    });
+    inStream.on('end', () => {
+      if (buf.trim()) onLine(buf.trim());
+      resolve();
+    });
+    inStream.on('error', reject);
+  });
+}
+
+async function _fetchJourneyNorthData() {
+  if (fs.existsSync(JN_OUT_PATH)) {
+    console.log('[jn-monarchs] already exists — skipping');
+    return;
+  }
+  try {
+    fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    console.log('[jn-monarchs] downloading Journey North monarch CSV (~68 MB)…');
+
+    await new Promise((resolve, reject) => {
+      const req = https.get(JN_DATA_URL, { headers: { 'User-Agent': 'BayHive/1.0 (Green Bay pollinator habitat tool)' } }, res => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} — ${res.statusMessage}`));
+          res.resume();
+          return;
+        }
+
+        let headerRow = null;
+        let colDate = -1, colSpecies = -1, colNumber = -1, colLat = -1, colLon = -1;
+        let total = 0, kept = 0;
+        const features = [];
+
+        _jnStreamCsvLines(res, line => {
+          if (!headerRow) {
+            headerRow = _jnParseCsvFields(line);
+            colDate    = headerRow.indexOf('date');
+            colSpecies = headerRow.indexOf('species');
+            colNumber  = headerRow.indexOf('number');
+            colLat     = headerRow.indexOf('latitude');
+            colLon     = headerRow.indexOf('longitude');
+            if (colLat === -1 || colLon === -1) {
+              reject(new Error('Could not find lat/lon columns: ' + headerRow.slice(0, 8).join(', ')));
+            }
+            return;
+          }
+
+          total++;
+          const cols = _jnParseCsvFields(line);
+          if (cols.length <= Math.max(colLat, colLon)) return;
+
+          const lat = parseFloat(cols[colLat]);
+          const lon = parseFloat(cols[colLon]);
+          if (!isFinite(lat) || !isFinite(lon)) return;
+          if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
+          if (lat === -999999 || lon === -999999) return;
+          if (lat < JN_LAT_MIN || lat > JN_LAT_MAX || lon < JN_LON_MIN || lon > JN_LON_MAX) return;
+
+          const date    = (colDate    >= 0 ? cols[colDate]    : '') || null;
+          const species = (colSpecies >= 0 ? cols[colSpecies] : '') || '';
+          const number  = colNumber >= 0 ? (parseInt(cols[colNumber], 10) || 1) : 1;
+          const year    = date ? +date.slice(0, 4) : null;
+          kept++;
+          features.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [lon, lat] },
+            properties: { obs_type: _jnObsType(species), type: species, date, year, n: number },
+          });
+        })
+          .then(() => {
+            const fc = { type: 'FeatureCollection', features };
+            fs.writeFileSync(JN_OUT_PATH, JSON.stringify(fc));
+            const kb = Math.round(Buffer.byteLength(JSON.stringify(fc)) / 1024);
+            console.log(`[jn-monarchs] done — ${kept} of ${total} rows kept (${kb} KB, ${features.length} features)`);
+            resolve();
+          })
+          .catch(reject);
+      });
+      req.on('error', reject);
+    });
+  } catch (err) {
+    console.error('[jn-monarchs] download failed:', err.message);
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
@@ -2244,6 +2689,18 @@ const server = http.createServer((req, res) => {
       return;
     }
     handleHarvest(req, res);
+    return;
+  }
+
+  // Auto-harvest status (for debugging)
+  if (pathname === '/api/harvest-status') {
+    handleHarvestStatus(res);
+    return;
+  }
+
+  // Server-side Commons photo snapshot (pre-filtered, cached weekly)
+  if (pathname === '/api/commons-snapshot') {
+    handleCommonsSnapshot(res);
     return;
   }
 
@@ -2416,6 +2873,9 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`Open → http://localhost:${PORT}`);
   // Restore all in-memory caches from disk before warming.
   _loadPersistedCaches();
+  // Download Journey North monarch data on first run (one-time, ~68 MB CSV → compact GeoJSON).
+  // Skipped immediately on subsequent starts when data/journeynorth_monarchs.json already exists.
+  setTimeout(_fetchJourneyNorthData, 5000);
   // Pre-warm the parcel tile cache in the background.
   // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
   setTimeout(_warmParcelCache, 5000);
@@ -2423,4 +2883,9 @@ server.listen(PORT, '127.0.0.1', () => {
   // Years fetch newest-first; each year takes a few seconds + 3 s pause.
   // Already-cached years are skipped; TTL: 30 days (old years), 12 h (prev year).
   setTimeout(_warmInatHistory, 10000);
+  // Auto-harvest missing/stale snapshot files for the trends panel.
+  // Runs after the iNat history warmer starts, sequentially with rate-limit pauses.
+  setTimeout(_autoHarvestMissing, 20000);
+  // Refresh the server-side Wikimedia Commons photo snapshot (weekly).
+  _scheduleCommonsSnapshot();
 });

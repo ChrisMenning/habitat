@@ -32,6 +32,9 @@ let _nestingScores = new Map();
 /** Tree canopy coverage percentages keyed by site name — updated asynchronously. */
 let _canopyScores = new Map();
 
+/** Urban InVEST crosswalk scores — array of {name, investScore} — populated when urban layer first loads. */
+let _investCrosswalk = [];
+
 /** Parcel features — updated when parcel layer is first enabled. */
 let _parcelFeatures = [];
 
@@ -40,6 +43,7 @@ let _commonsImages = [];
 
 export function setNestingScores(scores)    { _nestingScores  = scores   ?? new Map(); }
 export function setCanopyScores(scores)     { _canopyScores   = scores   ?? new Map(); }
+export function setInvestCrosswalkScores(data) { _investCrosswalk = data ?? []; }
 
 // ── Score help popup events ───────────────────────────────────────────────────
 // Wired once (guarded by flag) to the drawer body element; handles all
@@ -349,7 +353,7 @@ function _buildNearbyPhotosSection(coord) {
  * Open the drawer with the given feature's dossier.
  * @param {GeoJSON.Feature} feature
  */
-export function openDrawer(feature) {
+export function openDrawer(feature, alertFeatures = []) {
   const drawer = document.getElementById('site-drawer');
   const body   = document.getElementById('site-drawer-body');
   if (!drawer || !body) return;
@@ -627,6 +631,26 @@ export function openDrawer(feature) {
         </div>
       </div>`;
   })();
+  // ── Urban Habitat Index context score (InVEST crosswalk) ─────────────────────
+  const investHtml = (() => {
+    if (src !== 'gbcc-corridor') return '';
+    const key   = p.name || p.registrant || '';
+    const match = _investCrosswalk.find(x => x.name === key);
+    if (!match) return '';
+    const pct   = Math.round(match.investScore * 100);
+    const tier  = pct >= 70 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+    const color = pct >= 70 ? '#7c3aed' : pct >= 35 ? '#8b5cf6' : '#a78bfa';
+    return `
+      <div class="drawer-section-label">Urban habitat context (adapted InVEST, 660\u202fm grid)</div>
+      <div class="drawer-nesting-row">
+        <div class="drawer-nesting-score" style="background:${color};">${pct}</div>
+        <div class="drawer-nesting-detail">
+          <span class="drawer-nesting-label" style="color:${color};">Urban Habitat Index \u2014 ${tier}</span>
+          <span class="drawer-nesting-desc">Derived from the InVEST Lonsdorf\u00a0(2009) model, originally calibrated for farmland. Score is relative to other developed land in the study area \u2014 not to rural habitat. Reflects surrounding NLCD land cover within 660\u202fm, not the specific plantings here. Enable \u201cUrban Habitat Index\u201d in the Analysis pane to view the full heatmap.</span>
+        </div>
+      </div>`;
+  })();
+
   const nearbyParcelsHtml = isApprox ? '' : _buildNearbyParcelsSection(coord);
   const nearbyPhotosHtml  = _buildNearbyPhotosSection(coord);
 
@@ -643,17 +667,44 @@ export function openDrawer(feature) {
     return `<p style="margin:0 0 8px;padding:3px 9px;font-size:11px;line-height:1.45;border-radius:4px;color:#6b7280;">Fall migration window: Aug 28 \u2013 Sep 15 (Green Bay area)</p>`;
   })();
 
+  // ── Alert context (problem-area / expansion-opportunity overlaps) ────────────
+  const alertContextHtml = alertFeatures.length ? (() => {
+    const rows = alertFeatures.map(f => {
+      const ap = f.properties;
+      if (ap.layer_id === 'problem-areas') {
+        const sev      = ap.severity ?? 'medium';
+        const sevColor = sev === 'high' ? '#dc2626' : sev === 'medium' ? '#d97706' : '#6b7280';
+        const typeLabel = _problemTypeLabel(ap.problem_type ?? '');
+        return `<div class="drawer-alert-row" style="border-left-color:${sevColor}">
+          <span class="drawer-alert-label" style="color:${sevColor}">&#x26A0; Site Signal &mdash; ${typeLabel}</span>
+          ${ap.common ? `<span class="drawer-alert-sub">${esc(ap.common)}</span>` : ''}
+        </div>`;
+      }
+      if (ap.layer_id === 'expansion-opportunities') {
+        const suit     = ap.suitability ?? 'moderate';
+        const barColor = suit === 'good' ? '#10b981' : suit === 'moderate' ? '#f59e0b' : '#ef4444';
+        return `<div class="drawer-alert-row" style="border-left-color:${barColor}">
+          <span class="drawer-alert-label" style="color:${barColor}">&#x26A1; Expansion Opportunity &mdash; ${suit} suitability (${ap.score ?? 0}/100)</span>
+        </div>`;
+      }
+      return '';
+    }).filter(Boolean).join('');
+    return rows ? `<div class="drawer-alert-context">${rows}</div>` : '';
+  })() : '';
+
   body.innerHTML = `
     <div class="drawer-header" style="background:${headerColor};">
       <div class="drawer-header-label">${esc(titleLabel)}</div>
       <h2 class="drawer-title">${esc(p.name || p.registrant || 'Site')}</h2>
     </div>
     <div class="drawer-content">
+      ${alertContextHtml}
       ${approxHtml}
       ${metaHtml}
       ${migrationHtml}
       ${nestingHtml}
       ${canopyHtml}
+      ${investHtml}
       ${nearbyParcelsHtml}
       ${corridorConnHtml}
       <div class="drawer-section-label">Sighting activity nearby</div>

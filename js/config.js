@@ -456,31 +456,57 @@ export const EXPANSION_LAYER = [
 ];
 
 /**
- * InVEST / Lonsdorf Pollinator Index layer.
- * Visualizes the Lonsdorf et al. (2009) pollinator abundance model output:
- * P(x) = N(x) × Σ[F(j) × e^(−D/α)] across three bee guilds (small/medium/bumble).
- * NLCD biophysical attribute table from Wentling et al. (2021) and InVEST User's Guide.
+ * InVEST / Lonsdorf Pollinator Index layer — landscape scale.
+ * 1.3 km grid. Scores reflect the surrounding landscape matrix, NOT individual
+ * plantings. Rural grassland/wetland naturally dominates. See INVEST_URBAN_LAYER
+ * for within-urban comparison.
  */
 export const INVEST_LAYER = {
   id:          'invest-heat',
-  label:       'Pollinator Index',
+  label:       'Landscape Suitability Index',
   emoji:       '<i class="ph ph-chart-line-up"></i>',
-  description: 'InVEST / Lonsdorf (2009) pollinator abundance index — P(x) = N(x) × foraging sums across small solitary (300 m), medium solitary (700 m), and bumble bee (1500 m) guilds. NLCD biophysical scores from Wentling et al. (2021) and the InVEST User\'s Guide. Yellow = peak relative abundance; teal = moderate. Index is relative — not an absolute bee density.',
+  description: 'InVEST / Lonsdorf (2009) landscape-scale pollinator index. Samples NLCD 2021 land cover on a 1.3&nbsp;km grid — each cell reflects its surrounding land cover matrix, not what&rsquo;s specifically planted there. Individual corridor sites (&lt;1 acre) are invisible at this resolution. Rural areas with extensive grassland or wetland will dominate. Use as regional landscape context, not as a measure of corridor program effectiveness.',
   defaultOn:   false,
   vintage:     { year: 2021 },
 };
 
 /**
- * Problem Areas — corridor sites with inferred issues: PFAS proximity,
+ * Urban InVEST — same Lonsdorf kernel but normalized against urban cells only.
+ * 330 m fine grid. Shows relative habitat quality within the developed footprint.
+ */
+export const INVEST_URBAN_LAYER = {
+  id:          'invest-urban-heat',
+  label:       'Urban Habitat Index',
+  emoji:       '<i class="ph ph-buildings"></i>',
+  description: 'Adapted from the InVEST Lonsdorf&nbsp;(2009) model, which was designed and calibrated for agricultural landscapes. By default that model rates all urban land as low-quality habitat. This layer re-runs the same kernel at 660&nbsp;m resolution, keeps only developed NLCD cells (≥20% impervious), and normalizes the score against the best urban cell in the study area — so a city park surrounded by pavement can score near 1.0 rather than being washed out by Suamico-area wetlands. Guild weights shift toward small and medium solitary bees (Osmia, Lasioglossum), which dominate urban green patches.',
+  defaultOn:   false,
+  vintage:     { year: 2021 },
+};
+
+/**
+ * Foraging-range bands — concentric rings around each corridor site showing
+ * the reach of the three bee guilds.
+ */
+export const FORAGING_BANDS_LAYER = {
+  id:          'foraging-bands',
+  label:       'Foraging Range Bands',
+  emoji:       '<i class="ph ph-circles-three"></i>',
+  description: 'Three concentric rings around each corridor site showing the foraging range of small solitary bees (300&nbsp;m, teal), medium solitary bees (700&nbsp;m, amber), and bumble bees (1.5&nbsp;km, rose). Overlapping rings from adjacent sites darken naturally — dense overlap indicates strong landscape connectivity. Styled intentionally like pressure-chart isobars.',
+  defaultOn:   false,
+  vintage:     null,
+};
+
+/**
+ * Site Signals — corridor sites with inferred indicators worth watching: PFAS proximity,
  * isolation, no sightings, poor nesting, high canopy shading, or pesticide pressure.
  * Severity: red = high, amber = medium, gray = low.
  */
 export const PROBLEM_AREAS_LAYER = [
   {
     id:          'problem-areas',
-    label:       'Problem Areas',
+    label:       'Site Signals',
     emoji:       '<i class="ph ph-warning-circle"></i>',
-    description: 'Habitat sites and zones with inferred problems: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates severity.',
+    description: 'Habitat sites with inferred indicators worth monitoring: PFAS proximity, network isolation, no documented sightings, poor nesting substrate, excessive canopy shading, or high pesticide pressure. Color indicates signal strength.',
     defaultOn:   false,
     vintage:     null,
   },
@@ -571,6 +597,15 @@ export const LAYER_PRESETS = [
     description: 'Tree canopy coverage and its impact on corridor site viability.',
     on: [
       'gbcc-corridor', 'waystations', 'problem-areas', 'tree-canopy', 'nlcd-21',
+    ],
+  },
+  {
+    id:          'urban-analysis',
+    label:       'Urban Analysis',
+    icon:        'city',
+    description: 'Urban habitat quality landscape — InVEST index, foraging range bands, land cover, and canopy.',
+    on: [
+      'gbcc-corridor', 'invest-urban-heat', 'foraging-bands', 'tree-canopy', 'nlcd-21',
     ],
   },
 ];

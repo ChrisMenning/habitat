@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "source": "gbif",
+  "year": 2016,
+  "harvestedAt": "2026-03-28T19:57:35.508Z",
+  "total": 1200,
+  "byLayer": {
+    "pollinators": 0,
+    "native-plants": 0,
+    "other-plants": 0,
+    "other-wildlife": 1200
+  },
+  "byLayerByMonth": {
+    "pollinators": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    },
+    "native-plants": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    }
+  },
+  "speciesRichness": 71,
+  "topSpecies": [
+    {
+      "name": "Black-capped Chickadee",
+      "count": 74
+    },
+    {
+      "name": "American Crow",
+      "count": 65
+    },
+    {
+      "name": "Northern Cardinal",
+      "count": 55
+    },
+    {
+      "name": "White-breasted Nuthatch",
+      "count": 54
+    },
+    {
+      "name": "Mourning Dove",
+      "count": 52
+    },
+    {
+      "name": "Downy Woodpecker",
+      "count": 50
+    },
+    {
+      "name": "House Sparrow",
+      "count": 47
+    },
+    {
+      "name": "Dark-eyed Junco",
+      "count": 46
+    },
+    {
+      "name": "American Goldfinch",
+      "count": 43
+    },
+    {
+      "name": "Blue Jay",
+      "count": 42
+    }
+  ],
+  "topPollinators": [],
+  "topNativePlants": [],
+  "byMonth": {
+    "01": 1200
+  }
+}

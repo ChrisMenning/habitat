@@ -91,7 +91,7 @@
 
   <div id="loading" aria-live="polite">
     <div class="spinner" aria-hidden="true"></div>
-    <span>Fetching observations…</span>
+    <span id="loading-msg">Fetching observations…</span>
   </div>
 
   <!-- ── Icon Activity Bar ─────────────────────────────────────────────────── -->
@@ -290,6 +290,28 @@
         <p class="layer-desc">Heatmap of bee record density — a spatial proxy for species richness. Brighter areas have more bee specimens documented in GBIF collections.</p>
         <p class="layer-group-label">Opportunity &amp; Risk</p>
         <div id="panel-analysis-inner"><!-- populated by app.js --></div>
+        <p class="layer-group-label">Pollinator Modeling</p>
+        <p class="panel-section-note">Pollinator habitat models derived from the InVEST Lonsdorf&nbsp;(2009) framework, originally calibrated for agricultural landscapes. Scores reflect the surrounding NLCD land cover matrix — not individual plantings. See layer descriptions for how each model has been adapted.</p>
+        <label class="layer-row" for="toggle-invest-urban-heat">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-invest-urban-heat"
+                   aria-label="Urban Habitat Index heatmap">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-buildings"></i></span>
+          <span class="layer-label">Urban Habitat Index</span>
+        </label>
+        <p class="layer-desc">The InVEST Lonsdorf model was designed and calibrated for agricultural and rural landscapes — it treats urban land as low habitat by default. This layer re-runs the same model at a finer 660&nbsp;m grid, restricts the comparison to developed NLCD classes, and normalizes scores against the best urban cell rather than against rural grassland. What you see is how this location compares to other developed land — not to nature. First load 5&ndash;10&nbsp;s; subsequent loads are instant.</p>
+        <label class="layer-row" for="toggle-foraging-bands">
+          <div class="toggle">
+            <input type="checkbox" id="toggle-foraging-bands"
+                   aria-label="Foraging range band rings">
+            <div class="toggle-track" aria-hidden="true"></div>
+          </div>
+          <span class="layer-emoji" aria-hidden="true"><i class="ph ph-circles-three"></i></span>
+          <span class="layer-label">Foraging Range Bands</span>
+        </label>
+        <p class="layer-desc">Three concentric rings per corridor site: small solitary bees (300&nbsp;m, teal), medium solitary (700&nbsp;m, amber), bumble bees (1.5&nbsp;km, rose). Overlapping rings from adjacent sites darken — dense overlap indicates connected landscape.</p>
       </div>
     </div>
 

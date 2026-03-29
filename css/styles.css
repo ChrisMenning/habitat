@@ -902,6 +902,13 @@ details > summary:focus-visible {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
+@keyframes count-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+.layer-count--loading {
+  animation: count-pulse 1.2s ease-in-out infinite;
+}
 
 .layer-vintage-badge {
   font-size: 9px;
@@ -1808,6 +1815,32 @@ details[open] .alert-group-chevron { transform: rotate(90deg); }
   border-radius: 3px;
 }
 
+/* ── Corridor drawer: overlapping alert context banner ───────────────────── */
+.drawer-alert-context {
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.drawer-alert-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-left: 3px solid;
+  background: rgba(255,255,255,0.05);
+  border-radius: 0 4px 4px 0;
+}
+.drawer-alert-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.drawer-alert-sub {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
 /* ── Analysis drawer: severity badge ─────────────────────────────────────── */
 .drawer-severity-badge {
   display: flex;
@@ -2652,3 +2685,89 @@ details[open] > .drawer-section-summary::before { transform: rotate(90deg); }
   font-family: inherit; letter-spacing: 0.04em;
 }
 .harvest-more-btn:hover { color: #d4921a; }
+
+/* -- Trends toggle & monthly view (Trends pane) ---------------------- */
+.trends-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 0.35rem 0 0.6rem;
+}
+.trends-toggle-btn {
+  flex: 1;
+  background: rgba(184,196,160,0.07);
+  border: 1px solid rgba(184,196,160,0.18);
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 0.68rem;
+  font-family: inherit;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.trends-toggle-btn--active {
+  background: rgba(110,231,183,0.12);
+  border-color: rgba(110,231,183,0.35);
+  color: #6ee7b7;
+  font-weight: 600;
+}
+.trends-toggle-btn:hover:not(.trends-toggle-btn--active) { color: #d1d5db; }
+
+.trends-year-row { margin: 0 0 0.5rem; }
+.trends-month-select {
+  background: rgba(184,196,160,0.07);
+  border: 1px solid rgba(184,196,160,0.18);
+  border-radius: 4px;
+  color: #d1d5db;
+  font-size: 0.72rem;
+  font-family: inherit;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.trends-month-select option { background: #1a2010; }
+
+.trends-status-line {
+  color: #6b7280;
+  font-size: 0.72rem;
+  margin: 0.25rem 0 0.5rem;
+  min-height: 1.2em;
+}
+.trends-bias-note {
+  font-size: 0.68rem;
+  color: #6b7280;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+.trends-bias-note a { color: #6b7280; }
+.trends-bias-note a:hover { color: #9ca3af; }
+
+
+/* Species top-10 table */
+.species-table {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.species-col { flex: 1; min-width: 0; }
+.species-col-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 0.25rem;
+}
+.species-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.species-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  color: #d1d5db;
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.species-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.species-count { color: #6ee7b7; font-variant-numeric: tabular-nums; flex-shrink: 0; }

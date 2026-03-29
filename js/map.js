@@ -1061,6 +1061,14 @@ export function setHeatmapVisibility(id, visible) {
   // connectivity-mesh has a second layer for weak (dashed) connections
   const weakId = `${id}-weak-layer`;
   if (_map.getLayer(weakId)) _map.setLayoutProperty(weakId, 'visibility', vis);
+  // urban InVEST has a paired hit-target layer
+  const hitsId = `${id}-hits-layer`;
+  if (_map.getLayer(hitsId)) _map.setLayoutProperty(hitsId, 'visibility', vis);
+  // foraging-bands has fill + outline sublayers
+  const fillId    = `${id}-fill`;
+  const outlineId = `${id}-outline`;
+  if (_map.getLayer(fillId))    _map.setLayoutProperty(fillId,    'visibility', vis);
+  if (_map.getLayer(outlineId)) _map.setLayoutProperty(outlineId, 'visibility', vis);
 }
 
 // ── CDL agricultural fringe heatmap ──────────────────────────────────────────
@@ -1165,6 +1173,142 @@ export function registerInVESTHeatmap(visible) {
 /** Replaces InVEST heatmap source data. */
 export function updateInVESTHeatmap(geojson) {
   _map.getSource('invest-heat')?.setData(
+    geojson ?? { type: 'FeatureCollection', features: [] }
+  );
+}
+
+// ── Urban InVEST heatmap ──────────────────────────────────────────────────────
+
+/**
+ * Registers the urban InVEST habitat index heatmap.
+ * Same Lonsdorf model but normalized against urban cells only, so quality
+ * variation within the developed footprint is visible instead of being washed
+ * out by rural grassland.  Color ramp: violet → indigo → pink → yellow (peak).
+ * Tighter radius than the landscape layer to match the 330 m fine grid.
+ */
+export function registerInVESTUrbanHeatmap(visible) {
+  _map.addSource('invest-urban-heat', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'invest-urban-heat-layer',
+    type:   'heatmap',
+    source: 'invest-urban-heat',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
+      'heatmap-intensity': [
+        'interpolate', ['linear'], ['zoom'],
+        8,  1.2,
+        12, 2.0,
+        14, 3.0,
+      ],
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0,    'rgba(0,0,0,0)',
+        0.06, 'rgba(139,92,246,0.20)',    // violet
+        0.25, 'rgba(167,139,250,0.55)',   // light violet
+        0.50, 'rgba(99,102,241,0.80)',    // indigo
+        0.72, 'rgba(192,132,252,0.92)',   // lavender
+        0.88, 'rgba(249,168,212,0.97)',   // pink
+        1.0,  'rgba(250,204,21,1.0)',     // yellow (peak)
+      ],
+      // 660 m grid cells — wider radius than the landscape layer but still
+      // fine enough to show within-city habitat variation.
+      'heatmap-radius': [
+        'interpolate', ['exponential', 2], ['zoom'],
+        8,  10,
+        10, 24,
+        12, 64,
+        14, 150,
+      ],
+      'heatmap-opacity': 0.82,
+    },
+  });
+  // Invisible click-target layer so users can click the heatmap.
+  _map.addSource('invest-urban-heat-hits', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'invest-urban-heat-hits-layer',
+    type:   'circle',
+    source: 'invest-urban-heat-hits',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint:  {
+      'circle-radius':  ['interpolate', ['exponential', 2], ['zoom'], 8, 5, 12, 20, 14, 45],
+      'circle-opacity': 0,
+      'circle-color':   'transparent',
+    },
+  });
+}
+
+/** Replaces Urban InVEST heatmap source data. Also syncs the hit-target source. */
+export function updateInVESTUrbanHeatmap(geojson) {
+  const g = geojson ?? { type: 'FeatureCollection', features: [] };
+  _map.getSource('invest-urban-heat')?.setData(g);
+  _map.getSource('invest-urban-heat-hits')?.setData(g);
+}
+
+// ── Foraging bands layer ──────────────────────────────────────────────────────
+
+/**
+ * Registers the foraging-range band layer — three concentric ring polygons per
+ * corridor site showing the reach of each bee guild:
+ *   bumble  (1.5 km) — outermost, faintest orange ring
+ *   medium  (0.7 km) — middle amber ring
+ *   small   (0.3 km) — innermost, most saturated teal ring
+ *
+ * Rings use fill + outline sublayers so overlap regions naturally darken,
+ * creating a pressure-chart / isobar visual effect where service areas overlap.
+ *
+ * The source is populated by computeForagingBands() in nesting.js.
+ */
+export function registerForagingBands(visible) {
+  _map.addSource('foraging-bands', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  _map.addLayer({
+    id:     'foraging-bands-fill',
+    type:   'fill',
+    source: 'foraging-bands',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'fill-color': [
+        'match', ['coalesce', ['get', 'guild'], 'bumble'],
+        'small',   '#14b8a6',   // teal — innermost / most accessible
+        'medium',  '#f59e0b',   // amber
+        'bumble',  '#fb7185',   // rose-red — outermost
+        '#a3a3a3',
+      ],
+      'fill-opacity': 0.07,
+    },
+  });
+  _map.addLayer({
+    id:     'foraging-bands-outline',
+    type:   'line',
+    source: 'foraging-bands',
+    layout: { visibility: visible ? 'visible' : 'none' },
+    paint: {
+      'line-color': [
+        'match', ['coalesce', ['get', 'guild'], 'bumble'],
+        'small',   '#14b8a6',
+        'medium',  '#f59e0b',
+        'bumble',  '#fb7185',
+        '#a3a3a3',
+      ],
+      'line-width':   1.0,
+      'line-opacity': 0.28,
+      'line-dasharray': [3, 3],
+    },
+  });
+}
+
+/** Replaces foraging bands source data. */
+export function updateForagingBands(geojson) {
+  _map.getSource('foraging-bands')?.setData(
     geojson ?? { type: 'FeatureCollection', features: [] }
   );
 }
@@ -1543,6 +1687,19 @@ export function wireInteractions(layerIds, onFeatureClick) {
     }
   });
 
+  for (const layerId of layerIds) {
+    _map.on('mouseenter', layerId, () => { _map.getCanvas().style.cursor = 'pointer'; });
+    _map.on('mouseleave', layerId, () => { _map.getCanvas().style.cursor = '';        });
+  }
+}
+
+/**
+ * Wires only hover-cursor handlers (no click listener) onto the given layer ids.
+ * Use this when click dispatch is handled by a separate unified handler.
+ *
+ * @param {string[]} layerIds
+ */
+export function wireHoverCursors(layerIds) {
   for (const layerId of layerIds) {
     _map.on('mouseenter', layerId, () => { _map.getCanvas().style.cursor = 'pointer'; });
     _map.on('mouseleave', layerId, () => { _map.getCanvas().style.cursor = '';        });
@@ -2020,24 +2177,11 @@ export function registerCommonsLayer(visible) {
     source: 'commons-photos',
     layout: { visibility: vis },
     paint: {
-      'circle-radius':       7,
+      'circle-radius':       9,
       'circle-color':        '#7c3aed',
-      'circle-opacity':      0.85,
+      'circle-opacity':      0.9,
       'circle-stroke-color': '#fff',
-      'circle-stroke-width': 1.5,
-    },
-  });
-
-  _map.addLayer({
-    id:     'commons-photo-icon',
-    type:   'symbol',
-    source: 'commons-photos',
-    layout: {
-      visibility:              vis,
-      'text-field':            '📷',
-      'text-size':             11,
-      'text-allow-overlap':    true,
-      'text-ignore-placement': true,
+      'circle-stroke-width': 2,
     },
   });
 }
@@ -2058,9 +2202,7 @@ export function setCommonsFeatures(geojson) {
  */
 export function setCommonsLayerVisibility(visible) {
   const vis = visible ? 'visible' : 'none';
-  for (const id of ['commons-photo-circle', 'commons-photo-icon']) {
-    if (_map.getLayer(id)) _map.setLayoutProperty(id, 'visibility', vis);
-  }
+  if (_map.getLayer('commons-photo-circle')) _map.setLayoutProperty('commons-photo-circle', 'visibility', vis);
 }
 
 

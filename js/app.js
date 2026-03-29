@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INAT_HISTORY_START_YEAR,
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER, INAT_HISTORY_START_YEAR,
          LAYER_VINTAGES, LAYER_LABELS, STALENESS_THRESHOLD_YEARS, TEMPORAL_MISMATCH_THRESHOLD_YEARS,
          CENTER, RADIUS_KM, LAYER_PRESETS } from './config.js';
 import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
@@ -61,11 +61,15 @@ import { initMap, registerLayer, registerAreaLayer,
          updateProblemAreasLayer,
          registerInVESTHeatmap,
          updateInVESTHeatmap,
+         registerInVESTUrbanHeatmap,
+         updateInVESTUrbanHeatmap,
+         registerForagingBands,
+         updateForagingBands,
          setLayerFeatures, setAreaFeatures, setAreaMarkersFeatures,
          setLayerVisibility, setAreaVisibility, setRasterLayerVisibility,
          setPointLayerOpacity, setAreaLayerOpacity, setRasterOpacity,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
-         showPopup, closePopup, wireInteractions, wireParcelClick,
+         showPopup, closePopup, wireInteractions, wireHoverCursors, wireParcelClick,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
          zoomToCluster, getEffectiveClusteredCoords,
          setWaystationApproxStyle,
@@ -74,9 +78,9 @@ import { initMap, registerLayer, registerAreaLayer,
          setJourneyNorthVisibility,
          getMap } from './map.js';
 import { buildLayerPanel, buildEstLegend, buildAreaLegend, buildPesticideLegend, updateCounts,
-         setLoading, setStatus, initActivityBar,
+         setLoading, setLoadingProgress, setStatus, initActivityBar,
          buildPopupHTML, buildAreaPopupHTML,
-         esc, closeLightbox }                               from './ui.js';
+         esc, openLightbox, closeLightbox }                  from './ui.js';
 import { cacheGet, cacheSet }                         from './cache.js';
 import { computeAlerts, renderAlerts,
          computeExpansionOpportunities,
@@ -88,6 +92,7 @@ import { openDrawer, closeDrawer, isDrawerFeature, openIntelDrawer,
          setHabitatSites as setDrawerHabitatSites,
          setNestingScores as setDrawerNestingScores,
          setCanopyScores as setDrawerCanopyScores,
+         setInvestCrosswalkScores as setDrawerInvestCrosswalkScores,
          setParcelFeatures as setDrawerParcelFeatures,
          setCommonsImages as setDrawerCommonsImages }  from './drawer.js';
 import { initTimeline, updateTimelineBounds,
@@ -99,11 +104,12 @@ import { parsePermalink, applyPermalinkState,
 import { fetchEbirdObservations }                      from './ebird.js';
 import { initClimatePanel, getClimateState, getGddIntelStat, openClimateRibbon } from './climate.js';
 import { fetchPesticideCounties }                      from './pesticide.js';
-import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap } from './nesting.js';
+import { fetchNestingScores, enrichCentroidsWithNesting, fetchCanopyScores, fetchGridNlcdScores, computeInVESTHeatmap, computeInVESTHeatmapUrban, crosswalkInVESTCorridor, computeForagingBands, computeForagingLandAreaKm2 } from './nesting.js';
 import { fetchParcelsForBbox, classifyOwnership, hydrate as hydrateParcelCache, queryParcelsNear, OWNERSHIP_META } from './parcels.js';
 import { fetchCommonsForApp }                             from './commons.js';
 import { fetchSnapshotIndex, fetchSnapshot,
-         availableYears, renderTrendChart }            from './history.js';
+         availableYears, renderTrendChart,
+         renderMonthlyChart, renderSpeciesTable }      from './history.js';
 import { initHealthCheck }                            from './health.js';
 
 // ── Utility ───────────────────────────────────────────────────────────────────
@@ -213,6 +219,8 @@ function areaOrPointVisibility(id, visible) {
   else if (id === 'commons-photos')       setCommonsLayerVisibility(visible);
   else if (id === 'bees-richness')        setHeatmapVisibility('bees-richness', visible);
   else if (id === 'invest-heat')                setHeatmapVisibility('invest-heat', visible);
+  else if (id === 'invest-urban-heat')           setHeatmapVisibility('invest-urban-heat', visible);
+  else if (id === 'foraging-bands')              setHeatmapVisibility('foraging-bands', visible);
   else if (id === 'journeynorth-monarchs')       setJourneyNorthVisibility(visible);
   else                                           setLayerVisibility(id, visible);
 }
@@ -277,6 +285,7 @@ const _ALL_CONFIG_LAYERS = [
   ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
   ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
   PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
+  INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER,
 ];
 
 /**
@@ -289,6 +298,8 @@ const _HARDCODED_CB_SUFFIXES = [
   'heatmap-native-plants',
   'tree-canopy',
   'cdl-fringe',
+  'invest-urban-heat',
+  'foraging-bands',
 ];
 
 /**
@@ -390,6 +401,10 @@ let _nestingLoaded    = false;        // true once first fetch completes
 let _canopyScores     = new Map();   // site name → canopyPct (0–100)
 let _lastAlertArgs    = null;         // cached so re-render includes nesting scores
 let _alertFocusHandler = null;        // module-level so async callbacks can re-render alerts
+// Urban InVEST fine-grid cache — populated eagerly at corridor load
+let _urbanNlcdScores  = null;         // fine-grid Map (660 m) once fetched
+let _urbanInVESTGeojson = null;       // computed GeoJSON cache so re-toggle is instant
+let _investCrosswalk  = [];           // corridor site UHI scores, populated eagerly at startup
 
 // Parcel and Commons state — populated lazily on first layer enable
 let _parcelFeatures = [];
@@ -460,13 +475,51 @@ function _coordsToFeatures(coords) {
  * as mesh nodes (so lines connect groups, not every underlying individual).
  * When fully expanded (zoom ≥ clusterMaxZoom), individual points are used.
  */
+/**
+ * Collapses corridor features that are within `thresholdKm` of each other
+ * into a single representative Point at their centroid.  Used by the
+ * connectivity mesh to avoid false density in tight site groupings like
+ * Farlin Park (9 adjacent sites that should count as one network node).
+ */
+function _clusterCorridorFeats(feats, thresholdKm = 0.25) {
+  const clusters = [];
+  for (const feat of feats) {
+    const g = feat.geometry;
+    const [lng, lat] = g.type === 'Point'
+      ? g.coordinates
+      : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+    let found = null;
+    for (const c of clusters) {
+      const dx = (lng - c.lng) * 111.32 * Math.cos(lat * Math.PI / 180);
+      const dy = (lat - c.lat) * 111.32;
+      if (Math.sqrt(dx*dx + dy*dy) < thresholdKm) { found = c; break; }
+    }
+    if (found) {
+      found.count++;
+      found.lng += (lng - found.lng) / found.count;
+      found.lat += (lat - found.lat) / found.count;
+    } else {
+      clusters.push({ lng, lat, count: 1 });
+    }
+  }
+  return clusters.map(c => ({
+    type: 'Feature',
+    geometry:   { type: 'Point', coordinates: [c.lng, c.lat] },
+    properties: {},
+  }));
+}
+
 function refreshConnectivityMesh() {
   // Foraging-range mesh uses confirmed-location waystations only — approximate
   // sites have no known address and would create false connectivity signals.
   const hnpCoords = getEffectiveClusteredCoords('hnp');
   const hnpFeats  = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
 
-  updateConnectivityMesh(_corridorFeats, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
+  // Cluster nearby corridor sites (threshold 250 m) to treat dense groupings
+  // like Farlin Park as a single network node rather than 9 individual points.
+  const clusteredCorridor = _clusterCorridorFeats(_corridorFeats, 0.25);
+
+  updateConnectivityMesh(clusteredCorridor, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
 }
 
 // ── Background iNaturalist historical loader ───────────────────────────────────
@@ -502,6 +555,13 @@ async function _loadHistoricalInat() {
 
   // Process newest-first so users see recent history appear before older data
   for (let year = currentYear - 1; year >= INAT_HISTORY_START_YEAR; year--) {
+    // Update the Trends panel status indicator
+    const statusEl = document.getElementById('history-load-status');
+    if (statusEl) {
+      statusEl.hidden = false;
+      statusEl.textContent = `\u21bb Loading historical records\u2026 ${year}`;
+    }
+
     const cacheKey = `obs/inat/year-${year}`;
     const ttl      = year < currentYear - 1 ? HIST_TTL_OLD : HIST_TTL_PREV;
 
@@ -579,6 +639,10 @@ async function _loadHistoricalInat() {
     updateTimelineBounds(newSightings);
   }
 
+  // Clear the Trends panel status indicator
+  const statusEl = document.getElementById('history-load-status');
+  if (statusEl) statusEl.hidden = true;
+
   if (totalAdded > 0) {
     console.log(`[inat-history] +${totalAdded} historical observations merged`);
   }
@@ -610,7 +674,7 @@ const _refreshParcelViewport = _debounce(async () => {
     setDrawerParcelFeatures(feats);
     if (_lastAlertArgs) {
       _lastAlertArgs = { ..._lastAlertArgs, parcelFeatures: feats };
-      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
+      const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
       if (_alertFocusHandler) renderAlerts(updatedAlerts, _alertFocusHandler);
       // Sync ribbon and export snapshot so all counts agree
       document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
@@ -625,6 +689,52 @@ const _refreshParcelViewport = _debounce(async () => {
   }
 }, 800);
 
+// ── Lazy Urban InVEST + corridor crosswalk ───────────────────────────────────
+
+/**
+ * Fetches/computes the Urban InVEST index at fine (0.003°) grid resolution.
+ * Results are cached in _urbanNlcdScores / _urbanInVESTGeojson so re-toggling
+ * the layer is instant.  Called from the toggle-invest-urban-heat change handler.
+ */
+async function _lazyComputeUrbanInVEST() {
+  if (_urbanInVESTGeojson) {
+    // Already computed — just push the cached GeoJSON to the layer.
+    updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    return;
+  }
+  try {
+    if (!_urbanNlcdScores) {
+      // Use 0.006° (≈660 m) grid over a 12 km radius — 2× finer than the
+      // landscape layer (0.012°) but ~10× fewer cells than 0.003° over 15 km.
+      // This keeps the fetch to ~3 API requests and compute to <200 ms.
+      console.debug('[urban-invest] fetching fine-grid NLCD scores (0.006°, 12 km)…');
+      _urbanNlcdScores = await fetchGridNlcdScores(CENTER[0], CENTER[1], 12, 0.006);
+    }
+    _urbanInVESTGeojson = computeInVESTHeatmapUrban(_urbanNlcdScores, CENTER[0], CENTER[1], 12);
+    updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
+
+    // Also run the corridor crosswalk and log scores for inspection.
+    if (_corridorFeats.length) {
+      const sites = _corridorFeats.map(f => {
+        const g = f.geometry;
+        const coord = g.type === 'Point'
+          ? g.coordinates
+          : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+        return { name: f.properties?.Park ?? 'Site', coords: coord };
+      });
+      const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, sites);
+      _investCrosswalk = xwalk;
+      setDrawerInvestCrosswalkScores(xwalk);
+      console.debug('[invest-crosswalk] top sites:', [...xwalk].sort((a,b)=>b.investScore-a.investScore).slice(0,10));
+    }
+  } catch (err) {
+    console.warn('[urban-invest] failed:', err.message);
+  }
+}
+
+// ── Lazy Commons photos ───────────────────────────────────────────────────────
+
 /**
  * Fetches Wikimedia Commons geotagged photos near the map centre on the first
  * time the Commons Photos layer is enabled.
@@ -632,7 +742,9 @@ const _refreshParcelViewport = _debounce(async () => {
 async function _lazyFetchCommons() {
   try {
     const center = map.getCenter().toArray();
+    console.debug('[commons] fetching near', center);
     const images = await fetchCommonsForApp(center);
+    console.debug('[commons] fetched', images.length, 'images');
     _commonsLoaded = true;
     setDrawerCommonsImages(images);
     const features = images
@@ -650,7 +762,9 @@ async function _lazyFetchCommons() {
           descurl:     img.descurl,
         },
       }));
+    console.debug('[commons] features with coords:', features.length);
     setMapCommonsFeatures({ type: 'FeatureCollection', features });
+    updateCounts({ 'commons-photos': images.length });
   } catch (err) {
     console.warn('Commons photos unavailable:', err);
   }
@@ -718,6 +832,24 @@ async function loadObservations() {
 
   try {
     // All sources run in parallel. Failures in one never block the others.
+    // Each promise is wrapped to update the loading progress counter as sources settle.
+    const TOTAL_SOURCES = 17;
+    let   _settled      = 0;
+    const _phases       = [
+      // indices 0-4: observations
+      ...[0,1,2,3,4].map(() => 'Fetching observations'),
+      // indices 5-15: area data
+      ...[5,6,7,8,9,10,11,12,13,14,15].map(() => 'Loading area data'),
+      // index 16: pesticide
+      'Loading area data',
+    ];
+    function _tracked(p, idx) {
+      return p.then(
+        v => { setLoadingProgress(++_settled, TOTAL_SOURCES, _phases[idx]); return v; },
+        e => { setLoadingProgress(++_settled, TOTAL_SOURCES, _phases[idx]); return Promise.reject(e); },
+      );
+    }
+
     const [
       inatResult, gbifPollResult, gbifPlantResult, gbifWildlifeResult, beesResult,
       padusResult, snaResult, dnrResult,
@@ -728,60 +860,61 @@ async function loadObservations() {
       // ── Observations (date-keyed, 1 h TTL) ──────────────────────────────
       // Caches the fully-processed layer partition so partitionByLayer and
       // observationsToGeoJSON are also skipped on a cache hit.
-      withCache(`obs/inat/all`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/inat/all`, OBS_TTL, async () => {
         const { observations, total } = await fetchObservations(undefined, undefined);
         const geojson  = observationsToGeoJSON(observations);
         const byLayer  = partitionByLayer(geojson, LAYERS.map(l => l.id));
         byLayer._total = total;  // stored alongside layer arrays
         return byLayer;
-      }),
+      }), 0),
 
       // Caches the final GeoJSON features array — resolveOccurrenceEstKeys
       // (which makes extra iNat API calls) is also skipped on a cache hit.
-      withCache(`obs/gbif-poll/v3`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-poll/v3`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifPollinators(undefined, undefined);
         const estMap = await resolveOccurrenceEstKeys(occurrences);
         return gbifToGeoJSON(occurrences, 'gbif-pollinators', estMap).features;
-      }),
+      }), 1),
 
-      withCache(`obs/gbif-plants/v2`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-plants/v2`, OBS_TTL, async () => {
         const { occurrences }       = await fetchGbifPlants(undefined, undefined);
         const { native, nonNative } = await partitionPlantOccurrences(occurrences);
         return {
           native:    gbifToGeoJSON(native,    'gbif-native-plants').features,
           nonNative: gbifToGeoJSON(nonNative, 'gbif-non-native-plants').features,
         };
-      }),
+      }), 2),
 
-      withCache(`obs/gbif-wildlife/v1`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/gbif-wildlife/v1`, OBS_TTL, async () => {
         const { occurrences } = await fetchGbifWildlife(undefined, undefined);
         return gbifToGeoJSON(occurrences, 'gbif-wildlife').features;
-      }),
+      }), 3),
 
-      withCache(`obs/bees/v1`, OBS_TTL, async () => {
+      _tracked(withCache(`obs/bees/v1`, OBS_TTL, async () => {
         const { occurrences } = await fetchBeesAll(undefined, undefined);
         return beesToGeoJSON(occurrences, 'bees-records').features;
-      }),
+      }), 4),
 
       // ── Static area data (fixed keys, 24 h TTL) ──────────────────────────────────────────────
-      withCache('area/padus',          AREA_TTL, fetchPadUs),
-      withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna),
-      withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands),
-      withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor),
-      withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments),
-      withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards),
-      withCache('area/hnp',            AREA_TTL, fetchHnpYards),
-      withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats),
-      withCache('area/quickstats',        AREA_TTL, fetchQuickStats),
-      withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe),
+      _tracked(withCache('area/padus',          AREA_TTL, fetchPadUs), 5),
+      _tracked(withCache('area/dnr-sna',        AREA_TTL, fetchDnrSna), 6),
+      _tracked(withCache('area/dnr-managed',    AREA_TTL, fetchDnrManagedLands), 7),
+      _tracked(withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor), 8),
+      _tracked(withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments), 9),
+      _tracked(withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards), 10),
+      _tracked(withCache('area/hnp',            AREA_TTL, fetchHnpYards), 11),
+      _tracked(withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats), 12),
+      _tracked(withCache('area/quickstats',        AREA_TTL, fetchQuickStats), 13),
+      _tracked(withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe), 14),
 
       // ── eBird recent bird observations (1 h TTL, always last 30 days) ───
-      withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()),
+      _tracked(withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()), 15),
 
       // ── Pesticide county choropleth (24 h TTL, static county data) ──────────
-      withCache('area/pesticide', AREA_TTL, fetchPesticideCounties),
+      _tracked(withCache('area/pesticide', AREA_TTL, fetchPesticideCounties), 16),
     ]);
 
+    setLoadingProgress(TOTAL_SOURCES, TOTAL_SOURCES, 'Rendering layers');
     const counts = {};
     let inatObs = 0, inatTotal = 0, gbifCount = 0;
 
@@ -897,7 +1030,7 @@ async function loadObservations() {
         syncNestingBadgeVisibility();
         // Re-render alerts to include the poor-nesting-habitat alert
         if (_lastAlertArgs) {
-          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores });
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: scores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           // Sync ribbon and export snapshot so all counts agree
           _lastAlertCount = updatedAlerts.length;
@@ -913,13 +1046,13 @@ async function loadObservations() {
         _canopyScores = scores;
         setDrawerCanopyScores(scores);
         if (_lastAlertArgs) {
-          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores });
+          const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: scores, investCrosswalk: _investCrosswalk });
           renderAlerts(updatedAlerts, _alertFocusHandler);
           _lastAlertCount = updatedAlerts.length;
           document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
           document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
           _updateAlertBadge(updatedAlerts.length);
-          setExportData({ alerts: updatedAlerts });
+          setExportData({ alerts: updatedAlerts, canopyScores: scores });
         }
       }).catch(() => { /* canopy scores unavailable — silent degradation */ });
 
@@ -928,6 +1061,48 @@ async function loadObservations() {
         _gridNlcdScores = scores;
         updateInVESTHeatmap(computeInVESTHeatmap(_gridNlcdScores, CENTER[0], CENTER[1], RADIUS_KM));
       }).catch(() => { /* grid NLCD unavailable — silent degradation */ });
+
+      // Compute foraging-range bands from corridor site centroids.
+      // Must use corridorResult.value.features directly here — _corridorFeats is
+      // not yet assigned at this point in the allSettled handler (it's set
+      // further down in the cross-module bind block, after all if/else branches).
+      {
+        const rawCorridorFeats = corridorResult.value.features;
+        if (rawCorridorFeats.length) {
+          const corridorSites = rawCorridorFeats.map(f => {
+            const g = f.geometry;
+            const coord = g.type === 'Point'
+              ? g.coordinates
+              : (() => { const r = g.coordinates[0]; return [r.reduce((s,c)=>s+c[0],0)/r.length, r.reduce((s,c)=>s+c[1],0)/r.length]; })();
+            return { name: f.properties?.name ?? f.properties?.Park ?? 'Corridor Site', coords: coord };
+          });
+          updateForagingBands(computeForagingBands(corridorSites));
+
+          // Eager Urban InVEST computation — runs at corridor load without waiting
+          // for the layer toggle, so alerts and export data are always populated.
+          fetchGridNlcdScores(CENTER[0], CENTER[1], 12, 0.006).then(scores => {
+            _urbanNlcdScores    = scores;
+            _urbanInVESTGeojson = computeInVESTHeatmapUrban(scores, CENTER[0], CENTER[1], 12);
+            console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
+            const foragingArea = computeForagingLandAreaKm2(corridorSites, scores);
+            setExportData({ foragingAreaKm2: foragingArea });
+            const xwalk = crosswalkInVESTCorridor(_urbanInVESTGeojson, corridorSites);
+            _investCrosswalk = xwalk;
+            setDrawerInvestCrosswalkScores(xwalk);
+            if (_lastAlertArgs) {
+              const updatedAlerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: xwalk });
+              renderAlerts(updatedAlerts, _alertFocusHandler);
+              _lastAlertCount = updatedAlerts.length;
+              document.getElementById('intel-val-alerts').textContent = updatedAlerts.length;
+              document.getElementById('intel-alerts')?.classList.toggle('intel-stat--has-alerts', updatedAlerts.length > 0);
+              _updateAlertBadge(updatedAlerts.length);
+              setExportData({ alerts: updatedAlerts, investCrosswalk: xwalk });
+            }
+          }).catch(err => {
+            console.warn('[urban-invest] eager fetch failed:', err.message);
+          });
+        }
+      }
     } else {
       console.warn('GBCC corridor failed:', corridorResult.reason);
       counts['gbcc-corridor'] = 0;
@@ -1075,7 +1250,7 @@ async function loadObservations() {
       activeLayerIds:      [..._activeLayerIds],
       layerVintages:       LAYER_VINTAGES,
     };
-    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores });
+    const alerts = computeAlerts({ ..._lastAlertArgs, nestingScores: _nestingScores, canopyScores: _canopyScores, investCrosswalk: _investCrosswalk });
     _alertFocusHandler = alert => {
       // Activate any heatmaps tied to this alert and sync their toggle checkboxes.
       for (const heatId of alert.heatmaps ?? []) {
@@ -1131,6 +1306,7 @@ async function loadObservations() {
     const _expansionFC = computeExpansionOpportunities({
       ..._analysisCtx,
       nestingScores: _nestingScores,
+      investCrosswalk: _investCrosswalk,
     });
     updateExpansionOpportunitiesLayer(_expansionFC);
     setExportData({ expansionFeatures: _expansionFC.features, parcelFeatures: _parcelFeatures });
@@ -1330,6 +1506,11 @@ async function loadObservations() {
  * Memory policy: holds at most 5 years x 2 sources = 10 small objects.
  * References are nullified after rendering to allow GC.
  */
+// ── Trends panel ──────────────────────────────────────────────────────────────
+// State: 'yearly' | 'monthly'
+let _trendsView     = 'yearly';
+let _trendsMonthYear = null; // selected year for monthly view
+
 async function loadHistoricalTrends() {
   const container = document.getElementById('panel-history-inner');
   if (!container) return;
@@ -1338,132 +1519,145 @@ async function loadHistoricalTrends() {
   try { index = await fetchSnapshotIndex(); }
   catch { index = []; }
 
-  const inatYears = availableYears(index, 'inat').slice(-5);
+  const inatYears = availableYears(index, 'inat').slice(-8).reverse(); // newest first
   const noaaYears = availableYears(index, 'noaa').slice(-5);
 
-  if (inatYears.length < 2 && noaaYears.length < 2) {
-    _renderHarvestUI(container, true);
+  container.innerHTML = '';
+
+  // Status line shown while auto-harvest is still running
+  const statusLine = document.createElement('p');
+  statusLine.id = 'history-load-status';
+  statusLine.className = 'layer-desc trends-status-line';
+  statusLine.hidden = true;
+  container.appendChild(statusLine);
+
+  if (!inatYears.length && noaaYears.length < 2) {
+    statusLine.hidden = false;
+    statusLine.textContent = '↻ Snapshot data is being collected automatically — check back in a few minutes.';
     return;
   }
 
-  // Fetch up to 5 most recent inat years, one at a time (avoid parallel RAM spike)
+  // ── View toggle ────────────────────────────────────────────────────────────
+  const toggleWrap = document.createElement('div');
+  toggleWrap.className = 'trends-toggle';
+  toggleWrap.innerHTML =
+    `<button class="trends-toggle-btn${_trendsView === 'yearly' ? ' trends-toggle-btn--active' : ''}" data-view="yearly">Yearly overview</button>` +
+    `<button class="trends-toggle-btn${_trendsView === 'monthly' ? ' trends-toggle-btn--active' : ''}" data-view="monthly">Monthly detail</button>`;
+  container.appendChild(toggleWrap);
+
+  const chartsArea = document.createElement('div');
+  chartsArea.id = 'trends-charts-area';
+  container.appendChild(chartsArea);
+
+  toggleWrap.querySelectorAll('.trends-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _trendsView = btn.dataset.view;
+      toggleWrap.querySelectorAll('.trends-toggle-btn').forEach(b =>
+        b.classList.toggle('trends-toggle-btn--active', b.dataset.view === _trendsView));
+      _renderTrendsCharts(chartsArea, inatYears, noaaYears);
+    });
+  });
+
+  await _renderTrendsCharts(chartsArea, inatYears, noaaYears);
+}
+
+async function _renderTrendsCharts(area, inatYears, noaaYears) {
+  area.innerHTML = '';
+
+  if (_trendsView === 'yearly') {
+    await _renderYearlyView(area, inatYears, noaaYears);
+  } else {
+    await _renderMonthlyView(area, inatYears);
+  }
+}
+
+async function _renderYearlyView(area, inatYears, noaaYears) {
+  // Fetch up to 8 inat years — use pollinators+native-plants for the y-value
+  // (scoped count: ignores other-plants and other-wildlife)
   let inatPoints = null;
   if (inatYears.length >= 2) {
     inatPoints = [];
-    for (const yr of inatYears) {
+    for (const yr of [...inatYears].reverse()) { // chronological order for chart
       const snap = await fetchSnapshot('inat', yr);
-      if (snap) inatPoints.push({ year: yr, value: snap.total ?? 0 });
+      if (snap) {
+        const v = (snap.byLayer?.pollinators ?? 0) + (snap.byLayer?.['native-plants'] ?? 0);
+        inatPoints.push({ year: yr, value: v || (snap.total ?? 0) });
+      }
     }
   }
-
-  // Fetch up to 5 most recent noaa years sequentially
-  let noaaPoints = null;
-  if (noaaYears.length >= 2) {
-    noaaPoints = [];
-    for (const yr of noaaYears) {
-      const snap = await fetchSnapshot('noaa', yr);
-      if (snap) noaaPoints.push({ year: yr, value: snap.gddTotal ?? 0 });
-    }
-  }
-
-  container.innerHTML = '';
 
   if (inatPoints && inatPoints.length >= 2) {
     const wrap = document.createElement('div');
     wrap.className = 'history-chart-block';
     wrap.innerHTML =
-      '<p class="layer-group-label" style="margin:0.5rem 0 0.25rem;">iNat pollinator sightings</p>' +
+      '<p class="layer-group-label" style="margin:0.5rem 0 0.25rem;">Pollinator &amp; native plant sightings by year</p>' +
       '<div id="history-chart-inat"></div>';
-    container.appendChild(wrap);
-    renderTrendChart('history-chart-inat', inatPoints, 'iNaturalist pollinator sighting totals by year');
+    area.appendChild(wrap);
+    renderTrendChart('history-chart-inat', inatPoints, 'Pollinator and native plant sighting totals by year');
   }
 
-  if (noaaPoints && noaaPoints.length >= 2) {
-    const wrap = document.createElement('div');
-    wrap.className = 'history-chart-block';
-    wrap.innerHTML =
-      '<p class="layer-group-label" style="margin:0.75rem 0 0.25rem;">GDD accumulation (base 50 °F)</p>' +
-      '<div id="history-chart-noaa"></div>';
-    container.appendChild(wrap);
-    renderTrendChart('history-chart-noaa', noaaPoints, 'Annual growing degree day totals by year');
+  const noaaYearsAsc = [...(noaaYears ?? [])].sort((a, b) => a - b);
+  if (noaaYearsAsc.length >= 2) {
+    const noaaPoints = [];
+    for (const yr of noaaYearsAsc) {
+      const snap = await fetchSnapshot('noaa', yr);
+      if (snap) noaaPoints.push({ year: yr, value: snap.gddTotal ?? 0 });
+    }
+    if (noaaPoints.length >= 2) {
+      const wrap = document.createElement('div');
+      wrap.className = 'history-chart-block';
+      wrap.innerHTML =
+        '<p class="layer-group-label" style="margin:0.75rem 0 0.25rem;">GDD accumulation (base 50 °F)</p>' +
+        '<div id="history-chart-noaa"></div>';
+      area.appendChild(wrap);
+      renderTrendChart('history-chart-noaa', noaaPoints, 'Annual growing degree day totals by year');
+    }
   }
 
-  // Nullify refs to allow GC
-  inatPoints = null;
-  noaaPoints = null;
-
-  // Append harvest-more control below charts
-  const moreWrap = document.createElement('div');
-  moreWrap.className = 'history-harvest-more';
-  moreWrap.innerHTML = '<button class="harvest-more-btn">+ Harvest more years</button>';
-  container.appendChild(moreWrap);
-  moreWrap.querySelector('.harvest-more-btn').addEventListener('click', () => {
-    moreWrap.replaceWith(_renderHarvestUI(null, false));
-  });
+  if (!area.firstChild) {
+    area.innerHTML = '<p class="layer-desc trends-status-line">↻ Snapshots are being collected — check back soon.</p>';
+  }
 }
 
-// ── Harvest UI ────────────────────────────────────────────────────────────────
-function _renderHarvestUI(container, isEmpty) {
-  const currentYear = new Date().getFullYear();
-  const years = [];
-  for (let y = currentYear; y >= 2015; y--) years.push(y);
-
-  const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
-
-  const el = document.createElement('div');
-  el.className = 'harvest-ui';
-  el.innerHTML = `
-    ${isEmpty ? '<p class="layer-desc" style="margin:0 0 0.75rem;">No trend data yet. Harvest at least two years to see charts.</p>' : ''}
-    <div class="harvest-form">
-      <select class="harvest-select harvest-source">
-        <option value="inat">iNaturalist</option>
-        <option value="gbif">GBIF</option>
-        <option value="noaa">NOAA (GDD)</option>
-        <option value="nass">NASS Crops</option>
-      </select>
-      <select class="harvest-select harvest-year">${yearOptions}</select>
-      <button class="harvest-run-btn">Run</button>
-    </div>
-    <p class="harvest-status"></p>`;
-
-  if (container) {
-    container.innerHTML = '';
-    container.appendChild(el);
+async function _renderMonthlyView(area, inatYears) {
+  if (!inatYears.length) {
+    area.innerHTML = '<p class="layer-desc trends-status-line">No iNaturalist snapshots yet.</p>';
+    return;
   }
 
-  el.querySelector('.harvest-run-btn').addEventListener('click', async () => {
-    const source = el.querySelector('.harvest-source').value;
-    const year   = parseInt(el.querySelector('.harvest-year').value, 10);
-    const btn    = el.querySelector('.harvest-run-btn');
-    const status = el.querySelector('.harvest-status');
+  // Year selector
+  if (!_trendsMonthYear || !inatYears.includes(_trendsMonthYear)) {
+    _trendsMonthYear = inatYears[0]; // default to most recent
+  }
 
-    btn.disabled = true;
-    btn.textContent = 'Running…';
-    status.textContent = `Harvesting ${source} ${year} — this may take up to a minute…`;
+  const yearOpts = inatYears.map(y =>
+    `<option value="${y}"${y === _trendsMonthYear ? ' selected' : ''}>${y}</option>`
+  ).join('');
 
-    try {
-      const res = await fetch('/api/harvest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source, year }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        status.textContent = `\u2713 Saved ${json.file} (${json.records ?? '?'} records). Reloading trends…`;
-        setTimeout(() => loadHistoricalTrends(), 1200);
-      } else {
-        status.textContent = `Error: ${json.error ?? 'unknown error'}`;
-        btn.disabled = false;
-        btn.textContent = 'Run';
-      }
-    } catch (err) {
-      status.textContent = `Request failed: ${err.message}`;
-      btn.disabled = false;
-      btn.textContent = 'Run';
-    }
+  const selRow = document.createElement('div');
+  selRow.className = 'trends-year-row';
+  selRow.innerHTML =
+    `<label class="layer-desc" style="margin:0.4rem 0;">Year: <select class="trends-month-select" id="trends-year-picker">${yearOpts}</select></label>`;
+  area.appendChild(selRow);
+
+  const chartArea = document.createElement('div');
+  chartArea.className = 'history-chart-block';
+  chartArea.innerHTML = '<div id="history-chart-monthly"></div><div id="history-species-table"></div>';
+  area.appendChild(chartArea);
+
+  const loadYear = async (yr) => {
+    chartArea.querySelector('#history-chart-monthly').innerHTML = '<p class="layer-desc" style="color:#6b7280;font-size:11px;">Loading…</p>';
+    const snap = await fetchSnapshot('inat', yr);
+    renderMonthlyChart('history-chart-monthly', snap?.byLayerByMonth ?? null, yr);
+    renderSpeciesTable('history-species-table', snap?.topPollinators, snap?.topNativePlants);
+  };
+
+  await loadYear(_trendsMonthYear);
+
+  selRow.querySelector('#trends-year-picker').addEventListener('change', async e => {
+    _trendsMonthYear = parseInt(e.target.value, 10);
+    await loadYear(_trendsMonthYear);
   });
-
-  return el;
 }
 
 
@@ -1512,6 +1706,8 @@ map.on('load', async () => {
   registerExpansionOpportunitiesLayer(false);
   registerProblemAreasLayer(false);
   registerInVESTHeatmap(false);
+  registerInVESTUrbanHeatmap(false);
+  registerForagingBands(false);
 
   // 1. Polygon area layers FIRST — they render at the bottom of the stack
   for (const layer of AREA_LAYERS) {
@@ -1573,6 +1769,23 @@ map.on('load', async () => {
   registerLayer('other-wildlife', LAYERS.find(l => l.id === 'other-wildlife').defaultOn, { radius: 8, symbol: 'icon-deer' });
   // Commons photo markers — registered last so they render above all other layers
   registerCommonsLayer(false);
+  {
+    const map = getMap();
+    map.on('mouseenter', 'commons-photo-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'commons-photo-circle', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'commons-photo-circle', e => {
+      const p = e.features?.[0]?.properties;
+      if (!p) return;
+      openLightbox({
+        thumburl:    p.thumburl,
+        title:       p.title,
+        description: p.description,
+        artist:      p.artist,
+        license:     p.license,
+        descurl:     p.descurl,
+      });
+    });
+  }
 
   // Build the side-panel UI
   // Opacity callback: routes to the correct setter based on layer type
@@ -1712,17 +1925,9 @@ map.on('load', async () => {
   // Initialise the activity bar (opens/closes flyout panes)
   const activityBar = initActivityBar();
 
-  // Permalink — restore state from URL hash, then init sync
-  const _permalinkState = parsePermalink();
-  if (_permalinkState) {
-    applyPermalinkState(_permalinkState, map);
-  } else {
-    // Apply the Orientation view as the default starting state
-    const _orientPreset = LAYER_PRESETS.find(p => p.id === 'orientation');
-    if (_orientPreset) applyPreset(_orientPreset);
-  }
-
-  // Connectivity mesh follows corridor — no standalone toggle needed.
+  // Wire hardcoded-checkbox change handlers BEFORE applyPreset/applyPermalinkState.
+  // These listeners must exist when applyPreset dispatches 'change' events on them;
+  // otherwise layer visibility is never updated and the checkbox/layer state diverges.
   document.getElementById('toggle-heatmap-traffic')?.addEventListener('change', e => {
     setHeatmapVisibility('pollinator-traffic-heat', e.target.checked);
   });
@@ -1739,6 +1944,23 @@ map.on('load', async () => {
   document.getElementById('toggle-cdl-fringe')?.addEventListener('change', e => {
     setHeatmapVisibility('cdl-fringe-heat', e.target.checked);
   });
+  document.getElementById('toggle-invest-urban-heat')?.addEventListener('change', e => {
+    setHeatmapVisibility('invest-urban-heat', e.target.checked);
+    if (e.target.checked) _lazyComputeUrbanInVEST();
+  });
+  document.getElementById('toggle-foraging-bands')?.addEventListener('change', e => {
+    setHeatmapVisibility('foraging-bands', e.target.checked);
+  });
+
+  // Permalink — restore state from URL hash, then init sync
+  const _permalinkState = parsePermalink();
+  if (_permalinkState) {
+    applyPermalinkState(_permalinkState, map);
+  } else {
+    // Apply the Orientation view as the default starting state
+    const _orientPreset = LAYER_PRESETS.find(p => p.id === 'orientation');
+    if (_orientPreset) applyPreset(_orientPreset);
+  }
   // "All layers off" button — unchecks every visible toggle in the panel
   document.getElementById('btn-layers-all-off')?.addEventListener('click', () => {
     document.querySelectorAll('#panel-flyout input[type="checkbox"]:checked').forEach(cb => {
@@ -2096,27 +2318,91 @@ map.on('load', async () => {
   // Wire click interactions on all layers (points + polygon fills)
   const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
-  wireInteractions(
-    [...areaLayerIds, ...pointLayerIds],
-    (lngLat, props, feature) => {
-      // Cluster aggregate — zoom in to expand
-      if (props.cluster) {
-        zoomToCluster(feature.layer.source, props.cluster_id, feature.geometry.coordinates);
-        return;
-      }
-      if (isDrawerFeature(props)) {
-        openDrawer(feature ?? { properties: props, geometry: { type: 'Point', coordinates: [lngLat.lng, lngLat.lat] } });
-      } else {
-        const html = props.data_source ? buildAreaPopupHTML(props) : buildPopupHTML(props);
-        showPopup(lngLat, html);
-      }
-    }
-  );
+  const alertLayerIds  = ['points-expansion-opportunities', 'points-problem-areas'];
+  const investHitIds   = ['invest-urban-heat-hits-layer'];
 
-  // Wire clicks for analysis layers → intel drawer
-  wireInteractions(
-    ['points-expansion-opportunities', 'points-problem-areas'],
-    (_lngLat, props) => {
+  // Wire hover cursors for all interactive layers (no click listener here)
+  wireHoverCursors([...areaLayerIds, ...pointLayerIds, ...alertLayerIds, ...investHitIds]);
+
+  // Single unified click dispatcher — one query, one decision tree, no double-firing
+  getMap().on('click', e => {
+    const allHits = getMap().queryRenderedFeatures(e.point, {
+      layers: [...areaLayerIds, ...pointLayerIds, ...alertLayerIds, ...investHitIds],
+    });
+    if (!allHits.length) return;
+
+    const lngLat = e.lngLat;
+
+    // Urban InVEST hit — show explainer popup
+    const investHit = allHits.find(f => f.layer.id === 'invest-urban-heat-hits-layer');
+    if (investHit && !allHits.some(f => f.layer.id !== 'invest-urban-heat-hits-layer' && isDrawerFeature(f.properties))) {
+      const w = investHit.properties?.weight ?? 0;
+      const pct = Math.round(w * 100);
+      const tier = pct >= 70 ? 'relatively high quality' : pct >= 35 ? 'moderate quality' : 'lower quality relative to nearby urban areas';
+      const body = `
+        <div class="drawer-score-hero" style="margin-bottom:12px">
+          <div class="drawer-score-ring">
+            <span class="drawer-score-num">${pct}</span>
+            <span class="drawer-score-denom">/100</span>
+          </div>
+          <div class="drawer-score-bar-wrap">
+            <div class="drawer-score-bar"><div class="drawer-score-fill" style="width:${pct}%;background:#8b5cf6"></div></div>
+            <span class="drawer-score-tier" style="color:#8b5cf6">Urban habitat index — ${tier}</span>
+          </div>
+        </div>
+        <div class="drawer-section-label">What this score means</div>
+        <p class="drawer-intel-note">
+          This score compares the habitat potential of this location to other <strong>urban</strong> cells within the study area — not to rural grassland.
+          A score of ${pct}/100 means this area ranks in approximately the ${pct}th percentile of developed land for pollinator suitability.
+        </p>
+        <div class="drawer-section-label">About this model</div>
+        <p class="drawer-intel-note">
+          The InVEST Lonsdorf&nbsp;(2009) pollinator model was designed and calibrated for farmland — it scores
+          habitat relative to rural grassland and cropland, where urban land always loses.
+          This layer is a <strong>derivative adaptation</strong>: the same kernel is re-run at 660&nbsp;m resolution,
+          restricted to developed NLCD classes (≥20% impervious), and normalized against the best urban cell
+          rather than rural land. The result is a within-city comparison — it does not claim that any urban
+          site equals the habitat quality of a prairie remnant.
+          Small and medium solitary bees (Osmia, Lasioglossum) are upweighted; they are the species most
+          likely to colonize urban plantings.
+        </p>
+        <div class="drawer-section-label">Limitations</div>
+        <p class="drawer-intel-note">
+          Scores reflect the surrounding 660&nbsp;m land cover matrix, not what is specifically planted here.
+          Individual corridor sites (&lt;1 acre) are below this grid's resolution.
+          A high score means this block is better than surrounding impervious land —
+          not that it is good habitat in any absolute ecological sense.
+        </p>`;
+      openIntelDrawer('Urban Habitat Index', body, {
+        headerStyle: 'background:#3b0764',
+        labelHtml: '<i class="ph ph-buildings"></i> Urban Habitat Index',
+      });
+      return;
+    }
+
+    // Cluster — zoom in to expand (check first; cluster marker sits in pointLayerIds)
+    const clusterHit = allHits.find(f => f.properties.cluster);
+    if (clusterHit) {
+      zoomToCluster(clusterHit.layer.source, clusterHit.properties.cluster_id, clusterHit.geometry.coordinates);
+      return;
+    }
+
+    // Split hits into drawer-worthy features vs alert annotations
+    const drawerHit   = allHits.find(f => isDrawerFeature(f.properties));
+    const alertHits   = allHits.filter(f =>
+      f.properties.layer_id === 'problem-areas' ||
+      f.properties.layer_id === 'expansion-opportunities'
+    );
+
+    // Corridor / waystation / protected area — open dossier, inject any alert context
+    if (drawerHit) {
+      openDrawer(drawerHit, alertHits);
+      return;
+    }
+
+    // Alert-only click (no drawer feature underneath) — open intel drawer for topmost
+    if (alertHits.length) {
+      const props = alertHits[0].properties;
       if (props.layer_id === 'expansion-opportunities') {
         const score    = props.score ?? 0;
         const suit     = props.suitability ?? 'moderate';
@@ -2176,7 +2462,7 @@ map.on('load', async () => {
             ${_expansionFactorRow('Low pesticide pressure', pestPts, 5, barColor)}
             ${_expansionFactorRow('Pollinator activity (supporting)', pollPts, 5, barColor)}
           </div>
-          ${_buildExpansionPublicLandSection(_lngLat)}`;
+          ${_buildExpansionPublicLandSection(lngLat)}`;
         openIntelDrawer(
           props.name ?? 'Expansion Opportunity',
           body,
@@ -2191,23 +2477,29 @@ map.on('load', async () => {
         const body = `
           <div class="drawer-severity-badge" style="background:${sevColor}22;border-color:${sevColor}66;color:${sevColor}">
             <span class="drawer-severity-dot" style="background:${sevColor}"></span>
-            ${sev.toUpperCase()} SEVERITY
+            ${sev === 'high' ? 'STRONG' : sev === 'medium' ? 'MODERATE' : 'WEAK'} SIGNAL
           </div>
-          <div class="drawer-section-label">Problem Type</div>
+          <div class="drawer-section-label">Signal Type</div>
           <dl class="drawer-meta">
             <dt>Category</dt><dd>${typeLabel}</dd>
             <dt>Details</dt><dd>${props.common ?? ''}</dd>
           </dl>
-          <div class="drawer-section-label">What This Means</div>
+          <div class="drawer-section-label">What This May Indicate</div>
           <p class="drawer-intel-note" style="margin-top:4px">${_problemTypeExplanation(props.problem_type ?? '')}</p>`;
         openIntelDrawer(
-          props.name ?? 'Problem Area',
+          props.name ?? 'Site Signal',
           body,
-          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Problem Area' }
+          { headerStyle: `background:${hdrBg}`, labelHtml: '&#x26A0; Site Signal' }
         );
       }
+      return;
     }
-  );
+
+    // Regular popup — topmost non-alert, non-drawer feature
+    const topProps = allHits[0].properties;
+    const html = topProps.data_source ? buildAreaPopupHTML(topProps) : buildPopupHTML(topProps);
+    showPopup(lngLat, html);
+  });
 
   // Wire clicks on public land parcels → contact info drawer
   wireParcelClick((_lngLat, props) => {
@@ -2421,20 +2713,20 @@ function _problemTypeLabel(type) {
 function _problemTypeExplanation(type) {
   return {
     'pfas-proximity':
-      'A PFAS detection site is within 1 km of this habitat. Per- and polyfluoroalkyl substances persist in soil and water and may affect insect physiology and plant uptake. Monitoring and soil testing are recommended.',
+      'A PFAS detection site is within 1 km of this habitat. Per- and polyfluoroalkyl substances persist in soil and water and may affect insect physiology and plant uptake. Monitoring and soil testing are worth considering.',
     'unsupported-site':
-      'No pollinator sightings (iNaturalist, GBIF) have been recorded within 500 m of this site. This may indicate low visibility, lack of observation effort, or genuinely poor pollinator visitation. Field surveys would help distinguish.',
+      'No pollinator sightings (iNaturalist, GBIF) have been recorded within 500 m of this site. This may reflect low observation effort rather than an absence of pollinators — field surveys would help clarify.',
     'isolated-site':
-      'No other corridor site exists within 2 km — beyond the reliable foraging range of even large bumble bees. This site cannot exchange pollinators with the broader network without a new stepping-stone planting.',
+      'No other corridor site exists within 2 km — beyond the reliable foraging range of even large bumble bees. This site may have limited exchange with the broader network; a stepping-stone planting nearby could help.',
     'weak-node':
-      'The nearest corridor neighbor is 700 m–2 km away, placing this connection at the outer edge of small-bee foraging range. Mining bees, sweat bees, and mason bees may not reliably traverse this gap. A new planting within 700 m would restore optimal connectivity.',
+      'The nearest corridor neighbor is 700 m–2 km away, at the outer edge of small-bee foraging range. Mining bees, sweat bees, and mason bees may not reliably traverse this gap. A new planting within 700 m would strengthen the connection.',
     'poor-nesting':
-      'NLCD land-cover analysis shows low bare ground and sparse grassland cover within 300 m of this site. Ground-nesting species (70% of native bees) may have limited nesting substrate here.',
+      'NLCD land-cover analysis indicates low bare ground and sparse grassland cover within 300 m. Ground-nesting species (about 70% of native bees) may have limited nesting substrate here, though site-level conditions may differ from the remote data.',
     'shaded-habitat':
-      'More than 55% tree canopy coverage within 150 m shades out sun-loving pollinator plants such as wild bergamot, coneflowers, and milkweeds. Selective canopy thinning or edge planting could improve conditions.',
+      'Tree canopy coverage of over 55% within 150 m may reduce sun exposure for pollinator plants such as wild bergamot, coneflowers, and milkweeds. Selective canopy management or edge planting could be worth exploring.',
     'pesticide-high':
-      'This site is located in a county ranked in the top quartile for agricultural pesticide application pressure (USGS NWQP). Sublethal pesticide exposure can impair bee navigation, reproduction, and foraging efficiency.',
-  }[type] ?? 'Review conditions at this site to understand the potential impact on corridor function.';
+      'This site is in a county ranked in the top quartile for agricultural pesticide application pressure (USGS NWQP). Sublethal pesticide exposure can impair bee navigation and foraging; however, county-level data may not reflect conditions at this specific site.',
+  }[type] ?? 'Field assessment is recommended to better understand conditions at this site.';
 }
 
 

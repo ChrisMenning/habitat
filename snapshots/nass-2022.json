@@ -1,0 +1,14 @@
+{
+  "source": "nass",
+  "year": 2022,
+  "harvestedAt": "2026-03-28T20:00:10.172Z",
+  "available": true,
+  "colonies": null,
+  "coloniesYear": null,
+  "notableAcres": {
+    "CUCUMBERS": 6,
+    "PUMPKINS": 244,
+    "SQUASH": 76
+  },
+  "totalNotableAcres": 326
+}
