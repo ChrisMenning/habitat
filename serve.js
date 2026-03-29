@@ -660,6 +660,7 @@ async function proxyNlcdNesting(req, res) {
     res.writeHead(200, {
       'Content-Type':                'application/json',
       'Access-Control-Allow-Origin': '*',
+
       'Cache-Control':               'public, max-age=86400',
     });
     res.end(JSON.stringify(results));
@@ -787,7 +788,7 @@ async function proxyCanopyCheck(req, res) {
     res.end(JSON.stringify({ error: e.message }));
     return;
   }
-  if (sites.length > 50) {
+  if (sites.length > 200) {
     res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ error: 'batch too large (max 50 sites)' }));
     return;
@@ -2538,6 +2539,137 @@ function handleHealth(res) {
   res.end(JSON.stringify(payload));
 }
 
+// ── Journey North monarch data (one-time server-side download) ────────────────
+// Ported from scripts/fetch-journeynorth.js (which is an ES module and cannot
+// be required here).  Downloads the EDI CSV on first startup and writes it to
+// data/journeynorth_monarchs.json.  Skipped on subsequent starts if the file
+// already exists — the dataset (1996–2020, version 1) never changes.
+
+const JN_DATA_URL  = 'https://pasta.lternet.edu/package/data/eml/edi/949/1/02f2be4d90198702c46fa36556f3749a';
+const JN_OUT_PATH  = path.join(ROOT, 'data', 'journeynorth_monarchs.json');
+const JN_LAT_MIN   = 43.0, JN_LAT_MAX = 46.0;
+const JN_LON_MIN   = -90.5, JN_LON_MAX = -86.0;
+
+function _jnObsType(species) {
+  const s = (species || '').toLowerCase();
+  if (s.includes('roost'))                      return 'roost';
+  if (s.includes('egg') || s.includes('larva')) return 'egg_larva';
+  if (s.includes('milkweed'))                   return 'milkweed';
+  return 'adult';
+}
+
+function _jnParseCsvFields(line) {
+  const fields = [];
+  let field = '', inQuote = false;
+  for (let i = 0; i <= line.length; i++) {
+    const ch = line[i];
+    if (inQuote) {
+      if (ch === '"' && line[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"')           { inQuote = false; }
+      else if (ch !== undefined)     { field += ch; }
+    } else {
+      if (ch === '"')                { inQuote = true; }
+      else if (ch === ',' || ch === undefined) { fields.push(field); field = ''; }
+      else                           { field += ch; }
+    }
+  }
+  return fields;
+}
+
+function _jnStreamCsvLines(inStream, onLine) {
+  return new Promise((resolve, reject) => {
+    let buf = '';
+    inStream.on('data', chunk => {
+      buf += chunk.toString('utf8');
+      let nl;
+      while ((nl = buf.indexOf('\n')) !== -1) {
+        const line = buf.slice(0, nl).replace(/\r$/, '');
+        buf = buf.slice(nl + 1);
+        if (line.trim()) onLine(line);
+      }
+    });
+    inStream.on('end', () => {
+      if (buf.trim()) onLine(buf.trim());
+      resolve();
+    });
+    inStream.on('error', reject);
+  });
+}
+
+async function _fetchJourneyNorthData() {
+  if (fs.existsSync(JN_OUT_PATH)) {
+    console.log('[jn-monarchs] already exists — skipping');
+    return;
+  }
+  try {
+    fs.mkdirSync(path.join(ROOT, 'data'), { recursive: true });
+    console.log('[jn-monarchs] downloading Journey North monarch CSV (~68 MB)…');
+
+    await new Promise((resolve, reject) => {
+      const req = https.get(JN_DATA_URL, { headers: { 'User-Agent': 'BayHive/1.0 (Green Bay pollinator habitat tool)' } }, res => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} — ${res.statusMessage}`));
+          res.resume();
+          return;
+        }
+
+        let headerRow = null;
+        let colDate = -1, colSpecies = -1, colNumber = -1, colLat = -1, colLon = -1;
+        let total = 0, kept = 0;
+        const features = [];
+
+        _jnStreamCsvLines(res, line => {
+          if (!headerRow) {
+            headerRow = _jnParseCsvFields(line);
+            colDate    = headerRow.indexOf('date');
+            colSpecies = headerRow.indexOf('species');
+            colNumber  = headerRow.indexOf('number');
+            colLat     = headerRow.indexOf('latitude');
+            colLon     = headerRow.indexOf('longitude');
+            if (colLat === -1 || colLon === -1) {
+              reject(new Error('Could not find lat/lon columns: ' + headerRow.slice(0, 8).join(', ')));
+            }
+            return;
+          }
+
+          total++;
+          const cols = _jnParseCsvFields(line);
+          if (cols.length <= Math.max(colLat, colLon)) return;
+
+          const lat = parseFloat(cols[colLat]);
+          const lon = parseFloat(cols[colLon]);
+          if (!isFinite(lat) || !isFinite(lon)) return;
+          if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return;
+          if (lat === -999999 || lon === -999999) return;
+          if (lat < JN_LAT_MIN || lat > JN_LAT_MAX || lon < JN_LON_MIN || lon > JN_LON_MAX) return;
+
+          const date    = (colDate    >= 0 ? cols[colDate]    : '') || null;
+          const species = (colSpecies >= 0 ? cols[colSpecies] : '') || '';
+          const number  = colNumber >= 0 ? (parseInt(cols[colNumber], 10) || 1) : 1;
+          const year    = date ? +date.slice(0, 4) : null;
+          kept++;
+          features.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [lon, lat] },
+            properties: { obs_type: _jnObsType(species), type: species, date, year, n: number },
+          });
+        })
+          .then(() => {
+            const fc = { type: 'FeatureCollection', features };
+            fs.writeFileSync(JN_OUT_PATH, JSON.stringify(fc));
+            const kb = Math.round(Buffer.byteLength(JSON.stringify(fc)) / 1024);
+            console.log(`[jn-monarchs] done — ${kept} of ${total} rows kept (${kb} KB, ${features.length} features)`);
+            resolve();
+          })
+          .catch(reject);
+      });
+      req.on('error', reject);
+    });
+  } catch (err) {
+    console.error('[jn-monarchs] download failed:', err.message);
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 const server = http.createServer((req, res) => {
@@ -2741,6 +2873,9 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`Open → http://localhost:${PORT}`);
   // Restore all in-memory caches from disk before warming.
   _loadPersistedCaches();
+  // Download Journey North monarch data on first run (one-time, ~68 MB CSV → compact GeoJSON).
+  // Skipped immediately on subsequent starts when data/journeynorth_monarchs.json already exists.
+  setTimeout(_fetchJourneyNorthData, 5000);
   // Pre-warm the parcel tile cache in the background.
   // 300 tiles × 2.5 s ≈ 12.5 min; already-cached tiles are skipped instantly.
   setTimeout(_warmParcelCache, 5000);
