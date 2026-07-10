@@ -631,6 +631,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
 
 /* â”€â”€â”€ MAP GUIDE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 #map-guide { padding: var(--gap-xl) 4rem; background: var(--bark); }
+#open-source-intro { padding: var(--gap-xl) 4rem; }
 
 .guide-inner { max-width: 1100px; margin: 0 auto; }
 
@@ -758,7 +759,7 @@ footer { padding: 4rem 4rem 3rem; background: var(--field); }
   .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
   .footer-bottom { flex-direction: column; align-items: flex-start; }
   .hero-desc { font-size: 0.9rem; }
-  #map-guide { padding: 4rem 1.5rem; }
+  #map-guide, #open-source-intro { padding: 4rem 1.5rem; }
   .guide-header, .drawer-preview { grid-template-columns: 1fr; gap: 2rem; }
   .site-type-grid { grid-template-columns: 1fr; }
   .conn-tier { grid-template-columns: 60px 1fr; gap: 1rem; }
