@@ -208,13 +208,6 @@ def('🔑 API Configuration', 'NOAA_CDO_TOKEN configured (live GDD / climate dat
 }, true);
 
 // ── 🔌 Server Proxy Endpoints ─────────────────────────────────────────────────
-def('🔌 Server Proxy Endpoints', 'GET /api/hnp-plantings → GeoJSON FeatureCollection', async () => {
-  const r = await fetch('/api/hnp-plantings', { cache: 'no-store' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const d = await r.json();
-  if (d.type !== 'FeatureCollection') throw new Error(`Expected FeatureCollection, got: ${d.type ?? JSON.stringify(d).slice(0,80)}`);
-  if (!Array.isArray(d.features)) throw new Error('features is not an array');
-});
 def('🔌 Server Proxy Endpoints', 'GET /api/cdl-stats → returns rows array', async () => {
   const r = await fetch('/api/cdl-stats');
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -257,18 +250,22 @@ def('🔌 Server Proxy Endpoints', 'GET /api/snapshots → {files:[]} index', as
   const d = await r.json();
   if (!Array.isArray(d.files)) throw new Error('Response missing "files" array');
 });
-def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting → scores for 1 site', async () => {
-  const sites = JSON.stringify([{ id: 'test', lng: -88.0133, lat: 44.5133 }]);
-  const r = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(sites)}`);
+def('🔌 Server Proxy Endpoints', 'POST /api/nlcd-nesting → scores for 1 site', async () => {
+  const sites = [{ id: 'test', lng: -88.0133, lat: 44.5133 }];
+  const r = await fetch('/api/nlcd-nesting', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sites }),
+  });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const d = await r.json();
   if (!Array.isArray(d)) throw new Error(`Expected array, got: ${typeof d}`);
   if (d.length !== 1) throw new Error(`Expected 1 result, got ${d.length}`);
   if (typeof d[0].score !== 'number') throw new Error(`Result missing numeric score`);
 });
-def('🔌 Server Proxy Endpoints', 'GET /api/nlcd-nesting rejects batch > 600 sites (400)', async () => {
-  const sites = JSON.stringify(Array.from({ length: 601 }, (_, i) => ({ id: `s${i}`, lng: -88, lat: 44.5 })));
-  const r = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(sites)}`);
+def('🔌 Server Proxy Endpoints', 'POST /api/nlcd-nesting rejects batch > 600 sites (400)', async () => {
+  const sites = Array.from({ length: 601 }, (_, i) => ({ id: `s${i}`, lng: -88, lat: 44.5 }));
+  const r = await fetch('/api/nlcd-nesting', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sites }),
+  });
   if (r.status !== 400) throw new Error(`Expected HTTP 400 for oversized batch, got ${r.status}`);
 });
 
@@ -332,15 +329,6 @@ def('🌐 External API Connectivity', 'USDA CropScape CDL WMS reachable', async 
   if (d.error) throw new Error(d.error);
   if (d.status >= 500) throw new Error(`CDL WMS returned HTTP ${d.status}`);
 });
-def('🌐 External API Connectivity', 'HNP plantings API reachable (via /api/hnp-plantings proxy)', async () => {
-  const r = await fetch('/api/hnp-plantings', { cache: 'no-store' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const d = await r.json();
-  if (d.type !== 'FeatureCollection') throw new Error('Expected FeatureCollection');
-  // Require at least one feature - confirms upstream is live
-  if (d.features.length === 0) throw new Error('HNP returned 0 plantings — upstream may be down');
-});
-
 // ── 🗺️ Map Rendering ──────────────────────────────────────────────────────────
 let _testMap = null;
 // Single shared promise that resolves once the map 'load' event fires.
@@ -517,7 +505,7 @@ def('🧮 Module Logic', 'nesting nestingTier(100) → good', async () => {
 def('🧮 Module Logic', 'alerts computeAlerts returns array with empty inputs', async () => {
   const result = computeAlerts({
     corridorFeatures: [], waystationFeatures: [], pfasFeatures: [],
-    pollinatorSightings: [], hnpFeatures: [], cdlStats: null,
+    pollinatorSightings: [], cdlStats: null,
     quickStats: null, climateData: null, pesticideCounties: [],
     parcelFeatures: [], nestingScores: new Map(),
   });

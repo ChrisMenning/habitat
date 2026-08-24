@@ -71,10 +71,6 @@
         <span class="stat-value" id="stat-val-waystations">56</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Homegrown National Parks</span>
-        <span class="stat-value" id="stat-val-hnp">—</span>
-      </div>
-      <div class="stat-row">
         <span class="stat-label">Corridor Area</span>
         <span class="stat-value" id="stat-val-corridor-area">—</span>
       </div>
@@ -475,7 +471,6 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // ── Live card data ────────────────────────────────────────────────────────────
 // Fetches real data from:
 //   GBCC ArcGIS FeatureServer — corridor site count + total planted area
-//   /api/hnp-count            — HNP yard count for local bbox (proxied; needs node server)
 //   /api/snapshots            — latest iNaturalist harvest for observation count
 //   iNaturalist API (CORS)    — 30-day fallback if no snapshot
 //   WI DNR ArcGIS MapServer   — PFAS sites for live alert (CORS-enabled)
@@ -573,21 +568,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   // uses 56 waystations managed in waystations.js.  The static placeholder
   // "56" in the HTML is accurate — no fetch needed.
 
-  // ── 3. HNP yard count (server-side bbox-filtered endpoint) ─────────────
-  try {
-    const hnpCtrl    = new AbortController();
-    const hnpTimeout = setTimeout(() => hnpCtrl.abort(), 20000);
-    const res = await fetch('/api/hnp-count', { signal: hnpCtrl.signal });
-    clearTimeout(hnpTimeout);
-    const data  = res.ok ? await res.json() : {};
-    const count = data.count ?? null;
-    if (count != null) {
-      setVal('stat-val-hnp', count);
-      setVal('guide-val-hnp', count);
-    }
-  } catch { /* proxy unavailable — keep "—" */ }
-
-  // ── 4. Observation count — snapshot first, iNat live fallback ───────────
+  // ── 3. Observation count — snapshot first, iNat live fallback ───────────
   let obsLoaded = false;
   try {
     const idx       = await (await fetch('/api/snapshots', { signal: AbortSignal.timeout(5000) })).json();
@@ -630,7 +611,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     } catch { /* iNat unavailable */ }
   }
 
-  // ── 5. Live PFAS alert — WI DNR ArcGIS (CORS-enabled) ───────────────────
+  // ── 4. Live PFAS alert — WI DNR ArcGIS (CORS-enabled) ───────────────────
   // Fetch PFAS sites in the bbox, then check proximity to corridor centroids.
   // If any are within 1 km, report a genuine field alert; this replaces the
   // snapshot/iNat message in the Intel card's alert row.

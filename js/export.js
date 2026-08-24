@@ -97,7 +97,6 @@ export function exportReport() {
     gbifCount          = 0,
     beeRecords         = 0,
     beeImperiled       = 0,
-    hnpCount           = 0,
     ebirdCount         = 0,
     habitatNodeCount   = 0,
     pollinatorCount    = 0,
@@ -196,10 +195,9 @@ export function exportReport() {
       <div class="card"><div class="val">${nativeSpeciesCount.toLocaleString()}</div><div class="lbl">Native spp observed</div></div>
       <div class="card"><div class="val">${alerts.length}</div><div class="lbl">Active alerts</div></div>
     </div>
-    <div class="grid5">
+    <div class="grid4">
       <div class="card"><div class="val">${corridorCount}</div><div class="lbl">Corridor sites</div></div>
       <div class="card"><div class="val">${waystationCount.toLocaleString()}</div><div class="lbl">Waystations</div></div>
-      <div class="card"><div class="val">${hnpCount.toLocaleString()}</div><div class="lbl">HNP yards</div></div>
       <div class="card"><div class="val">${ebirdCount.toLocaleString()}</div><div class="lbl">eBird sightings</div></div>
       <div class="card"><div class="val">${gddStr}</div><div class="lbl">GDD base-50</div></div>
     </div>${foragingRow}`;
@@ -261,7 +259,7 @@ export function exportReport() {
 
     return `<h2>Habitat Network</h2>
     <p style="font-size:11px;color:#64748b;margin:0 0 8px">
-      ${corridorCount} pollinator corridor sites · ${waystationCount} Monarch waystations · ${hnpCount} Homegrown National Park yards
+      ${corridorCount} pollinator corridor sites · ${waystationCount} Monarch waystations
     </p>
     <table>
       <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
@@ -579,7 +577,7 @@ export function exportReport() {
     return `<p style="font-size:10px;color:#94a3b8;margin-top:28px;border-top:1px solid #f1f5f9;padding-top:10px;">
       Data sources: iNaturalist API · GBIF · NOAA GHCND · USDA NASS QuickStats · CDL CropScape ·
       USGS PAD-US v3.0 · WI DNR · Green Bay Conservation Corps · Monarch Watch · eBird ·
-      Homegrown National Park · PFAS MapServer (WI DNR).<br>
+      PFAS MapServer (WI DNR).<br>
       Map center: ${mapCenter[1].toFixed(4)}°N ${Math.abs(mapCenter[0]).toFixed(4)}°W · Zoom ${mapZoom.toFixed(1)} ·
       Active filters: ${escHtml(filterStr)} ·
       Report generated ${escHtml(dateStr)} at ${escHtml(timeStr)}.
@@ -890,7 +888,7 @@ export function exportEcologicalAssessment() {
   const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
 
   const {
-    corridorCount = 0, waystationCount = 0, hnpCount = 0,
+    corridorCount = 0, waystationCount = 0,
     corridorSqFt = 0,
     corridorFeatures = [], waystationFeatures = [],
     nestingScores = new Map(),
@@ -1050,7 +1048,7 @@ export function exportEcologicalAssessment() {
 <h1>🐝 Bay Hive — Ecological Assessment</h1>
 <div class="meta">Generated ${escHtml(dateStr)} at ${escHtml(timeStr)} · Biologists · DNR staff · Researchers</div>
 <h2>Habitat Network</h2>
-<p style="font-size:11px;color:#64748b;margin:0 0 8px">${corridorCount} corridor sites · ${waystationCount} waystations · ${hnpCount} HNP yards · ${areaStr} planted area</p>
+<p style="font-size:11px;color:#64748b;margin:0 0 8px">${corridorCount} corridor sites · ${waystationCount} waystations · ${areaStr} planted area</p>
 <table>
   <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
   <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>

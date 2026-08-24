@@ -253,17 +253,6 @@ export const WAYSTATION_LAYER = [
   },
 ];
 
-export const HNP_LAYER = [
-  {
-    id:          'hnp',
-    label:       'Homegrown National Park',
-    emoji:       '<i class="ph ph-leaf"></i>',
-    description: 'Registered native plant yards contributing to local biodiversity (Homegrown National Park)',
-    defaultOn:   true,
-    vintage:     null,
-  },
-];
-
 /**
  * Returns a relative tile URL served by the local dev server's NLCD proxy.
  * The proxy fetches the full NLCD WMS tile and filters pixels server-side,
@@ -536,7 +525,7 @@ export const LAYER_PRESETS = [
     icon:        'compass',
     description: 'Network overview with active threats — the recommended first look.',
     on: [
-      'gbcc-corridor', 'gbcc-treatment', 'waystations', 'hnp',
+      'gbcc-corridor', 'gbcc-treatment', 'waystations',
       'dnr-pfas', 'problem-areas', 'cdl-fringe',
     ],
   },
@@ -626,7 +615,7 @@ export const TEMPORAL_MISMATCH_THRESHOLD_YEARS = 3;
 export const LAYER_VINTAGES = new Map(
   [
     ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
-    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...NLCD_LAYERS,
     ...TREE_CANOPY_LAYERS, ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
     PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
   ]
@@ -642,7 +631,7 @@ export const LAYER_VINTAGES = new Map(
 export const LAYER_LABELS = new Map(
   [
     ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
-    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...NLCD_LAYERS,
     ...TREE_CANOPY_LAYERS, ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
     PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
   ]
@@ -702,8 +691,6 @@ export const FILL_COLOR_EXPR = [
   'bees-imperiled',        '#ef4444',  // red      (conservation concern)
   // Waystation points (violet — distinct from any sighting layer)
   'waystations',           '#8b5cf6',  // violet
-  // Homegrown National Park native planting yards
-  'hnp',                   '#10b981',  // emerald — native planting yards
   // eBird bird sightings (Cornell Lab)
   'ebird',                 '#a78bfa',  // violet-purple
   // Hazard point layers
@@ -723,6 +710,5 @@ export const STROKE_COLOR_EXPR = [
   'naturalised', '#ea580c',
   'invasive',    '#dc2626',
   'waystation',  '#ffffff',   // white ring on violet waystation circles
-  'hnp',         '#065f46',   // dark green ring on emerald HNP circles
   /* default (unknown) */ '#d1d5db',
 ];

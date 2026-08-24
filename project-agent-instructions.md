@@ -71,7 +71,7 @@ Alert types and their spatial logic:
 - Populates `#site-drawer-body` when a feature is clicked
 - Opens/closes `#site-drawer` (toggle `aria-hidden`)
 - Close button: `#site-drawer-close`
-- Handles all feature types: corridor sites, waystations, HNP yards, PFAS sites, protected areas
+- Handles all feature types: corridor sites, waystations, PFAS sites, protected areas
 
 ### `filters.js`
 - Populates `#panel-filter-chips`
@@ -86,7 +86,6 @@ Alert types and their spatial logic:
 
 ### `serve.js`
 - Node.js static file server (no dependencies)
-- CORS proxy at `/api/hnp-plantings` for Homegrown National Park API (no CORS headers)
 - Custom PNG pixel-filter proxy for NLCD tiles: strips non-matching land cover class pixels to transparent
   - Implements CRC32, Paeth predictor, palette PNG support, RGBA encoder — all in pure Node.js, no npm
   - **Do not refactor or "improve" this without explicit instruction — it is bespoke infrastructure**
@@ -100,7 +99,6 @@ Alert types and their spatial logic:
 | NE WI Pollinator Corridor | GBCC ArcGIS Feature Service | GeoJSON polygon | Core backbone of the map |
 | GBCC Habitat Treatments | GBCC ArcGIS Feature Service | GeoJSON polygon | Restoration treatment areas |
 | Monarch Waystations | `waystation_coords.json` | GeoJSON point | Manually curated, 56 sites |
-| Homegrown National Park | HNP API via `/api/hnp-plantings` proxy | GeoJSON point | Self-reported native yards |
 | iNaturalist Sightings | iNaturalist API v1 | GeoJSON point | Up to 2,000 obs, 15 km radius |
 | GBIF Records | GBIF Occurrence API v1 | GeoJSON point | Up to 600 records per query |
 | USGS PAD-US | USGS PAD-US v3.0 ArcGIS Feature Service | GeoJSON polygon | Protected areas |
