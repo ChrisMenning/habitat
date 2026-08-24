@@ -441,10 +441,18 @@ export async function initClimatePanel() {
   obsYears.forEach((y, i) => { if (obsResults[i]) observedYears[y] = obsResults[i]; });
   _climateState.observedYears = observedYears;
 
-  // Prefer IEM observed data for current-year GDD when available — more reliable than GHCND
-  // (NOAA CDO/GHCND may return real rows with 0 GDD if all days are below 50°F, hiding IEM data)
+  // Prefer IEM observed data for current-year GDD — more reliable than GHCND
+  // (NOAA CDO/GHCND may return real rows with 0 GDD if all days are below 50°F,
+  // hiding IEM data) — but only when the IEM snapshot is at least as up to date
+  // as the live GHCND result. IEM's observed-temps/{year} snapshot is a static
+  // file refreshed by scripts/fetch-iem.js, not a live fetch; if it's gone
+  // stale, it must not silently override a good live GHCND reading (see
+  // decisions.md, 2026-08-24 — this exact bug froze the live GDD stat for
+  // ~5 months).
   const currentYearObs = observedYears[currentYear];
-  if (currentYearObs) {
+  const iemLastDoy     = currentYearObs?.length ? currentYearObs[currentYearObs.length - 1].doy : -1;
+  const ghcndLastDoy   = _climateState.current?.latestDate ? parseDateToDoy(_climateState.current.latestDate) : -1;
+  if (currentYearObs && iemLastDoy >= ghcndLastDoy) {
     const iemGdd = currentYearObs.reduce((sum, r) => sum + (r.gddBase50 ?? 0), 0);
     const lastRec = currentYearObs[currentYearObs.length - 1];
     _climateState.current = { accumulatedGDD: iemGdd, latestDate: lastRec?.date ?? null, source: 'iem' };
@@ -453,9 +461,9 @@ export async function initClimatePanel() {
     _climateState.pctDeviation = (normalGddUpd && normalGddUpd > 0)
       ? ((iemGdd - normalGddUpd) / normalGddUpd) * 100
       : null;
-  } else if (!_climateState.current?.latestDate) {
-    // IEM also unavailable — current stays as GHCND result (may be 0 or null)
   }
+  // else: GHCND is at least as current as the IEM snapshot (or IEM is
+  // unavailable) — keep the GHCND-derived result, which may itself be 0/null.
 }
 
 // ── Panel DOM rendering ───────────────────────────────────────────────────────

@@ -45,7 +45,7 @@ A browser-based public-data intelligence tool for pollinator habitat in the Gree
 | Wikimedia Commons Photos | Wikimedia Commons API (keyword search, proximity-filtered) |
 | Crop statistics | USDA NASS QuickStats API *(optional)* |
 | Bird sightings | Cornell eBird API *(optional)* |
-| Climate data | NOAA CDO / NCEI *(optional)* |
+| Climate data | NOAA CDO / NCEI *(optional)*, with current-year GDD backed by Iowa Environmental Mesonet (IEM) observed daily temps as a resilient fallback |
 
 Analysis radius: **15 km** from Green Bay city center (44.519°N, 88.020°W).
 

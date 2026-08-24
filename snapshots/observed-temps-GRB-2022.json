@@ -1,25 +1,25 @@
 {
-  "station": "GRB / USW00014898",
-  "stationName": "GREEN BAY AUSTIN STRAUBEL INTL AP, WI US",
+  "station": "GRB",
+  "stationName": "GRB / USW00014898 GREEN BAY AUSTIN STRAUBEL INTL AP, WI US",
   "year": 2022,
   "source": "Iowa Environmental Mesonet (IEM) ASOS archive — Iowa State University. Observed daily temperature data; not federal government-hosted.",
   "sourceUrl": "https://mesonet.agron.iastate.edu/",
-  "retrieved": "2026-03-27",
-  "cumulativeGddBase50": 2802,
+  "retrieved": "2026-08-24",
+  "cumulativeGddBase50": 2810,
   "records": [
     {
       "doy": 1,
       "date": "01-01",
-      "tmax": 26,
+      "tmax": 26.1,
       "tmin": 12,
-      "tavg": 19,
+      "tavg": 19.1,
       "gddBase50": 0
     },
     {
       "doy": 2,
       "date": "01-02",
       "tmax": 18,
-      "tmin": 2,
+      "tmin": 1.9,
       "tavg": 10,
       "gddBase50": 0
     },
@@ -27,22 +27,22 @@
       "doy": 3,
       "date": "01-03",
       "tmax": 21,
-      "tmin": 1,
-      "tavg": 11,
+      "tmin": 1.9,
+      "tavg": 11.5,
       "gddBase50": 0
     },
     {
       "doy": 4,
       "date": "01-04",
       "tmax": 32,
-      "tmin": 11,
-      "tavg": 21.5,
+      "tmin": 12,
+      "tavg": 22,
       "gddBase50": 0
     },
     {
       "doy": 5,
       "date": "01-05",
-      "tmax": 29,
+      "tmax": 28.9,
       "tmin": 16,
       "tavg": 22.5,
       "gddBase50": 0
@@ -50,25 +50,25 @@
     {
       "doy": 6,
       "date": "01-06",
-      "tmax": 19,
-      "tmin": 9,
-      "tavg": 14,
+      "tmax": 18,
+      "tmin": 8.6,
+      "tavg": 13.3,
       "gddBase50": 0
     },
     {
       "doy": 7,
       "date": "01-07",
-      "tmax": 19,
-      "tmin": 2,
-      "tavg": 10.5,
+      "tmax": 17.1,
+      "tmin": 3,
+      "tavg": 10.1,
       "gddBase50": 0
     },
     {
       "doy": 8,
       "date": "01-08",
-      "tmax": 26,
-      "tmin": 9,
-      "tavg": 17.5,
+      "tmax": 25,
+      "tmin": 10.9,
+      "tavg": 18,
       "gddBase50": 0
     },
     {
@@ -83,16 +83,16 @@
       "doy": 10,
       "date": "01-10",
       "tmax": 5,
-      "tmin": -10,
-      "tavg": -2.5,
+      "tmin": -8,
+      "tavg": -1.5,
       "gddBase50": 0
     },
     {
       "doy": 11,
       "date": "01-11",
-      "tmax": 29,
-      "tmin": -9,
-      "tavg": 10,
+      "tmax": 28.9,
+      "tmin": -8,
+      "tavg": 10.5,
       "gddBase50": 0
     },
     {
@@ -106,24 +106,24 @@
     {
       "doy": 13,
       "date": "01-13",
-      "tmax": 34,
-      "tmin": 18,
+      "tmax": 33,
+      "tmin": 19,
       "tavg": 26,
       "gddBase50": 0
     },
     {
       "doy": 14,
       "date": "01-14",
-      "tmax": 18,
+      "tmax": 17.1,
       "tmin": 10,
-      "tavg": 14,
+      "tavg": 13.6,
       "gddBase50": 0
     },
     {
       "doy": 15,
       "date": "01-15",
-      "tmax": 14,
-      "tmin": -3,
+      "tmax": 12.9,
+      "tmin": -2,
       "tavg": 5.5,
       "gddBase50": 0
     },
@@ -131,72 +131,72 @@
       "doy": 16,
       "date": "01-16",
       "tmax": 21,
-      "tmin": -4,
-      "tavg": 8.5,
+      "tmin": -3,
+      "tavg": 9,
       "gddBase50": 0
     },
     {
       "doy": 17,
       "date": "01-17",
       "tmax": 28,
-      "tmin": 20,
-      "tavg": 24,
+      "tmin": 21,
+      "tavg": 24.5,
       "gddBase50": 0
     },
     {
       "doy": 18,
       "date": "01-18",
-      "tmax": 37,
-      "tmin": 26,
-      "tavg": 31.5,
+      "tmax": 36,
+      "tmin": 26.1,
+      "tavg": 31.1,
       "gddBase50": 0
     },
     {
       "doy": 19,
       "date": "01-19",
-      "tmax": 37,
+      "tmax": 34,
       "tmin": 4,
-      "tavg": 20.5,
+      "tavg": 19,
       "gddBase50": 0
     },
     {
       "doy": 20,
       "date": "01-20",
-      "tmax": 10,
+      "tmax": 9,
       "tmin": -6,
-      "tavg": 2,
+      "tavg": 1.5,
       "gddBase50": 0
     },
     {
       "doy": 21,
       "date": "01-21",
       "tmax": 18,
-      "tmin": -10,
-      "tavg": 4,
+      "tmin": -9.9,
+      "tavg": 4.1,
       "gddBase50": 0
     },
     {
       "doy": 22,
       "date": "01-22",
-      "tmax": 24,
-      "tmin": 11,
-      "tavg": 17.5,
+      "tmax": 23,
+      "tmin": 10.9,
+      "tavg": 17,
       "gddBase50": 0
     },
     {
       "doy": 23,
       "date": "01-23",
       "tmax": 12,
-      "tmin": 0,
-      "tavg": 6,
+      "tmin": 1,
+      "tavg": 6.5,
       "gddBase50": 0
     },
     {
       "doy": 24,
       "date": "01-24",
       "tmax": 19,
-      "tmin": -1,
-      "tavg": 9,
+      "tmin": 0,
+      "tavg": 9.5,
       "gddBase50": 0
     },
     {
@@ -210,41 +210,41 @@
     {
       "doy": 26,
       "date": "01-26",
-      "tmax": 11,
-      "tmin": -17,
-      "tavg": -3,
+      "tmax": 10.9,
+      "tmin": -16.1,
+      "tavg": -2.6,
       "gddBase50": 0
     },
     {
       "doy": 27,
       "date": "01-27",
-      "tmax": 29,
-      "tmin": 7,
-      "tavg": 18,
+      "tmax": 28.9,
+      "tmin": 8.1,
+      "tavg": 18.5,
       "gddBase50": 0
     },
     {
       "doy": 28,
       "date": "01-28",
-      "tmax": 18,
-      "tmin": -8,
-      "tavg": 5,
+      "tmax": 17.1,
+      "tmin": -6,
+      "tavg": 5.6,
       "gddBase50": 0
     },
     {
       "doy": 29,
       "date": "01-29",
       "tmax": 21,
-      "tmin": 11,
-      "tavg": 16,
+      "tmin": 12,
+      "tavg": 16.5,
       "gddBase50": 0
     },
     {
       "doy": 30,
       "date": "01-30",
       "tmax": 28,
-      "tmin": 15,
-      "tavg": 21.5,
+      "tmin": 16,
+      "tavg": 22,
       "gddBase50": 0
     },
     {
@@ -258,17 +258,17 @@
     {
       "doy": 32,
       "date": "02-01",
-      "tmax": 42,
+      "tmax": 42.8,
       "tmin": 19,
-      "tavg": 30.5,
+      "tavg": 30.9,
       "gddBase50": 0
     },
     {
       "doy": 33,
       "date": "02-02",
-      "tmax": 19,
+      "tmax": 18,
       "tmin": 9,
-      "tavg": 14,
+      "tavg": 13.5,
       "gddBase50": 0
     },
     {
@@ -282,16 +282,16 @@
     {
       "doy": 35,
       "date": "02-04",
-      "tmax": 15,
-      "tmin": 4,
-      "tavg": 9.5,
+      "tmax": 15.1,
+      "tmin": 5,
+      "tavg": 10.1,
       "gddBase50": 0
     },
     {
       "doy": 36,
       "date": "02-05",
-      "tmax": 20,
-      "tmin": -1,
+      "tmax": 19.9,
+      "tmin": -0.9,
       "tavg": 9.5,
       "gddBase50": 0
     },
@@ -299,15 +299,15 @@
       "doy": 37,
       "date": "02-06",
       "tmax": 32,
-      "tmin": 18,
-      "tavg": 25,
+      "tmin": 19,
+      "tavg": 25.5,
       "gddBase50": 0
     },
     {
       "doy": 38,
       "date": "02-07",
-      "tmax": 26,
-      "tmin": 15,
+      "tmax": 25,
+      "tmin": 16,
       "tavg": 20.5,
       "gddBase50": 0
     },
@@ -330,80 +330,80 @@
     {
       "doy": 41,
       "date": "02-10",
-      "tmax": 29,
-      "tmin": 22,
-      "tavg": 25.5,
+      "tmax": 28.9,
+      "tmin": 23,
+      "tavg": 26,
       "gddBase50": 0
     },
     {
       "doy": 42,
       "date": "02-11",
       "tmax": 40,
-      "tmin": 11,
+      "tmin": 10.9,
       "tavg": 25.5,
       "gddBase50": 0
     },
     {
       "doy": 43,
       "date": "02-12",
-      "tmax": 13,
-      "tmin": 3,
-      "tavg": 8,
+      "tmax": 12.9,
+      "tmin": 4,
+      "tavg": 8.5,
       "gddBase50": 0
     },
     {
       "doy": 44,
       "date": "02-13",
-      "tmax": 17,
+      "tmax": 17.1,
       "tmin": 1,
-      "tavg": 9,
+      "tavg": 9.1,
       "gddBase50": 0
     },
     {
       "doy": 45,
       "date": "02-14",
-      "tmax": 21,
+      "tmax": 19.9,
       "tmin": 6,
-      "tavg": 13.5,
+      "tavg": 13,
       "gddBase50": 0
     },
     {
       "doy": 46,
       "date": "02-15",
       "tmax": 32,
-      "tmin": 5,
-      "tavg": 18.5,
+      "tmin": 6,
+      "tavg": 19,
       "gddBase50": 0
     },
     {
       "doy": 47,
       "date": "02-16",
       "tmax": 46,
-      "tmin": 29,
+      "tmin": 28.9,
       "tavg": 37.5,
       "gddBase50": 0
     },
     {
       "doy": 48,
       "date": "02-17",
-      "tmax": 29,
+      "tmax": 28,
       "tmin": 6,
-      "tavg": 17.5,
+      "tavg": 17,
       "gddBase50": 0
     },
     {
       "doy": 49,
       "date": "02-18",
-      "tmax": 31,
-      "tmin": 0,
-      "tavg": 15.5,
+      "tmax": 30.9,
+      "tmin": 1,
+      "tavg": 16,
       "gddBase50": 0
     },
     {
       "doy": 50,
       "date": "02-19",
-      "tmax": 17,
-      "tmin": 2,
+      "tmax": 17.1,
+      "tmin": 1.9,
       "tavg": 9.5,
       "gddBase50": 0
     },
@@ -411,87 +411,87 @@
       "doy": 51,
       "date": "02-20",
       "tmax": 50,
-      "tmin": 17,
-      "tavg": 33.5,
+      "tmin": 18,
+      "tavg": 34,
       "gddBase50": 0
     },
     {
       "doy": 52,
       "date": "02-21",
-      "tmax": 26,
-      "tmin": 17,
-      "tavg": 21.5,
+      "tmax": 25,
+      "tmin": 17.1,
+      "tavg": 21.1,
       "gddBase50": 0
     },
     {
       "doy": 53,
       "date": "02-22",
-      "tmax": 20,
-      "tmin": 12,
+      "tmax": 19,
+      "tmin": 12.9,
       "tavg": 16,
       "gddBase50": 0
     },
     {
       "doy": 54,
       "date": "02-23",
-      "tmax": 23,
+      "tmax": 21.9,
       "tmin": 9,
-      "tavg": 16,
+      "tavg": 15.5,
       "gddBase50": 0
     },
     {
       "doy": 55,
       "date": "02-24",
-      "tmax": 21,
-      "tmin": 11,
-      "tavg": 16,
+      "tmax": 19.9,
+      "tmin": 12.9,
+      "tavg": 16.4,
       "gddBase50": 0
     },
     {
       "doy": 56,
       "date": "02-25",
-      "tmax": 25,
-      "tmin": 13,
-      "tavg": 19,
+      "tmax": 24.1,
+      "tmin": 12.9,
+      "tavg": 18.5,
       "gddBase50": 0
     },
     {
       "doy": 57,
       "date": "02-26",
-      "tmax": 35,
-      "tmin": 8,
+      "tmax": 34,
+      "tmin": 9,
       "tavg": 21.5,
       "gddBase50": 0
     },
     {
       "doy": 58,
       "date": "02-27",
-      "tmax": 36,
-      "tmin": 20,
-      "tavg": 28,
+      "tmax": 35,
+      "tmin": 19.9,
+      "tavg": 27.5,
       "gddBase50": 0
     },
     {
       "doy": 59,
       "date": "02-28",
-      "tmax": 40,
-      "tmin": 20,
-      "tavg": 30,
+      "tmax": 39,
+      "tmin": 19.9,
+      "tavg": 29.5,
       "gddBase50": 0
     },
     {
       "doy": 60,
       "date": "03-01",
       "tmax": 39,
-      "tmin": 24,
-      "tavg": 31.5,
+      "tmin": 24.1,
+      "tavg": 31.6,
       "gddBase50": 0
     },
     {
       "doy": 61,
       "date": "03-02",
       "tmax": 38,
-      "tmin": 20,
+      "tmin": 19.9,
       "tavg": 29,
       "gddBase50": 0
     },
@@ -499,16 +499,16 @@
       "doy": 62,
       "date": "03-03",
       "tmax": 30,
-      "tmin": 14,
-      "tavg": 22,
+      "tmin": 15.1,
+      "tavg": 22.6,
       "gddBase50": 0
     },
     {
       "doy": 63,
       "date": "03-04",
-      "tmax": 39,
-      "tmin": 15,
-      "tavg": 27,
+      "tmax": 38,
+      "tmin": 15.1,
+      "tavg": 26.6,
       "gddBase50": 0
     },
     {
@@ -522,8 +522,8 @@
     {
       "doy": 65,
       "date": "03-06",
-      "tmax": 46,
-      "tmin": 32,
+      "tmax": 45,
+      "tmin": 33,
       "tavg": 39,
       "gddBase50": 0
     },
@@ -531,46 +531,46 @@
       "doy": 66,
       "date": "03-07",
       "tmax": 33,
-      "tmin": 22,
-      "tavg": 27.5,
+      "tmin": 23,
+      "tavg": 28,
       "gddBase50": 0
     },
     {
       "doy": 67,
       "date": "03-08",
       "tmax": 35,
-      "tmin": 15,
-      "tavg": 25,
+      "tmin": 16,
+      "tavg": 25.5,
       "gddBase50": 0
     },
     {
       "doy": 68,
       "date": "03-09",
-      "tmax": 33,
-      "tmin": 20,
-      "tavg": 26.5,
+      "tmax": 32,
+      "tmin": 19.9,
+      "tavg": 26,
       "gddBase50": 0
     },
     {
       "doy": 69,
       "date": "03-10",
-      "tmax": 24,
-      "tmin": 13,
-      "tavg": 18.5,
+      "tmax": 24.1,
+      "tmin": 14,
+      "tavg": 19.1,
       "gddBase50": 0
     },
     {
       "doy": 70,
       "date": "03-11",
-      "tmax": 27,
-      "tmin": 11,
-      "tavg": 19,
+      "tmax": 26.1,
+      "tmin": 10.9,
+      "tavg": 18.5,
       "gddBase50": 0
     },
     {
       "doy": 71,
       "date": "03-12",
-      "tmax": 20,
+      "tmax": 19.9,
       "tmin": 3,
       "tavg": 11.5,
       "gddBase50": 0
@@ -586,8 +586,8 @@
     {
       "doy": 73,
       "date": "03-14",
-      "tmax": 39,
-      "tmin": 30,
+      "tmax": 38,
+      "tmin": 30.9,
       "tavg": 34.5,
       "gddBase50": 0
     },
@@ -595,72 +595,72 @@
       "doy": 74,
       "date": "03-15",
       "tmax": 45,
-      "tmin": 27,
-      "tavg": 36,
+      "tmin": 26.6,
+      "tavg": 35.8,
       "gddBase50": 0
     },
     {
       "doy": 75,
       "date": "03-16",
       "tmax": 62,
-      "tmin": 31,
+      "tmin": 30.9,
       "tavg": 46.5,
       "gddBase50": 0
     },
     {
       "doy": 76,
       "date": "03-17",
-      "tmax": 62,
-      "tmin": 38,
-      "tavg": 50,
-      "gddBase50": 0
+      "tmax": 61,
+      "tmin": 40,
+      "tavg": 50.5,
+      "gddBase50": 0.5
     },
     {
       "doy": 77,
       "date": "03-18",
-      "tmax": 38,
+      "tmax": 39,
       "tmin": 33,
-      "tavg": 35.5,
+      "tavg": 36,
       "gddBase50": 0
     },
     {
       "doy": 78,
       "date": "03-19",
-      "tmax": 51,
+      "tmax": 50,
       "tmin": 34,
-      "tavg": 42.5,
+      "tavg": 42,
       "gddBase50": 0
     },
     {
       "doy": 79,
       "date": "03-20",
-      "tmax": 57,
-      "tmin": 29,
+      "tmax": 56,
+      "tmin": 30,
       "tavg": 43,
       "gddBase50": 0
     },
     {
       "doy": 80,
       "date": "03-21",
-      "tmax": 47,
-      "tmin": 34,
+      "tmax": 46,
+      "tmin": 35,
       "tavg": 40.5,
       "gddBase50": 0
     },
     {
       "doy": 81,
       "date": "03-22",
-      "tmax": 43,
+      "tmax": 42.8,
       "tmin": 36,
-      "tavg": 39.5,
+      "tavg": 39.4,
       "gddBase50": 0
     },
     {
       "doy": 82,
       "date": "03-23",
       "tmax": 39,
-      "tmin": 33,
-      "tavg": 36,
+      "tmin": 34,
+      "tavg": 36.5,
       "gddBase50": 0
     },
     {
@@ -674,41 +674,41 @@
     {
       "doy": 84,
       "date": "03-25",
-      "tmax": 43,
-      "tmin": 30,
+      "tmax": 42,
+      "tmin": 30.9,
       "tavg": 36.5,
       "gddBase50": 0
     },
     {
       "doy": 85,
       "date": "03-26",
-      "tmax": 30,
-      "tmin": 22,
-      "tavg": 26,
+      "tmax": 30.9,
+      "tmin": 23,
+      "tavg": 27,
       "gddBase50": 0
     },
     {
       "doy": 86,
       "date": "03-27",
-      "tmax": 30,
-      "tmin": 17,
-      "tavg": 23.5,
+      "tmax": 28.9,
+      "tmin": 17.1,
+      "tavg": 23,
       "gddBase50": 0
     },
     {
       "doy": 87,
       "date": "03-28",
       "tmax": 33,
-      "tmin": 17,
-      "tavg": 25,
+      "tmin": 17.1,
+      "tavg": 25.1,
       "gddBase50": 0
     },
     {
       "doy": 88,
       "date": "03-29",
       "tmax": 36,
-      "tmin": 23,
-      "tavg": 29.5,
+      "tmin": 24.1,
+      "tavg": 30.1,
       "gddBase50": 0
     },
     {
@@ -731,7 +731,7 @@
       "doy": 91,
       "date": "04-01",
       "tmax": 44,
-      "tmin": 29,
+      "tmin": 28.9,
       "tavg": 36.5,
       "gddBase50": 0
     },
@@ -746,9 +746,9 @@
     {
       "doy": 93,
       "date": "04-03",
-      "tmax": 48,
+      "tmax": 46,
       "tmin": 33,
-      "tavg": 40.5,
+      "tavg": 39.5,
       "gddBase50": 0
     },
     {
@@ -762,9 +762,9 @@
     {
       "doy": 95,
       "date": "04-05",
-      "tmax": 42,
+      "tmax": 40,
       "tmin": 34,
-      "tavg": 38,
+      "tavg": 37,
       "gddBase50": 0
     },
     {
@@ -787,7 +787,7 @@
       "doy": 98,
       "date": "04-08",
       "tmax": 38,
-      "tmin": 31,
+      "tmin": 30.9,
       "tavg": 34.5,
       "gddBase50": 0
     },
@@ -795,39 +795,39 @@
       "doy": 99,
       "date": "04-09",
       "tmax": 50,
-      "tmin": 31,
-      "tavg": 40.5,
+      "tmin": 32,
+      "tavg": 41,
       "gddBase50": 0
     },
     {
       "doy": 100,
       "date": "04-10",
-      "tmax": 54,
-      "tmin": 29,
-      "tavg": 41.5,
+      "tmax": 53,
+      "tmin": 28.9,
+      "tavg": 41,
       "gddBase50": 0
     },
     {
       "doy": 101,
       "date": "04-11",
-      "tmax": 60,
-      "tmin": 37,
-      "tavg": 48.5,
+      "tmax": 59,
+      "tmin": 40,
+      "tavg": 49.5,
       "gddBase50": 0
     },
     {
       "doy": 102,
       "date": "04-12",
       "tmax": 60,
-      "tmin": 33,
-      "tavg": 46.5,
+      "tmin": 34,
+      "tavg": 47,
       "gddBase50": 0
     },
     {
       "doy": 103,
       "date": "04-13",
-      "tmax": 51,
-      "tmin": 35,
+      "tmax": 50,
+      "tmin": 36,
       "tavg": 43,
       "gddBase50": 0
     },
@@ -843,48 +843,48 @@
       "doy": 105,
       "date": "04-15",
       "tmax": 39,
-      "tmin": 30,
-      "tavg": 34.5,
+      "tmin": 32,
+      "tavg": 35.5,
       "gddBase50": 0
     },
     {
       "doy": 106,
       "date": "04-16",
       "tmax": 37,
-      "tmin": 27,
-      "tavg": 32,
+      "tmin": 30,
+      "tavg": 33.5,
       "gddBase50": 0
     },
     {
       "doy": 107,
       "date": "04-17",
-      "tmax": 43,
+      "tmax": 42,
       "tmin": 23,
-      "tavg": 33,
+      "tavg": 32.5,
       "gddBase50": 0
     },
     {
       "doy": 108,
       "date": "04-18",
-      "tmax": 37,
-      "tmin": 31,
+      "tmax": 36,
+      "tmin": 32,
       "tavg": 34,
       "gddBase50": 0
     },
     {
       "doy": 109,
       "date": "04-19",
-      "tmax": 49,
-      "tmin": 32,
+      "tmax": 48,
+      "tmin": 33,
       "tavg": 40.5,
       "gddBase50": 0
     },
     {
       "doy": 110,
       "date": "04-20",
-      "tmax": 49,
+      "tmax": 48,
       "tmin": 34,
-      "tavg": 41.5,
+      "tavg": 41,
       "gddBase50": 0
     },
     {
@@ -899,23 +899,23 @@
       "doy": 112,
       "date": "04-22",
       "tmax": 51,
-      "tmin": 36,
-      "tavg": 43.5,
+      "tmin": 37,
+      "tavg": 44,
       "gddBase50": 0
     },
     {
       "doy": 113,
       "date": "04-23",
-      "tmax": 76,
+      "tmax": 75,
       "tmin": 48,
-      "tavg": 62,
-      "gddBase50": 12
+      "tavg": 61.5,
+      "gddBase50": 11.5
     },
     {
       "doy": 114,
       "date": "04-24",
-      "tmax": 72,
-      "tmin": 52,
+      "tmax": 71,
+      "tmin": 53,
       "tavg": 62,
       "gddBase50": 12
     },
@@ -923,16 +923,16 @@
       "doy": 115,
       "date": "04-25",
       "tmax": 52,
-      "tmin": 40,
-      "tavg": 46,
+      "tmin": 41,
+      "tavg": 46.5,
       "gddBase50": 0
     },
     {
       "doy": 116,
       "date": "04-26",
       "tmax": 40,
-      "tmin": 31,
-      "tavg": 35.5,
+      "tmin": 32,
+      "tavg": 36,
       "gddBase50": 0
     },
     {
@@ -947,17 +947,17 @@
       "doy": 118,
       "date": "04-28",
       "tmax": 53,
-      "tmin": 31,
+      "tmin": 30.9,
       "tavg": 42,
       "gddBase50": 0
     },
     {
       "doy": 119,
       "date": "04-29",
-      "tmax": 61,
+      "tmax": 60,
       "tmin": 40,
-      "tavg": 50.5,
-      "gddBase50": 0.5
+      "tavg": 50,
+      "gddBase50": 0
     },
     {
       "doy": 120,
@@ -987,16 +987,16 @@
       "doy": 123,
       "date": "05-03",
       "tmax": 49,
-      "tmin": 39,
-      "tavg": 44,
+      "tmin": 41,
+      "tavg": 45,
       "gddBase50": 0
     },
     {
       "doy": 124,
       "date": "05-04",
       "tmax": 59,
-      "tmin": 33,
-      "tavg": 46,
+      "tmin": 34,
+      "tavg": 46.5,
       "gddBase50": 0
     },
     {
@@ -1011,25 +1011,25 @@
       "doy": 126,
       "date": "05-06",
       "tmax": 63,
-      "tmin": 44,
-      "tavg": 53.5,
-      "gddBase50": 3.5
+      "tmin": 45,
+      "tavg": 54,
+      "gddBase50": 4
     },
     {
       "doy": 127,
       "date": "05-07",
       "tmax": 66,
-      "tmin": 38,
-      "tavg": 52,
-      "gddBase50": 2
+      "tmin": 39,
+      "tavg": 52.5,
+      "gddBase50": 2.5
     },
     {
       "doy": 128,
       "date": "05-08",
       "tmax": 61,
-      "tmin": 39,
-      "tavg": 50,
-      "gddBase50": 0
+      "tmin": 41,
+      "tavg": 51,
+      "gddBase50": 1
     },
     {
       "doy": 129,
@@ -1042,82 +1042,82 @@
     {
       "doy": 130,
       "date": "05-10",
-      "tmax": 86,
-      "tmin": 65,
-      "tavg": 75.5,
-      "gddBase50": 25.5
+      "tmax": 85,
+      "tmin": 67,
+      "tavg": 76,
+      "gddBase50": 26
     },
     {
       "doy": 131,
       "date": "05-11",
-      "tmax": 76,
+      "tmax": 75,
       "tmin": 60,
-      "tavg": 68,
-      "gddBase50": 18
+      "tavg": 67.5,
+      "gddBase50": 17.5
     },
     {
       "doy": 132,
       "date": "05-12",
-      "tmax": 94,
+      "tmax": 92,
       "tmin": 62,
-      "tavg": 78,
-      "gddBase50": 28
+      "tavg": 77,
+      "gddBase50": 27
     },
     {
       "doy": 133,
       "date": "05-13",
       "tmax": 92,
-      "tmin": 65,
-      "tavg": 78.5,
-      "gddBase50": 28.5
+      "tmin": 66,
+      "tavg": 79,
+      "gddBase50": 29
     },
     {
       "doy": 134,
       "date": "05-14",
-      "tmax": 87,
+      "tmax": 86,
       "tmin": 59,
-      "tavg": 73,
-      "gddBase50": 23
+      "tavg": 72.5,
+      "gddBase50": 22.5
     },
     {
       "doy": 135,
       "date": "05-15",
-      "tmax": 77,
-      "tmin": 59,
-      "tavg": 68,
-      "gddBase50": 18
+      "tmax": 76,
+      "tmin": 61,
+      "tavg": 68.5,
+      "gddBase50": 18.5
     },
     {
       "doy": 136,
       "date": "05-16",
-      "tmax": 76,
-      "tmin": 49,
-      "tavg": 62.5,
-      "gddBase50": 12.5
+      "tmax": 74,
+      "tmin": 50,
+      "tavg": 62,
+      "gddBase50": 12
     },
     {
       "doy": 137,
       "date": "05-17",
-      "tmax": 70,
-      "tmin": 42,
+      "tmax": 69,
+      "tmin": 43,
       "tavg": 56,
       "gddBase50": 6
     },
     {
       "doy": 138,
       "date": "05-18",
-      "tmax": 67,
+      "tmax": 66,
       "tmin": 49,
-      "tavg": 58,
-      "gddBase50": 8
+      "tavg": 57.5,
+      "gddBase50": 7.5
     },
     {
       "doy": 139,
       "date": "05-19",
-      "tmax": 78,
+      "tmax": 76,
       "tmin": 54,
-      "tavg": 66,
-      "gddBase50": 16
+      "tavg": 65,
+      "gddBase50": 15
     },
     {
       "doy": 140,
@@ -1130,24 +1130,24 @@
     {
       "doy": 141,
       "date": "05-21",
-      "tmax": 65,
-      "tmin": 49,
-      "tavg": 57,
-      "gddBase50": 7
+      "tmax": 63,
+      "tmin": 50,
+      "tavg": 56.5,
+      "gddBase50": 6.5
     },
     {
       "doy": 142,
       "date": "05-22",
-      "tmax": 59,
+      "tmax": 58,
       "tmin": 47,
-      "tavg": 53,
-      "gddBase50": 3
+      "tavg": 52.5,
+      "gddBase50": 2.5
     },
     {
       "doy": 143,
       "date": "05-23",
-      "tmax": 62,
-      "tmin": 43,
+      "tmax": 61,
+      "tmin": 44,
       "tavg": 52.5,
       "gddBase50": 2.5
     },
@@ -1162,10 +1162,10 @@
     {
       "doy": 145,
       "date": "05-25",
-      "tmax": 59,
-      "tmin": 54,
-      "tavg": 56.5,
-      "gddBase50": 6.5
+      "tmax": 58,
+      "tmin": 53.6,
+      "tavg": 55.8,
+      "gddBase50": 5.8
     },
     {
       "doy": 146,
@@ -1179,9 +1179,9 @@
       "doy": 147,
       "date": "05-27",
       "tmax": 70,
-      "tmin": 53,
-      "tavg": 61.5,
-      "gddBase50": 11.5
+      "tmin": 54,
+      "tavg": 62,
+      "gddBase50": 12
     },
     {
       "doy": 148,
@@ -1194,8 +1194,8 @@
     {
       "doy": 149,
       "date": "05-29",
-      "tmax": 76,
-      "tmin": 56,
+      "tmax": 75,
+      "tmin": 57,
       "tavg": 66,
       "gddBase50": 16
     },
@@ -1203,31 +1203,31 @@
       "doy": 150,
       "date": "05-30",
       "tmax": 86,
-      "tmin": 67,
-      "tavg": 76.5,
-      "gddBase50": 26.5
+      "tmin": 69,
+      "tavg": 77.5,
+      "gddBase50": 27.5
     },
     {
       "doy": 151,
       "date": "05-31",
-      "tmax": 87,
-      "tmin": 68,
-      "tavg": 77.5,
-      "gddBase50": 27.5
+      "tmax": 86,
+      "tmin": 70,
+      "tavg": 78,
+      "gddBase50": 28
     },
     {
       "doy": 152,
       "date": "06-01",
       "tmax": 76,
-      "tmin": 58,
-      "tavg": 67,
-      "gddBase50": 17
+      "tmin": 59,
+      "tavg": 67.5,
+      "gddBase50": 17.5
     },
     {
       "doy": 153,
       "date": "06-02",
-      "tmax": 80,
-      "tmin": 50,
+      "tmax": 79,
+      "tmin": 51,
       "tavg": 65,
       "gddBase50": 15
     },
@@ -1235,39 +1235,39 @@
       "doy": 154,
       "date": "06-03",
       "tmax": 73,
-      "tmin": 51,
-      "tavg": 62,
-      "gddBase50": 12
+      "tmin": 52,
+      "tavg": 62.5,
+      "gddBase50": 12.5
     },
     {
       "doy": 155,
       "date": "06-04",
-      "tmax": 75,
-      "tmin": 45,
+      "tmax": 74,
+      "tmin": 46,
       "tavg": 60,
       "gddBase50": 10
     },
     {
       "doy": 156,
       "date": "06-05",
-      "tmax": 68,
-      "tmin": 50,
-      "tavg": 59,
-      "gddBase50": 9
+      "tmax": 67,
+      "tmin": 52,
+      "tavg": 59.5,
+      "gddBase50": 9.5
     },
     {
       "doy": 157,
       "date": "06-06",
-      "tmax": 64,
+      "tmax": 63,
       "tmin": 56,
-      "tavg": 60,
-      "gddBase50": 10
+      "tavg": 59.5,
+      "gddBase50": 9.5
     },
     {
       "doy": 158,
       "date": "06-07",
-      "tmax": 76,
-      "tmin": 53,
+      "tmax": 75,
+      "tmin": 54,
       "tavg": 64.5,
       "gddBase50": 14.5
     },
@@ -1275,25 +1275,25 @@
       "doy": 159,
       "date": "06-08",
       "tmax": 64,
-      "tmin": 56,
-      "tavg": 60,
-      "gddBase50": 10
+      "tmin": 57,
+      "tavg": 60.5,
+      "gddBase50": 10.5
     },
     {
       "doy": 160,
       "date": "06-09",
       "tmax": 79,
-      "tmin": 55,
-      "tavg": 67,
-      "gddBase50": 17
+      "tmin": 56,
+      "tavg": 67.5,
+      "gddBase50": 17.5
     },
     {
       "doy": 161,
       "date": "06-10",
       "tmax": 83,
-      "tmin": 51,
-      "tavg": 67,
-      "gddBase50": 17
+      "tmin": 52,
+      "tavg": 67.5,
+      "gddBase50": 17.5
     },
     {
       "doy": 162,
@@ -1307,73 +1307,73 @@
       "doy": 163,
       "date": "06-12",
       "tmax": 70,
-      "tmin": 52,
-      "tavg": 61,
-      "gddBase50": 11
+      "tmin": 53,
+      "tavg": 61.5,
+      "gddBase50": 11.5
     },
     {
       "doy": 164,
       "date": "06-13",
-      "tmax": 75,
+      "tmax": 73,
       "tmin": 53,
-      "tavg": 64,
-      "gddBase50": 14
+      "tavg": 63,
+      "gddBase50": 13
     },
     {
       "doy": 165,
       "date": "06-14",
       "tmax": 90,
-      "tmin": 66,
-      "tavg": 78,
-      "gddBase50": 28
+      "tmin": 65,
+      "tavg": 77.5,
+      "gddBase50": 27.5
     },
     {
       "doy": 166,
       "date": "06-15",
-      "tmax": 94,
-      "tmin": 70,
+      "tmax": 93,
+      "tmin": 71,
       "tavg": 82,
       "gddBase50": 32
     },
     {
       "doy": 167,
       "date": "06-16",
-      "tmax": 85,
+      "tmax": 84,
       "tmin": 66,
-      "tavg": 75.5,
-      "gddBase50": 25.5
+      "tavg": 75,
+      "gddBase50": 25
     },
     {
       "doy": 168,
       "date": "06-17",
       "tmax": 84,
-      "tmin": 57,
-      "tavg": 70.5,
-      "gddBase50": 20.5
+      "tmin": 58,
+      "tavg": 71,
+      "gddBase50": 21
     },
     {
       "doy": 169,
       "date": "06-18",
-      "tmax": 73,
-      "tmin": 52,
+      "tmax": 72,
+      "tmin": 53,
       "tavg": 62.5,
       "gddBase50": 12.5
     },
     {
       "doy": 170,
       "date": "06-19",
-      "tmax": 83,
+      "tmax": 82,
       "tmin": 51,
-      "tavg": 67,
-      "gddBase50": 17
+      "tavg": 66.5,
+      "gddBase50": 16.5
     },
     {
       "doy": 171,
       "date": "06-20",
       "tmax": 95,
-      "tmin": 67,
-      "tavg": 81,
-      "gddBase50": 31
+      "tmin": 68,
+      "tavg": 81.5,
+      "gddBase50": 31.5
     },
     {
       "doy": 172,
@@ -1386,18 +1386,18 @@
     {
       "doy": 173,
       "date": "06-22",
-      "tmax": 87,
-      "tmin": 63,
-      "tavg": 75,
-      "gddBase50": 25
+      "tmax": 86,
+      "tmin": 66,
+      "tavg": 76,
+      "gddBase50": 26
     },
     {
       "doy": 174,
       "date": "06-23",
       "tmax": 87,
-      "tmin": 57,
-      "tavg": 72,
-      "gddBase50": 22
+      "tmin": 58,
+      "tavg": 72.5,
+      "gddBase50": 22.5
     },
     {
       "doy": 175,
@@ -1410,18 +1410,18 @@
     {
       "doy": 176,
       "date": "06-25",
-      "tmax": 80,
+      "tmax": 79,
       "tmin": 66,
-      "tavg": 73,
-      "gddBase50": 23
+      "tavg": 72.5,
+      "gddBase50": 22.5
     },
     {
       "doy": 177,
       "date": "06-26",
       "tmax": 78,
-      "tmin": 57,
-      "tavg": 67.5,
-      "gddBase50": 17.5
+      "tmin": 58,
+      "tavg": 68,
+      "gddBase50": 18
     },
     {
       "doy": 178,
@@ -1434,18 +1434,18 @@
     {
       "doy": 179,
       "date": "06-28",
-      "tmax": 82,
+      "tmax": 80,
       "tmin": 58,
-      "tavg": 70,
-      "gddBase50": 20
+      "tavg": 69,
+      "gddBase50": 19
     },
     {
       "doy": 180,
       "date": "06-29",
-      "tmax": 79,
+      "tmax": 78,
       "tmin": 61,
-      "tavg": 70,
-      "gddBase50": 20
+      "tavg": 69.5,
+      "gddBase50": 19.5
     },
     {
       "doy": 181,
@@ -1458,34 +1458,34 @@
     {
       "doy": 182,
       "date": "07-01",
-      "tmax": 80,
-      "tmin": 66,
+      "tmax": 79,
+      "tmin": 67,
       "tavg": 73,
       "gddBase50": 23
     },
     {
       "doy": 183,
       "date": "07-02",
-      "tmax": 84,
-      "tmin": 56,
+      "tmax": 83,
+      "tmin": 57,
       "tavg": 70,
       "gddBase50": 20
     },
     {
       "doy": 184,
       "date": "07-03",
-      "tmax": 85,
+      "tmax": 84,
       "tmin": 56,
-      "tavg": 70.5,
-      "gddBase50": 20.5
+      "tavg": 70,
+      "gddBase50": 20
     },
     {
       "doy": 185,
       "date": "07-04",
       "tmax": 82,
-      "tmin": 65,
-      "tavg": 73.5,
-      "gddBase50": 23.5
+      "tmin": 66,
+      "tavg": 74,
+      "gddBase50": 24
     },
     {
       "doy": 186,
@@ -1498,42 +1498,42 @@
     {
       "doy": 187,
       "date": "07-06",
-      "tmax": 76,
-      "tmin": 63,
-      "tavg": 69.5,
-      "gddBase50": 19.5
+      "tmax": 75,
+      "tmin": 65,
+      "tavg": 70,
+      "gddBase50": 20
     },
     {
       "doy": 188,
       "date": "07-07",
-      "tmax": 86,
+      "tmax": 85,
       "tmin": 61,
-      "tavg": 73.5,
-      "gddBase50": 23.5
+      "tavg": 73,
+      "gddBase50": 23
     },
     {
       "doy": 189,
       "date": "07-08",
       "tmax": 75,
-      "tmin": 57,
-      "tavg": 66,
-      "gddBase50": 16
+      "tmin": 62,
+      "tavg": 68.5,
+      "gddBase50": 18.5
     },
     {
       "doy": 190,
       "date": "07-09",
-      "tmax": 81,
-      "tmin": 55,
+      "tmax": 80,
+      "tmin": 56,
       "tavg": 68,
       "gddBase50": 18
     },
     {
       "doy": 191,
       "date": "07-10",
-      "tmax": 83,
-      "tmin": 54,
-      "tavg": 68.5,
-      "gddBase50": 18.5
+      "tmax": 81,
+      "tmin": 55,
+      "tavg": 68,
+      "gddBase50": 18
     },
     {
       "doy": 192,
@@ -1571,31 +1571,31 @@
       "doy": 196,
       "date": "07-15",
       "tmax": 71,
-      "tmin": 58,
-      "tavg": 64.5,
-      "gddBase50": 14.5
+      "tmin": 59,
+      "tavg": 65,
+      "gddBase50": 15
     },
     {
       "doy": 197,
       "date": "07-16",
       "tmax": 83,
-      "tmin": 57,
-      "tavg": 70,
-      "gddBase50": 20
+      "tmin": 57.2,
+      "tavg": 70.1,
+      "gddBase50": 20.1
     },
     {
       "doy": 198,
       "date": "07-17",
       "tmax": 86,
-      "tmin": 59,
-      "tavg": 72.5,
-      "gddBase50": 22.5
+      "tmin": 60,
+      "tavg": 73,
+      "gddBase50": 23
     },
     {
       "doy": 199,
       "date": "07-18",
-      "tmax": 91,
-      "tmin": 62,
+      "tmax": 90,
+      "tmin": 63,
       "tavg": 76.5,
       "gddBase50": 26.5
     },
@@ -1603,23 +1603,23 @@
       "doy": 200,
       "date": "07-19",
       "tmax": 87,
-      "tmin": 71,
-      "tavg": 79,
-      "gddBase50": 29
+      "tmin": 73,
+      "tavg": 80,
+      "gddBase50": 30
     },
     {
       "doy": 201,
       "date": "07-20",
       "tmax": 82,
-      "tmin": 72,
-      "tavg": 77,
-      "gddBase50": 27
+      "tmin": 73,
+      "tavg": 77.5,
+      "gddBase50": 27.5
     },
     {
       "doy": 202,
       "date": "07-21",
-      "tmax": 87,
-      "tmin": 66,
+      "tmax": 86,
+      "tmin": 67,
       "tavg": 76.5,
       "gddBase50": 26.5
     },
@@ -1627,89 +1627,89 @@
       "doy": 203,
       "date": "07-22",
       "tmax": 90,
-      "tmin": 59,
-      "tavg": 74.5,
-      "gddBase50": 24.5
+      "tmin": 61,
+      "tavg": 75.5,
+      "gddBase50": 25.5
     },
     {
       "doy": 204,
       "date": "07-23",
       "tmax": 92,
-      "tmin": 67,
-      "tavg": 79.5,
-      "gddBase50": 29.5
+      "tmin": 69,
+      "tavg": 80.5,
+      "gddBase50": 30.5
     },
     {
       "doy": 205,
       "date": "07-24",
       "tmax": 82,
-      "tmin": 62,
-      "tavg": 72,
-      "gddBase50": 22
+      "tmin": 64,
+      "tavg": 73,
+      "gddBase50": 23
     },
     {
       "doy": 206,
       "date": "07-25",
-      "tmax": 79,
+      "tmax": 78,
       "tmin": 55,
-      "tavg": 67,
-      "gddBase50": 17
+      "tavg": 66.5,
+      "gddBase50": 16.5
     },
     {
       "doy": 207,
       "date": "07-26",
-      "tmax": 82,
+      "tmax": 81,
       "tmin": 57,
-      "tavg": 69.5,
-      "gddBase50": 19.5
-    },
-    {
-      "doy": 208,
-      "date": "07-27",
-      "tmax": 84,
-      "tmin": 67,
-      "tavg": 75.5,
-      "gddBase50": 25.5
-    },
-    {
-      "doy": 209,
-      "date": "07-28",
-      "tmax": 78,
-      "tmin": 60,
       "tavg": 69,
       "gddBase50": 19
     },
     {
+      "doy": 208,
+      "date": "07-27",
+      "tmax": 83,
+      "tmin": 69,
+      "tavg": 76,
+      "gddBase50": 26
+    },
+    {
+      "doy": 209,
+      "date": "07-28",
+      "tmax": 77,
+      "tmin": 60,
+      "tavg": 68.5,
+      "gddBase50": 18.5
+    },
+    {
       "doy": 210,
       "date": "07-29",
-      "tmax": 80,
-      "tmin": 55,
+      "tmax": 79,
+      "tmin": 56,
       "tavg": 67.5,
       "gddBase50": 17.5
     },
     {
       "doy": 211,
       "date": "07-30",
-      "tmax": 84,
+      "tmax": 82,
       "tmin": 56,
-      "tavg": 70,
-      "gddBase50": 20
+      "tavg": 69,
+      "gddBase50": 19
     },
     {
       "doy": 212,
       "date": "07-31",
-      "tmax": 85,
+      "tmax": 84,
       "tmin": 58,
-      "tavg": 71.5,
-      "gddBase50": 21.5
+      "tavg": 71,
+      "gddBase50": 21
     },
     {
       "doy": 213,
       "date": "08-01",
-      "tmax": 84,
+      "tmax": 82,
       "tmin": 66,
-      "tavg": 75,
-      "gddBase50": 25
+      "tavg": 74,
+      "gddBase50": 24
     },
     {
       "doy": 214,
@@ -1722,64 +1722,64 @@
     {
       "doy": 215,
       "date": "08-03",
-      "tmax": 86,
-      "tmin": 68,
-      "tavg": 77,
-      "gddBase50": 27
+      "tmax": 85,
+      "tmin": 70,
+      "tavg": 77.5,
+      "gddBase50": 27.5
     },
     {
       "doy": 216,
       "date": "08-04",
       "tmax": 82,
-      "tmin": 59,
-      "tavg": 70.5,
-      "gddBase50": 20.5
+      "tmin": 60,
+      "tavg": 71,
+      "gddBase50": 21
     },
     {
       "doy": 217,
       "date": "08-05",
-      "tmax": 85,
+      "tmax": 83,
       "tmin": 57,
-      "tavg": 71,
-      "gddBase50": 21
+      "tavg": 70,
+      "gddBase50": 20
     },
     {
       "doy": 218,
       "date": "08-06",
       "tmax": 89,
-      "tmin": 69,
-      "tavg": 79,
-      "gddBase50": 29
+      "tmin": 70,
+      "tavg": 79.5,
+      "gddBase50": 29.5
     },
     {
       "doy": 219,
       "date": "08-07",
-      "tmax": 77,
+      "tmax": 78,
       "tmin": 68,
-      "tavg": 72.5,
-      "gddBase50": 22.5
+      "tavg": 73,
+      "gddBase50": 23
     },
     {
       "doy": 220,
       "date": "08-08",
-      "tmax": 74,
-      "tmin": 56,
+      "tmax": 73,
+      "tmin": 57,
       "tavg": 65,
       "gddBase50": 15
     },
     {
       "doy": 221,
       "date": "08-09",
-      "tmax": 80,
-      "tmin": 52,
+      "tmax": 79,
+      "tmin": 53,
       "tavg": 66,
       "gddBase50": 16
     },
     {
       "doy": 222,
       "date": "08-10",
-      "tmax": 88,
-      "tmin": 57,
+      "tmax": 87,
+      "tmin": 58,
       "tavg": 72.5,
       "gddBase50": 22.5
     },
@@ -1787,17 +1787,17 @@
       "doy": 223,
       "date": "08-11",
       "tmax": 77,
-      "tmin": 55,
-      "tavg": 66,
-      "gddBase50": 16
+      "tmin": 57,
+      "tavg": 67,
+      "gddBase50": 17
     },
     {
       "doy": 224,
       "date": "08-12",
-      "tmax": 75,
-      "tmin": 52,
-      "tavg": 63.5,
-      "gddBase50": 13.5
+      "tmax": 73,
+      "tmin": 53,
+      "tavg": 63,
+      "gddBase50": 13
     },
     {
       "doy": 225,
@@ -1810,16 +1810,16 @@
     {
       "doy": 226,
       "date": "08-14",
-      "tmax": 76,
+      "tmax": 75,
       "tmin": 64,
-      "tavg": 70,
-      "gddBase50": 20
+      "tavg": 69.5,
+      "gddBase50": 19.5
     },
     {
       "doy": 227,
       "date": "08-15",
-      "tmax": 79,
-      "tmin": 58,
+      "tmax": 78,
+      "tmin": 59,
       "tavg": 68.5,
       "gddBase50": 18.5
     },
@@ -1834,74 +1834,74 @@
     {
       "doy": 229,
       "date": "08-17",
-      "tmax": 84,
-      "tmin": 55,
+      "tmax": 83,
+      "tmin": 56,
       "tavg": 69.5,
       "gddBase50": 19.5
     },
     {
       "doy": 230,
       "date": "08-18",
-      "tmax": 83,
-      "tmin": 59,
+      "tmax": 82,
+      "tmin": 60,
       "tavg": 71,
       "gddBase50": 21
     },
     {
       "doy": 231,
       "date": "08-19",
-      "tmax": 81,
+      "tmax": 80,
       "tmin": 65,
-      "tavg": 73,
-      "gddBase50": 23
+      "tavg": 72.5,
+      "gddBase50": 22.5
     },
     {
       "doy": 232,
       "date": "08-20",
-      "tmax": 79,
-      "tmin": 64,
+      "tmax": 78,
+      "tmin": 65,
       "tavg": 71.5,
       "gddBase50": 21.5
     },
     {
       "doy": 233,
       "date": "08-21",
-      "tmax": 79,
-      "tmin": 59,
-      "tavg": 69,
-      "gddBase50": 19
+      "tmax": 78,
+      "tmin": 63,
+      "tavg": 70.5,
+      "gddBase50": 20.5
     },
     {
       "doy": 234,
       "date": "08-22",
-      "tmax": 83,
+      "tmax": 82,
       "tmin": 57,
-      "tavg": 70,
-      "gddBase50": 20
+      "tavg": 69.5,
+      "gddBase50": 19.5
     },
     {
       "doy": 235,
       "date": "08-23",
-      "tmax": 87,
+      "tmax": 86,
       "tmin": 58,
-      "tavg": 72.5,
-      "gddBase50": 22.5
+      "tavg": 72,
+      "gddBase50": 22
     },
     {
       "doy": 236,
       "date": "08-24",
-      "tmax": 86,
-      "tmin": 62,
+      "tmax": 85,
+      "tmin": 63,
       "tavg": 74,
       "gddBase50": 24
     },
     {
       "doy": 237,
       "date": "08-25",
-      "tmax": 77,
-      "tmin": 62,
-      "tavg": 69.5,
-      "gddBase50": 19.5
+      "tmax": 76,
+      "tmin": 64,
+      "tavg": 70,
+      "gddBase50": 20
     },
     {
       "doy": 238,
@@ -1922,40 +1922,40 @@
     {
       "doy": 240,
       "date": "08-28",
-      "tmax": 82,
+      "tmax": 81,
       "tmin": 63,
-      "tavg": 72.5,
-      "gddBase50": 22.5
+      "tavg": 72,
+      "gddBase50": 22
     },
     {
       "doy": 241,
       "date": "08-29",
       "tmax": 86,
-      "tmin": 65,
-      "tavg": 75.5,
-      "gddBase50": 25.5
+      "tmin": 69,
+      "tavg": 77.5,
+      "gddBase50": 27.5
     },
     {
       "doy": 242,
       "date": "08-30",
       "tmax": 79,
-      "tmin": 61,
-      "tavg": 70,
-      "gddBase50": 20
+      "tmin": 63,
+      "tavg": 71,
+      "gddBase50": 21
     },
     {
       "doy": 243,
       "date": "08-31",
-      "tmax": 85,
+      "tmax": 84,
       "tmin": 60,
-      "tavg": 72.5,
-      "gddBase50": 22.5
+      "tavg": 72,
+      "gddBase50": 22
     },
     {
       "doy": 244,
       "date": "09-01",
-      "tmax": 87,
-      "tmin": 57,
+      "tmax": 86,
+      "tmin": 58,
       "tavg": 72,
       "gddBase50": 22
     },
@@ -1963,25 +1963,25 @@
       "doy": 245,
       "date": "09-02",
       "tmax": 79,
-      "tmin": 69,
-      "tavg": 74,
-      "gddBase50": 24
+      "tmin": 70,
+      "tavg": 74.5,
+      "gddBase50": 24.5
     },
     {
       "doy": 246,
       "date": "09-03",
       "tmax": 74,
-      "tmin": 56,
-      "tavg": 65,
-      "gddBase50": 15
+      "tmin": 57,
+      "tavg": 65.5,
+      "gddBase50": 15.5
     },
     {
       "doy": 247,
       "date": "09-04",
-      "tmax": 73,
+      "tmax": 72,
       "tmin": 53,
-      "tavg": 63,
-      "gddBase50": 13
+      "tavg": 62.5,
+      "gddBase50": 12.5
     },
     {
       "doy": 248,
@@ -1994,10 +1994,10 @@
     {
       "doy": 249,
       "date": "09-06",
-      "tmax": 79,
+      "tmax": 78,
       "tmin": 54,
-      "tavg": 66.5,
-      "gddBase50": 16.5
+      "tavg": 66,
+      "gddBase50": 16
     },
     {
       "doy": 250,
@@ -2011,9 +2011,9 @@
       "doy": 251,
       "date": "09-08",
       "tmax": 84,
-      "tmin": 57,
-      "tavg": 70.5,
-      "gddBase50": 20.5
+      "tmin": 58,
+      "tavg": 71,
+      "gddBase50": 21
     },
     {
       "doy": 252,
@@ -2035,9 +2035,9 @@
       "doy": 254,
       "date": "09-11",
       "tmax": 63,
-      "tmin": 57,
-      "tavg": 60,
-      "gddBase50": 10
+      "tmin": 57.2,
+      "tavg": 60.1,
+      "gddBase50": 10.1
     },
     {
       "doy": 255,
@@ -2058,16 +2058,16 @@
     {
       "doy": 257,
       "date": "09-14",
-      "tmax": 70,
-      "tmin": 52,
+      "tmax": 69,
+      "tmin": 53,
       "tavg": 61,
       "gddBase50": 11
     },
     {
       "doy": 258,
       "date": "09-15",
-      "tmax": 80,
-      "tmin": 49,
+      "tmax": 79,
+      "tmin": 50,
       "tavg": 64.5,
       "gddBase50": 14.5
     },
@@ -2082,58 +2082,58 @@
     {
       "doy": 260,
       "date": "09-17",
-      "tmax": 84,
+      "tmax": 82,
       "tmin": 62,
-      "tavg": 73,
-      "gddBase50": 23
+      "tavg": 72,
+      "gddBase50": 22
     },
     {
       "doy": 261,
       "date": "09-18",
-      "tmax": 78,
-      "tmin": 64,
+      "tmax": 76,
+      "tmin": 66,
       "tavg": 71,
       "gddBase50": 21
     },
     {
       "doy": 262,
       "date": "09-19",
-      "tmax": 82,
+      "tmax": 81,
       "tmin": 57,
-      "tavg": 69.5,
-      "gddBase50": 19.5
+      "tavg": 69,
+      "gddBase50": 19
     },
     {
       "doy": 263,
       "date": "09-20",
-      "tmax": 82,
-      "tmin": 57,
+      "tmax": 81,
+      "tmin": 58,
       "tavg": 69.5,
       "gddBase50": 19.5
     },
     {
       "doy": 264,
       "date": "09-21",
-      "tmax": 74,
-      "tmin": 53,
-      "tavg": 63.5,
-      "gddBase50": 13.5
+      "tmax": 73,
+      "tmin": 56,
+      "tavg": 64.5,
+      "gddBase50": 14.5
     },
     {
       "doy": 265,
       "date": "09-22",
-      "tmax": 64,
-      "tmin": 41,
-      "tavg": 52.5,
-      "gddBase50": 2.5
+      "tmax": 63,
+      "tmin": 44,
+      "tavg": 53.5,
+      "gddBase50": 3.5
     },
     {
       "doy": 266,
       "date": "09-23",
-      "tmax": 66,
+      "tmax": 65,
       "tmin": 39,
-      "tavg": 52.5,
-      "gddBase50": 2.5
+      "tavg": 52,
+      "gddBase50": 2
     },
     {
       "doy": 267,
@@ -2146,8 +2146,8 @@
     {
       "doy": 268,
       "date": "09-25",
-      "tmax": 68,
-      "tmin": 51,
+      "tmax": 67,
+      "tmin": 52,
       "tavg": 59.5,
       "gddBase50": 9.5
     },
@@ -2155,9 +2155,9 @@
       "doy": 269,
       "date": "09-26",
       "tmax": 62,
-      "tmin": 47,
-      "tavg": 54.5,
-      "gddBase50": 4.5
+      "tmin": 48,
+      "tavg": 55,
+      "gddBase50": 5
     },
     {
       "doy": 270,
@@ -2170,26 +2170,26 @@
     {
       "doy": 271,
       "date": "09-28",
-      "tmax": 59,
-      "tmin": 37,
+      "tmax": 58,
+      "tmin": 38,
       "tavg": 48,
       "gddBase50": 0
     },
     {
       "doy": 272,
       "date": "09-29",
-      "tmax": 65,
+      "tmax": 64,
       "tmin": 34,
-      "tavg": 49.5,
+      "tavg": 49,
       "gddBase50": 0
     },
     {
       "doy": 273,
       "date": "09-30",
-      "tmax": 71,
+      "tmax": 70,
       "tmin": 37,
-      "tavg": 54,
-      "gddBase50": 4
+      "tavg": 53.5,
+      "gddBase50": 3.5
     },
     {
       "doy": 274,
@@ -2203,9 +2203,9 @@
       "doy": 275,
       "date": "10-02",
       "tmax": 66,
-      "tmin": 42,
-      "tavg": 54,
-      "gddBase50": 4
+      "tmin": 44,
+      "tavg": 55,
+      "gddBase50": 5
     },
     {
       "doy": 276,
@@ -2226,40 +2226,40 @@
     {
       "doy": 278,
       "date": "10-05",
-      "tmax": 78,
+      "tmax": 77,
       "tmin": 43,
-      "tavg": 60.5,
-      "gddBase50": 10.5
+      "tavg": 60,
+      "gddBase50": 10
     },
     {
       "doy": 279,
       "date": "10-06",
-      "tmax": 68,
-      "tmin": 42,
-      "tavg": 55,
-      "gddBase50": 5
+      "tmax": 65,
+      "tmin": 43,
+      "tavg": 54,
+      "gddBase50": 4
     },
     {
       "doy": 280,
       "date": "10-07",
       "tmax": 53,
-      "tmin": 37,
-      "tavg": 45,
+      "tmin": 38,
+      "tavg": 45.5,
       "gddBase50": 0
     },
     {
       "doy": 281,
       "date": "10-08",
-      "tmax": 61,
+      "tmax": 60,
       "tmin": 34,
-      "tavg": 47.5,
+      "tavg": 47,
       "gddBase50": 0
     },
     {
       "doy": 282,
       "date": "10-09",
-      "tmax": 65,
-      "tmin": 34,
+      "tmax": 64,
+      "tmin": 35,
       "tavg": 49.5,
       "gddBase50": 0
     },
@@ -2274,18 +2274,18 @@
     {
       "doy": 284,
       "date": "10-11",
-      "tmax": 81,
+      "tmax": 80,
       "tmin": 44,
-      "tavg": 62.5,
-      "gddBase50": 12.5
+      "tavg": 62,
+      "gddBase50": 12
     },
     {
       "doy": 285,
       "date": "10-12",
       "tmax": 66,
-      "tmin": 47,
-      "tavg": 56.5,
-      "gddBase50": 6.5
+      "tmin": 48,
+      "tavg": 57,
+      "gddBase50": 7
     },
     {
       "doy": 286,
@@ -2299,48 +2299,48 @@
       "doy": 287,
       "date": "10-14",
       "tmax": 43,
-      "tmin": 34,
-      "tavg": 38.5,
+      "tmin": 35,
+      "tavg": 39,
       "gddBase50": 0
     },
     {
       "doy": 288,
       "date": "10-15",
-      "tmax": 50,
+      "tmax": 49,
       "tmin": 33,
-      "tavg": 41.5,
+      "tavg": 41,
       "gddBase50": 0
     },
     {
       "doy": 289,
       "date": "10-16",
-      "tmax": 52,
-      "tmin": 39,
+      "tmax": 51,
+      "tmin": 40,
       "tavg": 45.5,
       "gddBase50": 0
     },
     {
       "doy": 290,
       "date": "10-17",
-      "tmax": 47,
-      "tmin": 36,
-      "tavg": 41.5,
+      "tmax": 46,
+      "tmin": 35.6,
+      "tavg": 40.8,
       "gddBase50": 0
     },
     {
       "doy": 291,
       "date": "10-18",
-      "tmax": 47,
+      "tmax": 45,
       "tmin": 35,
-      "tavg": 41,
+      "tavg": 40,
       "gddBase50": 0
     },
     {
       "doy": 292,
       "date": "10-19",
-      "tmax": 51,
-      "tmin": 31,
-      "tavg": 41,
+      "tmax": 50,
+      "tmin": 30.9,
+      "tavg": 40.5,
       "gddBase50": 0
     },
     {
@@ -2354,66 +2354,66 @@
     {
       "doy": 294,
       "date": "10-21",
-      "tmax": 76,
-      "tmin": 37,
+      "tmax": 75,
+      "tmin": 38,
       "tavg": 56.5,
       "gddBase50": 6.5
     },
     {
       "doy": 295,
       "date": "10-22",
-      "tmax": 79,
-      "tmin": 38,
+      "tmax": 78,
+      "tmin": 39,
       "tavg": 58.5,
       "gddBase50": 8.5
     },
     {
       "doy": 296,
       "date": "10-23",
-      "tmax": 72,
-      "tmin": 53,
-      "tavg": 62.5,
-      "gddBase50": 12.5
+      "tmax": 71,
+      "tmin": 55,
+      "tavg": 63,
+      "gddBase50": 13
     },
     {
       "doy": 297,
       "date": "10-24",
-      "tmax": 74,
-      "tmin": 60,
+      "tmax": 73,
+      "tmin": 61,
       "tavg": 67,
       "gddBase50": 17
     },
     {
       "doy": 298,
       "date": "10-25",
-      "tmax": 67,
+      "tmax": 66,
       "tmin": 46,
-      "tavg": 56.5,
-      "gddBase50": 6.5
+      "tavg": 56,
+      "gddBase50": 6
     },
     {
       "doy": 299,
       "date": "10-26",
       "tmax": 51,
-      "tmin": 32,
-      "tavg": 41.5,
+      "tmin": 34,
+      "tavg": 42.5,
       "gddBase50": 0
     },
     {
       "doy": 300,
       "date": "10-27",
-      "tmax": 58,
-      "tmin": 30,
+      "tmax": 57,
+      "tmin": 30.9,
       "tavg": 44,
       "gddBase50": 0
     },
     {
       "doy": 301,
       "date": "10-28",
-      "tmax": 60,
+      "tmax": 59,
       "tmin": 42,
-      "tavg": 51,
-      "gddBase50": 1
+      "tavg": 50.5,
+      "gddBase50": 0.5
     },
     {
       "doy": 302,
@@ -2426,8 +2426,8 @@
     {
       "doy": 303,
       "date": "10-30",
-      "tmax": 65,
-      "tmin": 36,
+      "tmax": 64,
+      "tmin": 37,
       "tavg": 50.5,
       "gddBase50": 0.5
     },
@@ -2435,23 +2435,23 @@
       "doy": 304,
       "date": "10-31",
       "tmax": 68,
-      "tmin": 39,
-      "tavg": 53.5,
-      "gddBase50": 3.5
+      "tmin": 40,
+      "tavg": 54,
+      "gddBase50": 4
     },
     {
       "doy": 305,
       "date": "11-01",
       "tmax": 71,
-      "tmin": 37,
-      "tavg": 54,
-      "gddBase50": 4
+      "tmin": 38,
+      "tavg": 54.5,
+      "gddBase50": 4.5
     },
     {
       "doy": 306,
       "date": "11-02",
-      "tmax": 75,
-      "tmin": 43,
+      "tmax": 74,
+      "tmin": 44,
       "tavg": 59,
       "gddBase50": 9
     },
@@ -2474,33 +2474,33 @@
     {
       "doy": 309,
       "date": "11-05",
-      "tmax": 59,
-      "tmin": 42,
-      "tavg": 50.5,
-      "gddBase50": 0.5
+      "tmax": 58,
+      "tmin": 42.8,
+      "tavg": 50.4,
+      "gddBase50": 0.4
     },
     {
       "doy": 310,
       "date": "11-06",
       "tmax": 56,
-      "tmin": 41,
-      "tavg": 48.5,
+      "tmin": 42,
+      "tavg": 49,
       "gddBase50": 0
     },
     {
       "doy": 311,
       "date": "11-07",
-      "tmax": 46,
+      "tmax": 45,
       "tmin": 34,
-      "tavg": 40,
+      "tavg": 39.5,
       "gddBase50": 0
     },
     {
       "doy": 312,
       "date": "11-08",
       "tmax": 49,
-      "tmin": 36,
-      "tavg": 42.5,
+      "tmin": 38,
+      "tavg": 43.5,
       "gddBase50": 0
     },
     {
@@ -2514,17 +2514,17 @@
     {
       "doy": 314,
       "date": "11-10",
-      "tmax": 72,
-      "tmin": 51,
+      "tmax": 71,
+      "tmin": 52,
       "tavg": 61.5,
       "gddBase50": 11.5
     },
     {
       "doy": 315,
       "date": "11-11",
-      "tmax": 51,
-      "tmin": 31,
-      "tavg": 41,
+      "tmax": 49,
+      "tmin": 30.9,
+      "tavg": 40,
       "gddBase50": 0
     },
     {
@@ -2538,33 +2538,33 @@
     {
       "doy": 317,
       "date": "11-13",
-      "tmax": 35,
+      "tmax": 34,
       "tmin": 27,
-      "tavg": 31,
+      "tavg": 30.5,
       "gddBase50": 0
     },
     {
       "doy": 318,
       "date": "11-14",
-      "tmax": 36,
-      "tmin": 22,
-      "tavg": 29,
+      "tmax": 35,
+      "tmin": 21.9,
+      "tavg": 28.5,
       "gddBase50": 0
     },
     {
       "doy": 319,
       "date": "11-15",
-      "tmax": 34,
-      "tmin": 31,
-      "tavg": 32.5,
+      "tmax": 33.8,
+      "tmin": 30.9,
+      "tavg": 32.3,
       "gddBase50": 0
     },
     {
       "doy": 320,
       "date": "11-16",
       "tmax": 34,
-      "tmin": 26,
-      "tavg": 30,
+      "tmin": 26.1,
+      "tavg": 30.1,
       "gddBase50": 0
     },
     {
@@ -2578,16 +2578,16 @@
     {
       "doy": 322,
       "date": "11-18",
-      "tmax": 26,
-      "tmin": 17,
-      "tavg": 21.5,
+      "tmax": 26.1,
+      "tmin": 18,
+      "tavg": 22.1,
       "gddBase50": 0
     },
     {
       "doy": 323,
       "date": "11-19",
-      "tmax": 24,
-      "tmin": 13,
+      "tmax": 24.1,
+      "tmin": 12.9,
       "tavg": 18.5,
       "gddBase50": 0
     },
@@ -2603,16 +2603,16 @@
       "doy": 325,
       "date": "11-21",
       "tmax": 37,
-      "tmin": 17,
-      "tavg": 27,
+      "tmin": 17.1,
+      "tavg": 27.1,
       "gddBase50": 0
     },
     {
       "doy": 326,
       "date": "11-22",
       "tmax": 36,
-      "tmin": 16,
-      "tavg": 26,
+      "tmin": 17.1,
+      "tavg": 26.6,
       "gddBase50": 0
     },
     {
@@ -2627,16 +2627,16 @@
       "doy": 328,
       "date": "11-24",
       "tmax": 48,
-      "tmin": 30,
-      "tavg": 39,
+      "tmin": 30.9,
+      "tavg": 39.5,
       "gddBase50": 0
     },
     {
       "doy": 329,
       "date": "11-25",
-      "tmax": 48,
-      "tmin": 31,
-      "tavg": 39.5,
+      "tmax": 47,
+      "tmin": 30.9,
+      "tavg": 39,
       "gddBase50": 0
     },
     {
@@ -2659,8 +2659,8 @@
       "doy": 332,
       "date": "11-28",
       "tmax": 41,
-      "tmin": 23,
-      "tavg": 32,
+      "tmin": 24.1,
+      "tavg": 32.6,
       "gddBase50": 0
     },
     {
@@ -2674,9 +2674,9 @@
     {
       "doy": 334,
       "date": "11-30",
-      "tmax": 32,
+      "tmax": 28.9,
       "tmin": 18,
-      "tavg": 25,
+      "tavg": 23.5,
       "gddBase50": 0
     },
     {
@@ -2690,8 +2690,8 @@
     {
       "doy": 336,
       "date": "12-02",
-      "tmax": 45,
-      "tmin": 28,
+      "tmax": 44,
+      "tmin": 28.9,
       "tavg": 36.5,
       "gddBase50": 0
     },
@@ -2714,41 +2714,41 @@
     {
       "doy": 339,
       "date": "12-05",
-      "tmax": 39,
+      "tmax": 38,
       "tmin": 28,
-      "tavg": 33.5,
+      "tavg": 33,
       "gddBase50": 0
     },
     {
       "doy": 340,
       "date": "12-06",
       "tmax": 34,
-      "tmin": 24,
-      "tavg": 29,
+      "tmin": 24.1,
+      "tavg": 29.1,
       "gddBase50": 0
     },
     {
       "doy": 341,
       "date": "12-07",
       "tmax": 35,
-      "tmin": 24,
-      "tavg": 29.5,
+      "tmin": 24.1,
+      "tavg": 29.6,
       "gddBase50": 0
     },
     {
       "doy": 342,
       "date": "12-08",
-      "tmax": 36,
-      "tmin": 20,
-      "tavg": 28,
+      "tmax": 35,
+      "tmin": 19.4,
+      "tavg": 27.2,
       "gddBase50": 0
     },
     {
       "doy": 343,
       "date": "12-09",
       "tmax": 34,
-      "tmin": 25,
-      "tavg": 29.5,
+      "tmin": 28,
+      "tavg": 31,
       "gddBase50": 0
     },
     {
@@ -2771,7 +2771,7 @@
       "doy": 346,
       "date": "12-12",
       "tmax": 36,
-      "tmin": 31,
+      "tmin": 30.9,
       "tavg": 33.5,
       "gddBase50": 0
     },
@@ -2795,14 +2795,14 @@
       "doy": 349,
       "date": "12-15",
       "tmax": 35,
-      "tmin": 31,
+      "tmin": 30.9,
       "tavg": 33,
       "gddBase50": 0
     },
     {
       "doy": 350,
       "date": "12-16",
-      "tmax": 31,
+      "tmax": 30.9,
       "tmin": 23,
       "tavg": 27,
       "gddBase50": 0
@@ -2810,23 +2810,23 @@
     {
       "doy": 351,
       "date": "12-17",
-      "tmax": 26,
-      "tmin": 19,
-      "tavg": 22.5,
+      "tmax": 26.1,
+      "tmin": 19.9,
+      "tavg": 23,
       "gddBase50": 0
     },
     {
       "doy": 352,
       "date": "12-18",
       "tmax": 25,
-      "tmin": 13,
+      "tmin": 12.9,
       "tavg": 19,
       "gddBase50": 0
     },
     {
       "doy": 353,
       "date": "12-19",
-      "tmax": 20,
+      "tmax": 19.9,
       "tmin": 12,
       "tavg": 16,
       "gddBase50": 0
@@ -2834,23 +2834,23 @@
     {
       "doy": 354,
       "date": "12-20",
-      "tmax": 24,
+      "tmax": 24.8,
       "tmin": 1,
-      "tavg": 12.5,
+      "tavg": 12.9,
       "gddBase50": 0
     },
     {
       "doy": 355,
       "date": "12-21",
-      "tmax": 20,
+      "tmax": 19.4,
       "tmin": -4,
-      "tavg": 8,
+      "tavg": 7.7,
       "gddBase50": 0
     },
     {
       "doy": 356,
       "date": "12-22",
-      "tmax": 31,
+      "tmax": 30.9,
       "tmin": -3,
       "tavg": 14,
       "gddBase50": 0
@@ -2867,15 +2867,15 @@
       "doy": 358,
       "date": "12-24",
       "tmax": 9,
-      "tmin": 5,
-      "tavg": 7,
+      "tmin": 6,
+      "tavg": 7.5,
       "gddBase50": 0
     },
     {
       "doy": 359,
       "date": "12-25",
-      "tmax": 7,
-      "tmin": -1,
+      "tmax": 6,
+      "tmin": 0,
       "tavg": 3,
       "gddBase50": 0
     },
@@ -2883,7 +2883,7 @@
       "doy": 360,
       "date": "12-26",
       "tmax": 18,
-      "tmin": 2,
+      "tmin": 1.9,
       "tavg": 10,
       "gddBase50": 0
     },
@@ -2907,8 +2907,8 @@
       "doy": 363,
       "date": "12-29",
       "tmax": 51,
-      "tmin": 38,
-      "tavg": 44.5,
+      "tmin": 39,
+      "tavg": 45,
       "gddBase50": 0
     },
     {
@@ -2923,8 +2923,8 @@
       "doy": 365,
       "date": "12-31",
       "tmax": 32,
-      "tmin": 24,
-      "tavg": 28,
+      "tmin": 25,
+      "tavg": 28.5,
       "gddBase50": 0
     }
   ]

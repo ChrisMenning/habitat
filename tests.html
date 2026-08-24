@@ -250,6 +250,22 @@ def('🔌 Server Proxy Endpoints', 'GET /api/snapshots → {files:[]} index', as
   const d = await r.json();
   if (!Array.isArray(d.files)) throw new Error('Response missing "files" array');
 });
+def('🔌 Server Proxy Endpoints', 'GET /api/observed-temps/{currentYear} is not stale', async () => {
+  // Regression test for the 2026-08-24 bug: observed-temps-GRB-{year}.json is a
+  // static snapshot refreshed by the iem auto-harvest source (serve.js), not a
+  // live fetch. It silently fed a several-months-stale reading into the live
+  // GDD stat for ~5 months before this was caught. If the snapshot's last
+  // record is more than ~10 days old, the auto-harvest source is broken again.
+  const year = new Date().getFullYear();
+  const r = await fetch(`/api/observed-temps/${year}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = await r.json();
+  if (!Array.isArray(d.records) || d.records.length === 0) throw new Error('No records returned');
+  const last = d.records[d.records.length - 1];
+  const lastDate = new Date(`${year}-${last.date}T00:00:00`);
+  const ageDays = (Date.now() - lastDate.getTime()) / 86400000;
+  if (ageDays > 10) throw new Error(`Stalest record is ${Math.round(ageDays)} days old (${last.date}) — iem auto-harvest may be broken`);
+});
 def('🔌 Server Proxy Endpoints', 'POST /api/nlcd-nesting → scores for 1 site', async () => {
   const sites = [{ id: 'test', lng: -88.0133, lat: 44.5133 }];
   const r = await fetch('/api/nlcd-nesting', {

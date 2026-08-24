@@ -67,3 +67,28 @@ A test sending a 601-site batch (to confirm the server's own `sites.length > 600
 Converted `/api/nlcd-nesting` from `GET ?sites=...` to `POST` with a JSON body (`{ sites: [...] }`). POST bodies aren't subject to nginx's request-line limit, only `client_max_body_size` (default 1 MB, comfortably fits the 600-site cap). This makes the server's own batch-size validation actually reachable, and let the client's `fetchGridNlcdScores` batch size go back up from 40 (a value only ever chosen to fit under the old GET URI limit) to 500.
 - Updated: `serve.js` (`proxyNlcdNesting`, now reads the body instead of `url.parse`; route now requires POST, 405 otherwise), `js/nesting.js` (both fetch call sites), `tests.html` (both nlcd-nesting tests).
 - `/api/canopy-check` uses the same GET+query pattern and has no batching or size cap at all (`fetchCanopyScores` sends every corridor site in one request). Left as-is here since its input is the small, fixed corridor-site list, not a synthetic grid, and no test exercises an oversized batch — but it has the same latent nginx-URI-limit exposure as the old `/api/nlcd-nesting` design if the corridor site count ever grows substantially. Worth converting to POST+body too if that becomes a problem.
+
+---
+
+## Live GDD Stat Frozen Since March — Stale IEM Snapshot Silently Overriding Good Live Data
+
+**Date:** 2026-08-24
+**Investigated by:** Claude Code + Chris
+
+### Finding
+Chris noticed the live GDD figure looked wrong and initially suspected an expired `NOAA_CDO_TOKEN`. That token turned out to be fine — tested directly against NCEI's live API, which returned real current data (and doesn't even require a token; the Access Data Service endpoint is CORS-open).
+
+The actual bug: `js/climate.js` prefers Iowa Environmental Mesonet (IEM) data over live NOAA GHCND for current-year GDD (IEM is an independent archive, unaffected by the federal NOAA/NCEI data-access disruption also documented in this file's climate-ribbon UI copy). But that IEM data isn't fetched live — it's served from a static snapshot, `snapshots/observed-temps-GRB-{year}.json`, via `GET /api/observed-temps/{year}`. Every one of those files (2021–2026) had the identical `"retrieved": "2026-03-27"` timestamp — a one-time manual pull that nothing ever refreshed. The 2026 file only had 85 days of data (through March 26); 2025 only had 86 days despite being a fully completed year.
+
+`initClimatePanel()` in `climate.js` unconditionally overwrote the live GHCND-derived current-GDD with whatever the IEM snapshot contained, with no freshness check. So the live GDD stat had been frozen at "~2 GDD, Pre-season" since March, in the middle of August, even though the live GHCND path was working correctly the whole time.
+
+### Decision
+Two fixes, both needed:
+1. **`js/climate.js`**: the IEM-preference override is now conditional — it only takes effect when the IEM snapshot's last day-of-year is `>=` the live GHCND result's. A stale local snapshot can no longer silently clobber a good live reading; it's used only when it's genuinely at least as current.
+2. **New harvest source `iem`**: added `_harvestIem(year)` to `serve.js` and wired it into the existing `_autoHarvestMissing()` scheduler (previously handled `inat`/`gbif`/`noaa`/`nass`/`cdl` only). It fetches from IEM's ASOS daily-summary CSV endpoint (`mesonet.agron.iastate.edu/cgi-bin/request/daily.py`, station `GRB`) and writes `observed-temps-GRB-{year}.json` — note the different filename convention from every other auto-harvested source, handled via `_snapshotFileName()`. Scoped to `IEM_START_YEAR = 2021` onward (matching what `js/climate.js` actually requests), not the general `AUTO_HARVEST_START_YEAR = 2015`.
+3. Also added `scripts/fetch-iem.js` — a standalone CLI with the same fetch/parse logic, for manual one-off backfills (`node scripts/fetch-iem.js 2025 2026`). Used it to backfill 2025 (full year, was stuck at day 86) and 2026 (through the day before run) before this fix shipped, since the auto-harvest fix alone wouldn't retroactively fix already-stale files sitting at a "fresh enough" mtime.
+
+### If This Comes Up Again
+- `scripts/fetch-iem.js` and `serve.js`'s `_harvestIem()` duplicate the same fetch/parse logic (CommonJS `serve.js` can't `require()` the ES-module CLI script). If one changes, check whether the other needs the same fix.
+- IEM's `daily.py` endpoint has no documented rate limit; the 3 s inter-harvest delay (`AUTO_HARVEST_DELAYS_MS.iem`) is a polite default, not a measured requirement.
+- If NOAA/NCEI's public API access is ever fully restored and stays reliable, the IEM fallback and its freshness-comparison logic could eventually be simplified away — but there's no urgency, and the conditional-override fix means a stale IEM file is now harmless either way.
