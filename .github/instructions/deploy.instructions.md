@@ -2,9 +2,13 @@
 applyTo: "**"
 ---
 
-# Bay Hive — Manual Deployment
+# Bay Hive — Deployment
 
-CI/CD via GitHub Actions is currently broken (Tailscale OAuth tag:ci permission issue on Free plan). Use manual deployment below.
+CI/CD via GitHub Actions (`.github/workflows/deploy.yml`) deploys automatically on push to `main`. It connects to the server over Tailscale using a pre-signed auth key (switched from OAuth client + `tag:ci`, which hit a permission issue on the Tailscale Free plan).
+
+**Setup required once:** generate a reusable + ephemeral auth key at https://login.tailscale.com/admin/settings/keys and store it as the `TAILSCALE_AUTH_KEY` repo secret (Settings → Secrets and variables → Actions). Also required: `SSH_PRIVATE_KEY` (a passphrase-less deploy key authorized on the server, distinct from the local `key` file below) and `DEPLOY_HOST` — this must be the server's **Tailscale** address (`100.79.198.22`, tailnet name `mcmudgeon-aspire-gx-785`), not its LAN IP `192.168.4.45` — the CI runner only joins the tailnet, not your home LAN, so it can only reach the box at its Tailscale address.
+
+Manual deployment below is the fallback if CI is unavailable.
 
 ## Server
 - **Host**: `192.168.4.45` (Aspire GX-785, home LAN — must be on same network or Tailscale)
@@ -70,4 +74,3 @@ sudo systemctl daemon-reload && sudo systemctl restart bayhive
 - DO NOT use `Compress-Archive` — it produces zip and flattens paths
 - `snapshots/climate-normals-*.json` and `snapshots/observed-temps-*.json` ARE in the repo and deploy
 - `snapshots/cache/` and `snapshots/inat-*.json` are gitignored — server builds these at runtime
-- To fix CI: switch `tailscale/github-action@v2` to use `authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}` (remove oauth lines and tags), generate a reusable+ephemeral auth key from https://login.tailscale.com/admin/settings/keys, store as `TAILSCALE_AUTH_KEY` secret
