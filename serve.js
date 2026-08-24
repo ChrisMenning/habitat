@@ -2100,6 +2100,75 @@ async function _harvestCdl(year) {
   return { source: 'cdl', year, harvestedAt: new Date().toISOString(), rows };
 }
 
+// ── Harvest: IEM (Iowa Environmental Mesonet) observed daily temps ───────────
+// Independent of NOAA/NCEI — js/climate.js prefers this for live current-year
+// GDD since federal public-data access has been unreliable. Writes to
+// observed-temps-GRB-{year}.json (NOT iem-{year}.json — see _snapshotFileName
+// below), served by GET /api/observed-temps/{year}.
+// Kept in sync manually with the standalone CLI equivalent, scripts/fetch-iem.js.
+const IEM_STATION      = 'GRB';
+const IEM_NETWORK      = 'WI_ASOS';
+const IEM_STATION_NAME = 'GREEN BAY AUSTIN STRAUBEL INTL AP, WI US';
+const IEM_START_YEAR   = 2021; // matches the range js/climate.js requests
+
+async function _harvestIem(year) {
+  const now       = new Date();
+  const isCurrent = year === now.getFullYear();
+  const start     = new Date(year, 0, 1);
+  const end       = isCurrent
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1) // yesterday — today may be partial
+    : new Date(year, 11, 31);
+
+  const qs = new URLSearchParams({
+    network: IEM_NETWORK, stations: IEM_STATION,
+    year1: String(start.getFullYear()), month1: String(start.getMonth() + 1), day1: String(start.getDate()),
+    year2: String(end.getFullYear()),   month2: String(end.getMonth() + 1),   day2: String(end.getDate()),
+    format: 'comma',
+  });
+
+  let body;
+  try {
+    body = (await httpsGetBuf('mesonet.agron.iastate.edu', `/cgi-bin/request/daily.py?${qs}`)).toString();
+  } catch (e) {
+    return { available: false, reason: e.message };
+  }
+
+  const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return { available: false, reason: 'IEM returned no data' };
+  const header = lines[0].split(',');
+  const iDay = header.indexOf('day'), iTmax = header.indexOf('max_temp_f'), iTmin = header.indexOf('min_temp_f');
+  if (iDay === -1 || iTmax === -1 || iTmin === -1) return { available: false, reason: 'Unexpected IEM CSV header' };
+
+  const records = [];
+  let cumulativeGdd = 0;
+  for (const line of lines.slice(1)) {
+    const cols = line.split(',');
+    const tmaxRaw = parseFloat(cols[iTmax]), tminRaw = parseFloat(cols[iTmin]);
+    if (!isFinite(tmaxRaw) || !isFinite(tminRaw)) continue; // 'M' (missing) sentinel etc.
+    const tmax = Math.round(tmaxRaw * 10) / 10;
+    const tmin = Math.round(tminRaw * 10) / 10;
+    const tavg = Math.round((tmax + tmin) / 2 * 10) / 10;
+    const gddBase50 = Math.max(0, tavg - 50);
+    cumulativeGdd += gddBase50;
+    const dateStr = cols[iDay];
+    const d   = new Date(`${dateStr}T00:00:00`);
+    const doy = Math.round((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+    records.push({ doy, date: dateStr.slice(5), tmax, tmin, tavg, gddBase50: Math.round(gddBase50 * 10) / 10 });
+  }
+  if (!records.length) return { available: false, reason: 'IEM returned no usable rows' };
+
+  return {
+    station:      IEM_STATION,
+    stationName:  `${IEM_STATION} / USW00014898 ${IEM_STATION_NAME}`,
+    year,
+    source:       'Iowa Environmental Mesonet (IEM) ASOS archive — Iowa State University. Observed daily temperature data; not federal government-hosted.',
+    sourceUrl:    'https://mesonet.agron.iastate.edu/',
+    retrieved:    now.toISOString().slice(0, 10),
+    cumulativeGddBase50: Math.round(cumulativeGdd),
+    records,
+  };
+}
+
 // ── Server-side auto-harvesting ───────────────────────────────────────────────
 //
 // Runs at startup (after a 20-second delay) and fills in any missing or stale
@@ -2114,8 +2183,14 @@ async function _harvestCdl(year) {
 // All harvesting is sequential — never parallel — to honour rate limits.
 
 const AUTO_HARVEST_START_YEAR  = 2015;
-const AUTO_HARVEST_DELAYS_MS   = { inat: 8000, gbif: 8000, noaa: 8000, nass: 5000, cdl: 5000 };
+const AUTO_HARVEST_DELAYS_MS   = { inat: 8000, gbif: 8000, noaa: 8000, nass: 5000, cdl: 5000, iem: 3000 };
 const AUTO_HARVEST_STALE_DAYS  = { historical: 30, current: 1 }; // days before re-harvest
+
+// iem writes to observed-temps-GRB-{year}.json (matched by GET /api/observed-temps/{year}
+// and js/climate.js), not the generic {source}-{year}.json every other source uses.
+function _snapshotFileName(source, year) {
+  return source === 'iem' ? `observed-temps-GRB-${year}.json` : `${source}-${year}.json`;
+}
 
 let _autoHarvestStatus = { running: false, queue: [], lastCompleted: null, lastError: null };
 
@@ -2127,14 +2202,17 @@ async function _autoHarvestMissing() {
   const currentYear = new Date().getFullYear();
   const now         = Date.now();
 
-  // Read existing snapshot files
+  // Read existing snapshot files (both naming conventions — see _snapshotFileName)
   let existing;
-  try { existing = new Set(fs.readdirSync(SNAPSHOTS_DIR).filter(f => /^[a-z]+-\d{4}\.json$/.test(f))); }
-  catch { existing = new Set(); }
+  try {
+    existing = new Set(fs.readdirSync(SNAPSHOTS_DIR).filter(f =>
+      /^[a-z]+-\d{4}\.json$/.test(f) || /^observed-temps-GRB-\d{4}\.json$/.test(f)
+    ));
+  } catch { existing = new Set(); }
 
   /** Returns true when a snapshot should be (re-)harvested */
   function _needsHarvest(source, year) {
-    const file = `${source}-${year}.json`;
+    const file = _snapshotFileName(source, year);
     if (!existing.has(file)) return true;
     try {
       const stat = fs.statSync(path.join(SNAPSHOTS_DIR, file));
@@ -2144,15 +2222,17 @@ async function _autoHarvestMissing() {
     } catch { return true; }
   }
 
-  // Build queue: all sources × all years, newest first, keyed sources gated on key presence
+  // Build queue: all sources × all years, newest first, keyed sources gated on key presence.
+  // iem needs no key and only covers the years js/climate.js actually requests (IEM_START_YEAR+).
   const sources = ['inat', 'gbif'];
   if (getNoaaToken())   sources.push('noaa');
   if (getNassApiKey())  sources.push('nass');
-  sources.push('cdl');
+  sources.push('cdl', 'iem');
 
   const queue = [];
   for (const source of sources) {
-    for (let year = currentYear; year >= AUTO_HARVEST_START_YEAR; year--) {
+    const startYear = source === 'iem' ? IEM_START_YEAR : AUTO_HARVEST_START_YEAR;
+    for (let year = currentYear; year >= startYear; year--) {
       if (_needsHarvest(source, year)) queue.push({ source, year });
     }
   }
@@ -2170,13 +2250,15 @@ async function _autoHarvestMissing() {
         case 'noaa': snapshot = await _harvestNoaa(year); break;
         case 'nass': snapshot = await _harvestNass(year); break;
         case 'cdl':  snapshot = await _harvestCdl(year);  break;
+        case 'iem':  snapshot = await _harvestIem(year);  break;
       }
+      const file = _snapshotFileName(source, year);
       if (snapshot?.available === false) {
         console.log(`[auto-harvest] ${label} → skipped (${snapshot.reason})`);
       } else {
-        const dest = path.join(SNAPSHOTS_DIR, `${label}.json`);
+        const dest = path.join(SNAPSHOTS_DIR, file);
         fs.writeFileSync(dest, JSON.stringify(snapshot, null, 2));
-        existing.add(`${label}.json`);
+        existing.add(file);
         const pollinators   = snapshot.byLayer?.pollinators   ?? '?';
         const nativePlants  = snapshot.byLayer?.['native-plants'] ?? '?';
         console.log(`[auto-harvest] ${label} → done (${pollinators} pollinators, ${nativePlants} native-plants)`);
@@ -2374,14 +2456,14 @@ function handleHarvest(req, res) {
       const parsed = JSON.parse(body);
       source = parsed.source;
       year   = parseInt(parsed.year, 10);
-      if (!['inat','gbif','noaa','nass','cdl'].includes(source)) throw new Error('invalid source');
+      if (!['inat','gbif','noaa','nass','cdl','iem'].includes(source)) throw new Error('invalid source');
       if (!year || year < 2000 || year > new Date().getFullYear()) throw new Error('invalid year');
     } catch (e) {
       _jsonRes(res, 400, { ok: false, error: e.message });
       return;
     }
 
-    const file = `${source}-${year}.json`;
+    const file = _snapshotFileName(source, year);
     const dest = path.join(SNAPSHOTS_DIR, file);
 
     let snapshot;
@@ -2392,9 +2474,10 @@ function handleHarvest(req, res) {
         case 'noaa': snapshot = await _harvestNoaa(year); break;
         case 'nass': snapshot = await _harvestNass(year); break;
         case 'cdl':  snapshot = await _harvestCdl(year);  break;
+        case 'iem':  snapshot = await _harvestIem(year);  break;
       }
       fs.writeFileSync(dest, JSON.stringify(snapshot, null, 2));
-      const records = snapshot.total ?? snapshot.rows?.length ?? 0;
+      const records = snapshot.total ?? snapshot.rows?.length ?? snapshot.records?.length ?? 0;
       _jsonRes(res, 200, { ok: true, file, records });
     } catch (err) {
       _jsonRes(res, 502, { ok: false, error: err.message });
