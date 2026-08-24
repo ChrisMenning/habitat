@@ -461,13 +461,15 @@ export const INVEST_LAYER = {
 
 /**
  * Urban InVEST — same Lonsdorf kernel but normalized against urban cells only.
- * 330 m fine grid. Shows relative habitat quality within the developed footprint.
+ * 330 m fine grid. Scores planting *opportunity* within the developed footprint,
+ * not raw habitat quality — see computeInVESTHeatmapUrban in nesting.js and
+ * decisions.md (2026-08-24) for why.
  */
 export const INVEST_URBAN_LAYER = {
   id:          'invest-urban-heat',
   label:       'Urban Habitat Index',
   emoji:       '<i class="ph ph-buildings"></i>',
-  description: 'Adapted from the InVEST Lonsdorf&nbsp;(2009) model, which was designed and calibrated for agricultural landscapes. By default that model rates all urban land as low-quality habitat. This layer re-runs the same kernel at 660&nbsp;m resolution, keeps only developed NLCD cells (≥20% impervious), and normalizes the score against the best urban cell in the study area — so a city park surrounded by pavement can score near 1.0 rather than being washed out by Suamico-area wetlands. Guild weights shift toward small and medium solitary bees (Osmia, Lasioglossum), which dominate urban green patches.',
+  description: 'Adapted from the InVEST Lonsdorf&nbsp;(2009) model, which was designed and calibrated for agricultural landscapes. This layer re-runs the same kernel at 660&nbsp;m resolution over developed NLCD cells (≥20% impervious) and scores each cell’s <em>planting opportunity</em> — how developed it is combined with how much room it has to improve, relative to the best urban cell in the study area. High scores mark built-up areas with little existing floral or nesting resource, where a new planting would have the biggest impact; low scores mean a cell is either already close to the best urban habitat nearby, or isn’t developed enough to be a meaningful target (a low-density fringe cell doesn’t score high just because it borders farmland). Guild weights shift toward small and medium solitary bees (Osmia, Lasioglossum), which dominate urban green patches.',
   defaultOn:   false,
   vintage:     { year: 2021 },
 };

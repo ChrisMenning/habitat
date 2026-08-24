@@ -669,27 +669,32 @@ export function computeAlerts({
     }
   }
 
-  // ── Alert: Low Urban Habitat Context ─────────────────────────────────────────────
-  // Fires when a corridor site has an Urban Habitat Index score < 0.20 (normalized
-  // 0–1). A low score means the 660 m matrix surrounding the site is dominated by
-  // impervious surface with minimal green patches, reducing foraging connectivity.
+  // ── Alert: High Urban Planting Opportunity ────────────────────────────────────
+  // Fires when a corridor site has an Urban Habitat Index (opportunity) score
+  // ≥ 0.70 (normalized 0–1, high = high-value target). As of 2026-08-24 this
+  // index scores *opportunity*, not raw habitat quality — see decisions.md and
+  // computeInVESTHeatmapUrban's header comment. A high score means the 660 m
+  // matrix surrounding the site is both genuinely developed and currently low
+  // in floral/nesting resources — exactly where new plantings would move the
+  // needle most, as opposed to a low-density fringe site that's already close
+  // to the best habitat nearby and has little room left to gain.
   // Level 'opportunity': identifies actionable infill or streetscape planting zones.
   if (investCrosswalk.length > 0) {
-    const LOW_UHI_THRESHOLD = 0.20;
-    const lowUhiSites = investCrosswalk.filter(s => s.investScore < LOW_UHI_THRESHOLD);
-    if (lowUhiSites.length > 0) {
+    const HIGH_OPPORTUNITY_THRESHOLD = 0.70;
+    const highOppSites = investCrosswalk.filter(s => s.investScore >= HIGH_OPPORTUNITY_THRESHOLD);
+    if (highOppSites.length > 0) {
       // Match back to corridor features to get centroid coords
-      const siteCoords = lowUhiSites.map(s => {
+      const siteCoords = highOppSites.map(s => {
         const feat = corridorFeatures.find(f => (f.properties?.name ?? f.properties?.Park) === s.name);
         return feat ? centroid(feat) : [s.lng, s.lat];
       });
-      const names = lowUhiSites.map(s => s.name).slice(0, 3);
-      const extra = lowUhiSites.length > 3 ? ` +${lowUhiSites.length - 3} more` : '';
+      const names = highOppSites.map(s => s.name).slice(0, 3);
+      const extra = highOppSites.length > 3 ? ` +${highOppSites.length - 3} more` : '';
       alerts.push({
         level:  'opportunity',
         icon:   '<i class="ph ph-city"></i>',
-        key:    'low-urban-context',
-        text:   `Low Urban Habitat Context: ${lowUhiSites.length} corridor site${lowUhiSites.length > 1 ? 's score' : ' scores'} below 20/100 on the Urban Habitat Index — the surrounding 660 m landscape is dominated by impervious surface, limiting foraging connectivity for wide-ranging bees. Infill or streetscape plantings within 300–700 m would expand the matrix for medium and large solitary bee guilds: ${names.join(', ')}${extra}.`,
+        key:    'high-urban-opportunity',
+        text:   `High Urban Planting Opportunity: ${highOppSites.length} corridor site${highOppSites.length > 1 ? 's score' : ' scores'} at or above 70/100 on the Urban Habitat Index — the surrounding 660 m landscape is dominated by impervious surface with little existing floral or nesting resource, so new plantings here would have an outsized impact. Infill or streetscape plantings within 300–700 m would expand the matrix for medium and large solitary bee guilds: ${names.join(', ')}${extra}.`,
         coords: siteCoords,
         layers: ['gbcc-corridor', 'invest-urban-heat'],
         heatmaps: ['invest-urban-heat'],
@@ -1005,8 +1010,13 @@ export function computeExpansionOpportunities({
 
     // ── Urban habitat context (UHI grid nearest-cell lookup) ────────────────
     // Find the nearest crosswalk entry to this cluster centroid.
-    // The UHI measures surrounding landscape quality (660 m matrix) —
-    // high score means abundant flowering/nesting patches nearby.
+    // The UHI measures surrounding planting *opportunity* (660 m matrix) —
+    // high score means the area is developed and currently underserved by
+    // habitat. Candidates here already have a positive signal (a pollinator
+    // sighting cluster), so a high UHI score means this is exactly the kind
+    // of underserved-but-active spot a new planting would most improve —
+    // it still adds to suitability, just for a different reason than before
+    // (previously: "good habitat already nearby"; now: "high-need and active").
     let urbanContextScore = null;
     if (investCrosswalk.length > 0) {
       let bestDist2 = Infinity;
@@ -1038,7 +1048,7 @@ export function computeExpansionOpportunities({
     if (nearCorridorKm > SITE_EXCLUSION_KM && nearCorridorKm <= 1.5)     score += 15;
     else if (nearCorridorKm > 1.5 && nearCorridorKm <= 3.0)              score += 8;
 
-    // Secondary: urban habitat matrix quality (UHI grid)
+    // Secondary: urban planting opportunity (UHI grid)
     if (urbanContextScore !== null) {
       if (urbanContextScore >= 0.65)      score += 15;
       else if (urbanContextScore >= 0.40) score += 10;
