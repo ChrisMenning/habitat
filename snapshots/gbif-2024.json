@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 2,
+  "source": "gbif",
+  "year": 2024,
+  "harvestedAt": "2026-03-28T19:55:41.293Z",
+  "total": 1200,
+  "byLayer": {
+    "pollinators": 0,
+    "native-plants": 0,
+    "other-plants": 14,
+    "other-wildlife": 1186
+  },
+  "byLayerByMonth": {
+    "pollinators": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    },
+    "native-plants": {
+      "10": 0,
+      "11": 0,
+      "12": 0,
+      "01": 0,
+      "02": 0,
+      "03": 0,
+      "04": 0,
+      "05": 0,
+      "06": 0,
+      "07": 0,
+      "08": 0,
+      "09": 0
+    }
+  },
+  "speciesRichness": 121,
+  "topSpecies": [
+    {
+      "name": "Dark-eyed Junco",
+      "count": 81
+    },
+    {
+      "name": "Black-capped Chickadee",
+      "count": 63
+    },
+    {
+      "name": "Mourning Dove",
+      "count": 54
+    },
+    {
+      "name": "American Tree Sparrow",
+      "count": 52
+    },
+    {
+      "name": "House Sparrow",
+      "count": 52
+    },
+    {
+      "name": "Northern Cardinal",
+      "count": 50
+    },
+    {
+      "name": "American Goldfinch",
+      "count": 48
+    },
+    {
+      "name": "Downy Woodpecker",
+      "count": 48
+    },
+    {
+      "name": "Red-bellied Woodpecker",
+      "count": 46
+    },
+    {
+      "name": "Bald Eagle",
+      "count": 46
+    }
+  ],
+  "topPollinators": [],
+  "topNativePlants": [],
+  "byMonth": {
+    "01": 1200
+  }
+}

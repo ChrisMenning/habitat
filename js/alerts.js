@@ -96,6 +96,7 @@ export function computeAlerts({
   pesticideCounties  = [],
   nestingScores      = new Map(),
   canopyScores       = new Map(),
+  investCrosswalk    = [],
   parcelFeatures     = [],
   activeLayerIds     = [],
   layerVintages      = new Map(),
@@ -670,6 +671,34 @@ export function computeAlerts({
     }
   }
 
+  // ── Alert: Low Urban Habitat Context ─────────────────────────────────────────────
+  // Fires when a corridor site has an Urban Habitat Index score < 0.20 (normalized
+  // 0–1). A low score means the 660 m matrix surrounding the site is dominated by
+  // impervious surface with minimal green patches, reducing foraging connectivity.
+  // Level 'opportunity': identifies actionable infill or streetscape planting zones.
+  if (investCrosswalk.length > 0) {
+    const LOW_UHI_THRESHOLD = 0.20;
+    const lowUhiSites = investCrosswalk.filter(s => s.investScore < LOW_UHI_THRESHOLD);
+    if (lowUhiSites.length > 0) {
+      // Match back to corridor features to get centroid coords
+      const siteCoords = lowUhiSites.map(s => {
+        const feat = corridorFeatures.find(f => (f.properties?.name ?? f.properties?.Park) === s.name);
+        return feat ? centroid(feat) : [s.lng, s.lat];
+      });
+      const names = lowUhiSites.map(s => s.name).slice(0, 3);
+      const extra = lowUhiSites.length > 3 ? ` +${lowUhiSites.length - 3} more` : '';
+      alerts.push({
+        level:  'opportunity',
+        icon:   '<i class="ph ph-city"></i>',
+        key:    'low-urban-context',
+        text:   `Low Urban Habitat Context: ${lowUhiSites.length} corridor site${lowUhiSites.length > 1 ? 's score' : ' scores'} below 20/100 on the Urban Habitat Index — the surrounding 660 m landscape is dominated by impervious surface, limiting foraging connectivity for wide-ranging bees. Infill or streetscape plantings within 300–700 m would expand the matrix for medium and large solitary bee guilds: ${names.join(', ')}${extra}.`,
+        coords: siteCoords,
+        layers: ['gbcc-corridor', 'invest-urban-heat'],
+        heatmaps: ['invest-urban-heat'],
+      });
+    }
+  }
+
   // ── Alert: High-Value Public Land Gap ───────────────────────────────────────
   // Fires when: (a) a City or County parcel lies within an opportunity zone
   //             (b) that parcel has no existing habitat site within 500 m
@@ -898,6 +927,7 @@ export function computeExpansionOpportunities({
   pfasFeatures       = [],
   pesticideCounties  = [],
   nestingScores      = new Map(),   // site name → {score, ...} — from NLCD analysis of corridor sites
+  investCrosswalk    = [],          // {name, lng, lat, investScore} — UHI crosswalk scores
 }) {
   // Pollinator sightings are used only as a FILTER (≥5 records → candidate location),
   // not as a primary suitability driver. The goal of a new site is to ATTRACT pollinators,
@@ -976,6 +1006,21 @@ export function computeExpansionOpportunities({
     const pestBand      = _getPesticideBandForCoord(coord, pesticideCounties);
     const highPesticide = pestBand?.band === 4;
 
+    // ── Urban habitat context (UHI grid nearest-cell lookup) ────────────────
+    // Find the nearest crosswalk entry to this cluster centroid.
+    // The UHI measures surrounding landscape quality (660 m matrix) —
+    // high score means abundant flowering/nesting patches nearby.
+    let urbanContextScore = null;
+    if (investCrosswalk.length > 0) {
+      let bestDist2 = Infinity;
+      for (const entry of investCrosswalk) {
+        const dx = (entry.lng - coord[0]) * 111.32 * Math.cos(coord[1] * Math.PI / 180);
+        const dy = (entry.lat - coord[1]) * 111.32;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist2) { bestDist2 = d2; urbanContextScore = entry.investScore; }
+      }
+    }
+
     // ── Composite score 0–100 (NESTING + NATIVE PLANTS are primary) ─────────
     let score = 0;
 
@@ -996,6 +1041,13 @@ export function computeExpansionOpportunities({
     if (nearCorridorKm > SITE_EXCLUSION_KM && nearCorridorKm <= 1.5)     score += 15;
     else if (nearCorridorKm > 1.5 && nearCorridorKm <= 3.0)              score += 8;
 
+    // Secondary: urban habitat matrix quality (UHI grid)
+    if (urbanContextScore !== null) {
+      if (urbanContextScore >= 0.65)      score += 15;
+      else if (urbanContextScore >= 0.40) score += 10;
+      else if (urbanContextScore >= 0.20) score += 5;
+    }
+
     // Environmental quality (absence of contamination is a bonus here)
     if (!pfasNearby)    score += 10;
     if (!highPesticide) score += 5;
@@ -1010,11 +1062,13 @@ export function computeExpansionOpportunities({
 
     score = Math.max(0, Math.min(100, score));
 
-    // Require meaningful multi-factor support to surface as an opportunity
+    // Only surface opportunities with enough ecological support to be actionable.
+    // 'poor' suitability (<38) produces too many noise points — suppress them.
     const hasEcologicalBasis = nativePlantCount >= 1 || nestingProxy != null;
     if (!hasEcologicalBasis) continue;
+    if (score < 38) continue;
 
-    const suitability = score >= 65 ? 'good' : score >= 38 ? 'moderate' : 'poor';
+    const suitability = score >= 65 ? 'good' : 'moderate';
     const suitLabel   = suitability.charAt(0).toUpperCase() + suitability.slice(1);
     features.push({
       type: 'Feature',
@@ -1029,6 +1083,7 @@ export function computeExpansionOpportunities({
         native_plant_count:  nativePlantCount,
         nesting_proxy:       nestingProxy,
         nesting_proxy_site:  nestingProxySite,
+        urban_context_score: urbanContextScore,
         pfas_nearby:         pfasNearby,
         high_pesticide:      highPesticide,
         near_corridor_km:    nearCorridorKm === Infinity ? null : +nearCorridorKm.toFixed(2),

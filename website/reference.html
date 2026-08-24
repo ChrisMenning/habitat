@@ -179,7 +179,7 @@
   <div class="sources-grid reveal">
     <div class="source-item"><div class="source-cat">Corridor</div><div class="source-name">GBCC ArcGIS Feature Service</div></div>
     <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">iNaturalist API v1 · historical back to 2010</div></div>
-    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">Global Biodiversity Information Facility (GBIF) Occurrence API v1 · up to 600</div></div>
+    <div class="source-item"><div class="source-cat">Sightings</div><div class="source-name">Global Biodiversity Information Facility (GBIF) Occurrence API v1 · coordinate-deduplicated per Rahimi &amp; Jung 2025</div></div>
     <div class="source-item"><div class="source-cat">Bee Distribution</div><div class="source-name">U.S. Fish &amp; Wildlife Service (FWS) Dataset · All 6 Bee Families</div></div>
     <div class="source-item"><div class="source-cat">Analysis Model</div><div class="source-name">Integrated Valuation of Ecosystem Services and Tradeoffs (InVEST) Pollinator Index · Lonsdorf et al. 2009 · NLCD biophysical scores</div></div>
     <div class="source-item"><div class="source-cat">Protected Areas</div><div class="source-name">U.S. Geological Survey Protected Areas Database (USGS PAD-US) v3.0</div></div>
@@ -196,6 +196,9 @@
     <div class="source-item"><div class="source-cat">Climate Normals</div><div class="source-name">NOAA NCEI 1991&ndash;2020 normals (bundled fallback · USW00014898)</div></div>
     <div class="source-item"><div class="source-cat">Observed Temps</div><div class="source-name">Iowa Environmental Mesonet (IEM) · Iowa State University · 2021&ndash;present</div></div>
     <div class="source-item"><div class="source-cat">Frost Forecast · Optional</div><div class="source-name">NOAA CDO / NCEI (token required for live GDD &amp; frost alerts)</div></div>
+  </div>
+  <div class="data-note reveal" style="margin-top:24px">
+    <strong>On GBIF data quality:</strong> Rahimi &amp; Jung (2025) found that ~77&ndash;81% of GBIF pollinator records are coordinate duplicates, and 80% of bee and butterfly records were added after 2022 as citizen science participation grew &mdash; meaning older years appear data-sparse, not species-sparse. Bay Hive deduplicates GBIF records by coordinate pair and species before counting, and the Trends panel notes this observer bias. See: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12386186/" target="_blank" rel="noopener">Investigating the Spatial Biases and Temporal Trends in Insect Pollinator Occurrence Data on GBIF &middot; <em>Insects</em> 2025</a>.
   </div>
   <div class="data-note reveal">
     No proprietary datasets required for core functionality. Optional keys (eBird, NASS, NOAA) unlock additional layers; Bay Hive degrades gracefully without them. Climate normals and observed temperatures load from bundled and IEM sources &mdash; the Climate Ribbon works without a NOAA key. Observation data cached 1 hour &middot; Area layers cached 24 hours &middot; Cache/live status visible in the intelligence bar.

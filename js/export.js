@@ -103,6 +103,7 @@ export function exportReport() {
     pollinatorCount    = 0,
     nativeSpeciesCount = 0,
     corridorSqFt       = 0,
+    foragingAreaKm2    = null,
     padusCount         = 0,
     snaCount           = 0,
     dnrManagedCount    = 0,
@@ -114,6 +115,8 @@ export function exportReport() {
     pfasFeatures       = [],
     pesticideCounties  = [],
     nestingScores      = new Map(),
+    canopyScores       = new Map(),
+    investCrosswalk    = [],
     expansionFeatures  = [],
     parcelFeatures     = [],
     // Rolled-up counts by layer
@@ -169,6 +172,22 @@ export function exportReport() {
       ? `${(corridorSqFt / 43560).toLocaleString('en-US', {maximumFractionDigits:1})} ac`
       : '—';
     const gddStr  = gdd !== null ? gdd.toLocaleString() : '—';
+
+    // Foraging reach row — only shown once the InVEST NLCD data has loaded
+    const foragingRow = foragingAreaKm2 ? (() => {
+      const corridorKm2 = corridorSqFt * 9.2903e-8; // ft² → km²
+      const ratioStr = corridorKm2 > 0
+        ? `${Math.round(foragingAreaKm2.landKm2 / corridorKm2)}×`
+        : '—';
+      return `
+    <div class="grid4">
+      <div class="card"><div class="val">${foragingAreaKm2.totalKm2.toFixed(1)} km²</div><div class="lbl">Foraging envelope (1.5 km)</div></div>
+      <div class="card"><div class="val">${foragingAreaKm2.landKm2.toFixed(1)} km²</div><div class="lbl">Navigable land area</div></div>
+      <div class="card"><div class="val">${foragingAreaKm2.waterKm2.toFixed(1)} km²</div><div class="lbl">Open water in range</div></div>
+      <div class="card"><div class="val">${ratioStr}</div><div class="lbl">Foraging reach vs corridor</div></div>
+    </div>`;
+    })() : '';
+
     return `<h2>Situational Summary</h2>
     <div class="grid5">
       <div class="card"><div class="val">${habitatNodeCount.toLocaleString()}</div><div class="lbl">Habitat nodes</div></div>
@@ -183,7 +202,7 @@ export function exportReport() {
       <div class="card"><div class="val">${hnpCount.toLocaleString()}</div><div class="lbl">HNP yards</div></div>
       <div class="card"><div class="val">${ebirdCount.toLocaleString()}</div><div class="lbl">eBird sightings</div></div>
       <div class="card"><div class="val">${gddStr}</div><div class="lbl">GDD base-50</div></div>
-    </div>`;
+    </div>${foragingRow}`;
   }
 
   function alertsSection() {
@@ -216,7 +235,17 @@ export function exportReport() {
         const tier = ns.score >= 67 ? 'good' : ns.score >= 34 ? 'moderate' : 'low';
         nestCell = `<span class="tier-${tier}" style="color:${escHtml(color)}">${escHtml(label)} (${ns.score})</span>`;
       }
-      return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td></tr>`;
+      const canopyPct = canopyScores.get(p.name ?? '');
+      const canopyCell = typeof canopyPct === 'number' ? `${canopyPct.toFixed(0)}%` : '—';
+      const xw = investCrosswalk.find(e => e.name === (p.name ?? ''));
+      let uhiCell = '—';
+      if (xw) {
+        const pct = Math.round(xw.investScore * 100);
+        const tier = pct >= 65 ? 'good' : pct >= 35 ? 'moderate' : 'low';
+        const label = pct >= 65 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+        uhiCell = `<span class="tier-${tier}">${escHtml(label)} (${pct})</span>`;
+      }
+      return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td><td class="num">${canopyCell}</td><td>${uhiCell}</td></tr>`;
     }).join('');
 
     // Waystations
@@ -235,8 +264,8 @@ export function exportReport() {
       ${corridorCount} pollinator corridor sites · ${waystationCount} Monarch waystations · ${hnpCount} Homegrown National Park yards
     </p>
     <table>
-      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th></tr></thead>
-      <tbody>${corrRows || `<tr><td colspan="3" class="empty">No corridor data</td></tr>`}</tbody>
+      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
+      <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>
     </table>
     <table>
       <thead><tr><th>Waystation</th><th>Registered</th><th>Size</th></tr></thead>
@@ -865,6 +894,8 @@ export function exportEcologicalAssessment() {
     corridorSqFt = 0,
     corridorFeatures = [], waystationFeatures = [],
     nestingScores = new Map(),
+    canopyScores  = new Map(),
+    investCrosswalk = [],
     inatByLayer = {}, gbifByLayer = {}, topSpecies = [],
     beeRecords = 0, beeImperiled = 0, ebirdCount = 0,
     padusCount = 0, snaCount = 0, dnrManagedCount = 0,
@@ -905,7 +936,17 @@ export function exportEcologicalAssessment() {
       const tier = ns.score >= 67 ? 'good' : ns.score >= 34 ? 'moderate' : 'low';
       nestCell = `<span class="tier-${tier}" style="color:${escHtml(color)}">${escHtml(label)} (${ns.score})</span>`;
     }
-    return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td></tr>`;
+    const canopyPct = canopyScores.get(p.name ?? '');
+    const canopyCell = typeof canopyPct === 'number' ? `${canopyPct.toFixed(0)}%` : '—';
+    const xw = investCrosswalk.find(e => e.name === (p.name ?? ''));
+    let uhiCell = '—';
+    if (xw) {
+      const pct = Math.round(xw.investScore * 100);
+      const tier = pct >= 65 ? 'good' : pct >= 35 ? 'moderate' : 'low';
+      const label = pct >= 65 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
+      uhiCell = `<span class="tier-${tier}">${escHtml(label)} (${pct})</span>`;
+    }
+    return `<tr><td>${escHtml(p.name ?? '—')}</td><td class="num">${area}</td><td>${nestCell}</td><td class="num">${canopyCell}</td><td>${uhiCell}</td></tr>`;
   }).join('');
 
   // Biodiversity
@@ -1011,8 +1052,8 @@ export function exportEcologicalAssessment() {
 <h2>Habitat Network</h2>
 <p style="font-size:11px;color:#64748b;margin:0 0 8px">${corridorCount} corridor sites · ${waystationCount} waystations · ${hnpCount} HNP yards · ${areaStr} planted area</p>
 <table>
-  <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th></tr></thead>
-  <tbody>${corrRows || `<tr><td colspan="3" class="empty">No corridor data</td></tr>`}</tbody>
+  <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
+  <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>
 </table>
 <h2>Biodiversity Observations</h2>
 <table>

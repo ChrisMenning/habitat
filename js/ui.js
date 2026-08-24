@@ -130,7 +130,7 @@ export function buildLayerPanel(groups, onToggle, container = null, onOpacity = 
           </div>
           <span class="layer-emoji" aria-hidden="true">${layer.emoji}</span>
           <span class="layer-label">${esc(layer.label)}</span>${_vintageBadge}
-          <span class="layer-count" id="count-${esc(layer.id)}" aria-live="polite">—</span>
+          <span class="layer-count layer-count--loading" id="count-${esc(layer.id)}" aria-live="polite">—</span>
         </label>
         <p class="layer-desc">${esc(layer.description)}</p>
         ${onOpacity ? `<div class="layer-opacity-row">
@@ -465,7 +465,10 @@ export function initActivityBar() {
 export function updateCounts(counts) {
   for (const [id, count] of Object.entries(counts)) {
     const el = document.getElementById(`count-${id}`);
-    if (el) el.textContent = count.toLocaleString();
+    if (el) {
+      el.textContent = count.toLocaleString();
+      el.classList.remove('layer-count--loading');
+    }
   }
 }
 
@@ -475,6 +478,21 @@ export function setLoading(on) {
   const btn     = document.getElementById('btn-reload');
   if (loading) loading.hidden = !on;
   if (btn)     btn.disabled   = on;
+  if (!on) {
+    const msg = document.getElementById('loading-msg');
+    if (msg) msg.textContent = 'Fetching observations…';
+  }
+}
+
+/**
+ * Updates the loading spinner text with a progress fraction and phase label.
+ * @param {number} n     - number of sources settled so far
+ * @param {number} total - total sources
+ * @param {string} phase - short description of current phase
+ */
+export function setLoadingProgress(n, total, phase) {
+  const msg = document.getElementById('loading-msg');
+  if (msg) msg.textContent = `${phase}… ${n}/${total}`;
 }
 
 /** Updates the header status badge. */

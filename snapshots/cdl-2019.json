@@ -1,0 +1,215 @@
+{
+  "source": "cdl",
+  "year": 2019,
+  "harvestedAt": "2026-03-28T20:01:39.487Z",
+  "rows": [
+    {
+      "category": "Corn",
+      "acreage": 57589.8
+    },
+    {
+      "category": "Sorghum",
+      "acreage": 255.5
+    },
+    {
+      "category": "Soybeans",
+      "acreage": 16774.3
+    },
+    {
+      "category": "Sunflowers",
+      "acreage": 2.4
+    },
+    {
+      "category": "Sweet Corn",
+      "acreage": 5.6
+    },
+    {
+      "category": "Barley",
+      "acreage": 30.2
+    },
+    {
+      "category": "Winter Wheat",
+      "acreage": 4268
+    },
+    {
+      "category": "Dbl Crop WinWht/Soybeans",
+      "acreage": 0.7
+    },
+    {
+      "category": "Rye",
+      "acreage": 205.9
+    },
+    {
+      "category": "Oats",
+      "acreage": 2690.8
+    },
+    {
+      "category": "Millet",
+      "acreage": 3.8
+    },
+    {
+      "category": "Alfalfa",
+      "acreage": 56464.7
+    },
+    {
+      "category": "Other Hay/Non Alfalfa",
+      "acreage": 3384.8
+    },
+    {
+      "category": "Sugarbeets",
+      "acreage": 167.7
+    },
+    {
+      "category": "Dry Beans",
+      "acreage": 81
+    },
+    {
+      "category": "Potatoes",
+      "acreage": 6
+    },
+    {
+      "category": "Other Crops",
+      "acreage": 161.9
+    },
+    {
+      "category": "Misc Vegs & Fruits",
+      "acreage": 0.4
+    },
+    {
+      "category": "Cucumbers",
+      "acreage": 0.9
+    },
+    {
+      "category": "Peas",
+      "acreage": 11.1
+    },
+    {
+      "category": "Clover/Wildflowers",
+      "acreage": 4.9
+    },
+    {
+      "category": "Sod/Grass Seed",
+      "acreage": 6.7
+    },
+    {
+      "category": "Fallow/Idle Cropland",
+      "acreage": 24764.5
+    },
+    {
+      "category": "Cherries",
+      "acreage": 7.6
+    },
+    {
+      "category": "Apples",
+      "acreage": 12.2
+    },
+    {
+      "category": "Christmas Trees",
+      "acreage": 54
+    },
+    {
+      "category": "Open Water",
+      "acreage": 3710.9
+    },
+    {
+      "category": "Developed/Open Space",
+      "acreage": 22811
+    },
+    {
+      "category": "Developed/Low Intensity",
+      "acreage": 31340.5
+    },
+    {
+      "category": "Developed/Medium Intensity",
+      "acreage": 15375
+    },
+    {
+      "category": "Developed/High Intensity",
+      "acreage": 6133.6
+    },
+    {
+      "category": "Barren",
+      "acreage": 1544.8
+    },
+    {
+      "category": "Deciduous Forest",
+      "acreage": 24880.6
+    },
+    {
+      "category": "Evergreen Forest",
+      "acreage": 314
+    },
+    {
+      "category": "Mixed Forest",
+      "acreage": 444.6
+    },
+    {
+      "category": "Shrubland",
+      "acreage": 115.9
+    },
+    {
+      "category": "Grass/Pasture",
+      "acreage": 21897
+    },
+    {
+      "category": "Woody Wetlands",
+      "acreage": 41148.6
+    },
+    {
+      "category": "Herbaceous Wetlands",
+      "acreage": 4850
+    },
+    {
+      "category": "Triticale",
+      "acreage": 232.6
+    },
+    {
+      "category": "Carrots",
+      "acreage": 0.2
+    },
+    {
+      "category": "Peppers",
+      "acreage": 1.1
+    },
+    {
+      "category": "Strawberries",
+      "acreage": 0.9
+    },
+    {
+      "category": "Dbl Crop WinWht/Corn",
+      "acreage": 83
+    },
+    {
+      "category": "Dbl Crop Oats/Corn",
+      "acreage": 0.2
+    },
+    {
+      "category": "Dbl Crop Triticale/Corn",
+      "acreage": 2.4
+    },
+    {
+      "category": "Pumpkins",
+      "acreage": 9.6
+    },
+    {
+      "category": "Dbl Crop WinWht/Sorghum",
+      "acreage": 22.7
+    },
+    {
+      "category": "Dbl Crop Barley/Corn",
+      "acreage": 7.3
+    },
+    {
+      "category": "Blueberries",
+      "acreage": 0.2
+    },
+    {
+      "category": "Cabbage",
+      "acreage": 1.6
+    },
+    {
+      "category": "Cauliflower",
+      "acreage": 2.4
+    }
+  ]
+}

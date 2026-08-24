@@ -1,0 +1,179 @@
+{
+  "source": "cdl",
+  "year": 2015,
+  "harvestedAt": "2026-03-28T20:02:01.633Z",
+  "rows": [
+    {
+      "category": "Corn",
+      "acreage": 64088.1
+    },
+    {
+      "category": "Sorghum",
+      "acreage": 204.8
+    },
+    {
+      "category": "Soybeans",
+      "acreage": 20252.8
+    },
+    {
+      "category": "Sunflowers",
+      "acreage": 0.2
+    },
+    {
+      "category": "Sweet Corn",
+      "acreage": 14
+    },
+    {
+      "category": "Barley",
+      "acreage": 45.1
+    },
+    {
+      "category": "Spring Wheat",
+      "acreage": 2.7
+    },
+    {
+      "category": "Winter Wheat",
+      "acreage": 4370.9
+    },
+    {
+      "category": "Rye",
+      "acreage": 6.7
+    },
+    {
+      "category": "Oats",
+      "acreage": 6118.1
+    },
+    {
+      "category": "Alfalfa",
+      "acreage": 53266.6
+    },
+    {
+      "category": "Other Hay/Non Alfalfa",
+      "acreage": 2034.5
+    },
+    {
+      "category": "Buckwheat",
+      "acreage": 1.6
+    },
+    {
+      "category": "Sugarbeets",
+      "acreage": 34.5
+    },
+    {
+      "category": "Dry Beans",
+      "acreage": 364.7
+    },
+    {
+      "category": "Potatoes",
+      "acreage": 3.1
+    },
+    {
+      "category": "Peas",
+      "acreage": 103.9
+    },
+    {
+      "category": "Herbs",
+      "acreage": 2
+    },
+    {
+      "category": "Clover/Wildflowers",
+      "acreage": 62
+    },
+    {
+      "category": "Sod/Grass Seed",
+      "acreage": 8.7
+    },
+    {
+      "category": "Fallow/Idle Cropland",
+      "acreage": 418.3
+    },
+    {
+      "category": "Cherries",
+      "acreage": 7.6
+    },
+    {
+      "category": "Apples",
+      "acreage": 18.9
+    },
+    {
+      "category": "Grapes",
+      "acreage": 1.6
+    },
+    {
+      "category": "Christmas Trees",
+      "acreage": 26.2
+    },
+    {
+      "category": "Open Water",
+      "acreage": 3593.2
+    },
+    {
+      "category": "Developed/Open Space",
+      "acreage": 23420.6
+    },
+    {
+      "category": "Developed/Low Intensity",
+      "acreage": 32958.9
+    },
+    {
+      "category": "Developed/Medium Intensity",
+      "acreage": 14310.2
+    },
+    {
+      "category": "Developed/High Intensity",
+      "acreage": 5731.1
+    },
+    {
+      "category": "Barren",
+      "acreage": 1519.8
+    },
+    {
+      "category": "Deciduous Forest",
+      "acreage": 38603.3
+    },
+    {
+      "category": "Evergreen Forest",
+      "acreage": 268.4
+    },
+    {
+      "category": "Mixed Forest",
+      "acreage": 513.5
+    },
+    {
+      "category": "Shrubland",
+      "acreage": 660.1
+    },
+    {
+      "category": "Grass/Pasture",
+      "acreage": 41569.3
+    },
+    {
+      "category": "Woody Wetlands",
+      "acreage": 22628
+    },
+    {
+      "category": "Herbaceous Wetlands",
+      "acreage": 4596.2
+    },
+    {
+      "category": "Triticale",
+      "acreage": 42.9
+    },
+    {
+      "category": "Strawberries",
+      "acreage": 6
+    },
+    {
+      "category": "Pumpkins",
+      "acreage": 4
+    },
+    {
+      "category": "Dbl Crop Barley/Corn",
+      "acreage": 0.2
+    },
+    {
+      "category": "Cabbage",
+      "acreage": 2.7
+    }
+  ]
+}

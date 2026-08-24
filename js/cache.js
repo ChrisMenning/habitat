@@ -58,6 +58,7 @@ export async function cacheGet(key) {
  * @returns {Promise<void>}
  */
 export async function cacheSet(key, data, ttlMs) {
+  if (typeof caches === 'undefined') return;
   try {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(
