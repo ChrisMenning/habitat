@@ -67,85 +67,6 @@ const MIME = {
   '.svg':  'image/svg+xml',
 };
 
-// ── Proxy endpoint ────────────────────────────────────────────────────────────
-// Proxies GET /api/hnp-plantings → HNP guest API (which has no CORS headers).
-const HNP_UPSTREAM = 'https://map.homegrownnationalpark.org/api/guest/map/plantings?countryCode=US';
-
-// Green Bay region bbox (1.5× margin, matching hnp.js BBOX constants)
-const HNP_BBOX = {
-  minLat: 44.3112, maxLat: 44.7154,
-  minLng: -88.2965, maxLng: -87.7301,
-};
-
-// Shared upstream cache — both /api/hnp-plantings and /api/hnp-count use this
-// so a single upstream fetch per TTL window serves both endpoints.
-let _hnpUpstreamCache    = null;  // raw plantings array
-let _hnpUpstreamCacheAge = 0;
-const _HNP_UPSTREAM_TTL  = 60 * 60 * 1000; // 1 hour
-
-function _fetchHnpUpstream() {
-  const now = Date.now();
-  if (_hnpUpstreamCache && now - _hnpUpstreamCacheAge < _HNP_UPSTREAM_TTL) {
-    return Promise.resolve(_hnpUpstreamCache);
-  }
-  return new Promise((resolve, reject) => {
-    https.get(HNP_UPSTREAM, { timeout: 20000 }, upstream => {
-      const chunks = [];
-      upstream.on('data', c => chunks.push(c));
-      upstream.on('end', () => {
-        let parsed;
-        try { parsed = JSON.parse(Buffer.concat(chunks).toString()); }
-        catch { reject(new Error('HNP API returned invalid JSON')); return; }
-        if (!Array.isArray(parsed)) { reject(new Error('HNP API returned unexpected format')); return; }
-        _hnpUpstreamCache    = parsed;
-        _hnpUpstreamCacheAge = Date.now();
-        resolve(parsed);
-      });
-    }).on('error', reject);
-  });
-}
-
-function proxyHnp(res) {
-  _fetchHnpUpstream().then(plantings => {
-    const features = plantings
-      .filter(p => p.latitude != null && p.longitude != null)
-      .map(p => {
-        // eslint-disable-next-line no-unused-vars
-        const { latitude, longitude, ...rawProps } = p;
-        return {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [p.longitude, p.latitude] },
-          properties: { ...rawProps, org_type: rawProps.type },
-        };
-      });
-    const geojson = JSON.stringify({ type: 'FeatureCollection', features });
-    res.writeHead(200, {
-      'Content-Type':                'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control':               'no-cache',
-    });
-    res.end(geojson);
-  }).catch(err => {
-    res.writeHead(502);
-    res.end(JSON.stringify({ error: err.message }));
-  });
-}
-
-// Returns just the bbox-filtered count — lightweight for the marketing page.
-function proxyHnpCount(res) {
-  _fetchHnpUpstream().then(plantings => {
-    const count = plantings.filter(p =>
-      p.latitude  != null && p.longitude != null &&
-      p.latitude  >= HNP_BBOX.minLat && p.latitude  <= HNP_BBOX.maxLat &&
-      p.longitude >= HNP_BBOX.minLng && p.longitude <= HNP_BBOX.maxLng
-    ).length;
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=3600' });
-    res.end(JSON.stringify({ count }));
-  }).catch(err => {
-    res.writeHead(502, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify({ error: err.message }));
-  });
-}
 
 // ── CDL WMS ping ────────────────────────────────────────────────────────────
 // Server-side HEAD to the CropScape WMS — nassgeodata.gmu.edu sends no CORS
@@ -429,7 +350,10 @@ function tileToBbox3857(z, x, y) {
  * resulting PNG to the HTTP response.
  */
 // ── NLCD nesting suitability score batch ─────────────────────────────────────
-// Accepts /api/nlcd-nesting?sites=JSON_ARRAY where each element is {id,lng,lat}.
+// Accepts POST /api/nlcd-nesting with a JSON body { sites: [{id,lng,lat}, ...] }.
+// POST + body avoids nginx's request-line length limit that a large GET query
+// string would hit (see greenbayhive-nginx.conf) — batches of hundreds of sites
+// would otherwise be rejected with 414 before ever reaching this handler.
 // For each site fetches NLCD tiles at z=13, counts pixels of classes 31/52/71
 // within a 300m radius, and returns a 0–100 nesting suitability score.
 //
@@ -635,12 +559,15 @@ async function _computeNestingBatch(sites) {
 }
 
 async function proxyNlcdNesting(req, res) {
-  const parsed = url.parse(req.url, true);
+  let body = '';
+  await new Promise(resolve => {
+    req.on('data', c => { body += c; });
+    req.on('end', resolve);
+  });
+
   let sites;
   try {
-    const raw = parsed.query.sites;
-    if (!raw) throw new Error('missing sites');
-    sites = JSON.parse(decodeURIComponent(raw));
+    sites = JSON.parse(body).sites;
     if (!Array.isArray(sites) || sites.some(s => typeof s.lng !== 'number' || typeof s.lat !== 'number')) {
       throw new Error('invalid sites array');
     }
@@ -2746,18 +2673,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Proxy: HNP guest API (no CORS headers on their server)
-  if (pathname === '/api/hnp-plantings') {
-    proxyHnp(res);
-    return;
-  }
-
-  // Lightweight count-only endpoint for marketing page (avoids shipping full US dataset)
-  if (pathname === '/api/hnp-count') {
-    proxyHnpCount(res);
-    return;
-  }
-
   // Ping: USDA CropScape CDL WMS reachability check (server-side HEAD, no CORS)
   if (pathname === '/api/cdl-ping') {
     proxyCdlPing(res);
@@ -2794,8 +2709,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Batch: NLCD nesting suitability scores for a set of corridor sites
+  // Batch: NLCD nesting suitability scores for a set of corridor sites (POST only)
   if (pathname === '/api/nlcd-nesting') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { Allow: 'POST', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+      return;
+    }
     proxyNlcdNesting(req, res);
     return;
   }

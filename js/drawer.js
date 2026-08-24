@@ -618,6 +618,7 @@ export function openDrawer(feature, alertFeatures = []) {
             <div class="shp-formula">canopy % = treePixels / surveyedPixels × 100<br>Tree pixel: RGBA where R≤15, G=165–195, B≤15<br>(colormap: tree → rgb(0,180,0), non-tree → rgb(100,70,20))</div>
             <p>Note: impervious surfaces (roads, rooftops, parking) are excluded from the survey — percentages reflect tree cover relative to <em>vegetated/non-impervious land only</em>. Sites in mature parks or residential neighborhoods with full tree canopy commonly read 90–100%.</p>
             <p>Tiers: ≤30% Low (gray), 31–55% Moderate (green), &gt;55% High (dark green). The Shaded Habitat alert fires above 55%. WI DNR advises against directly comparing survey years.</p>
+            <p><strong>⚠ Data vintage: 2022</strong> — the most recent WI DNR canopy survey available. No newer flight has been published. Tree cover can change meaningfully in a few years (storm damage, removals, growth); treat this score as a starting point for a site visit, not a live reading.</p>
             <p class="shp-source">Source: WI DNR Urban Forestry · FR_Urban_Tree_Canopy_Raster_2022 ImageServer · 64×64 px exportImage · 24 h server cache</p>
           </div>
         </div>
@@ -629,6 +630,7 @@ export function openDrawer(feature, alertFeatures = []) {
         <div class="drawer-nesting-detail">
           <span class="drawer-nesting-label" style="color:${color};">${esc(levelLbl)}</span>
           <span class="drawer-nesting-desc">Based on 1 m NAIP imagery. High canopy cover (&gt;55%) may warrant selective thinning to improve sun exposure for pollinator plants.</span>
+          <span class="drawer-nesting-desc drawer-nesting-stale">⚠ 2022 survey — the most recent available. Canopy may have changed since then; treat as a starting point, not current condition.</span>
         </div>
       </div>`;
   })();

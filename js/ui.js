@@ -6,7 +6,7 @@
  */
 
 import { ESTABLISHMENT, LAYERS, GBIF_LAYERS, AREA_LAYERS, HAZARD_LAYERS,
-         WAYSTATION_LAYER, HNP_LAYER, EBIRD_LAYER, BEE_LAYERS,
+         WAYSTATION_LAYER, EBIRD_LAYER, BEE_LAYERS,
          LAYER_VINTAGES } from './config.js';
 
 // ── Pesticide legend ──────────────────────────────────────────────────────────
@@ -269,13 +269,6 @@ export function buildAreaLegend(onToggle = null) {
     }
     section.appendChild(note);
   })();
-  // Homegrown National Park
-  makeRow(
-    HNP_LAYER[0].id,
-    circleSwatch('#10b981', '#059669'),
-    HNP_LAYER[0].label,
-    HNP_LAYER[0].defaultOn,
-  );
 
   // ── Conservation Areas (toggleable) ──────────────────────────────────────
   addGroupLabel('Conservation Areas');
@@ -768,17 +761,6 @@ export function buildAreaPopupHTML(props) {
         ${props.url
           ? `<a class="popup-link" href="${esc(props.url)}" target="_blank" rel="noopener noreferrer">DNR report →</a>`
           : ''}
-      </div>`;
-  }
-
-  if (src === 'hnp') {
-    const isOrg    = props.org_type === 'ORGANIZATIONS';
-    const typeLabel = isOrg ? 'Member Organization' : 'Registered Yard';
-    return `
-      <div class="popup-body">
-        <strong class="popup-name">${esc(props.name)}</strong>
-        <span class="popup-source">🌿 HNP · ${typeLabel}</span>
-        <a class="popup-link" href="https://map.homegrownnationalpark.org/" target="_blank" rel="noopener noreferrer">View on HNP Map ↗</a>
       </div>`;
   }
 

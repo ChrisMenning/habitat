@@ -459,7 +459,7 @@
       <h3><i class="ph ph-stack" aria-hidden="true"></i> What Loads Automatically vs. On Demand</h3>
       <p>These load in the background when the page opens:</p>
       <ul>
-        <li><strong>NE WI Pollinator Corridor, Waystations, HNP yards</strong> — area layers, 24 h browser cache</li>
+        <li><strong>NE WI Pollinator Corridor, Waystations</strong> — area layers, 24 h browser cache</li>
         <li><strong>Conservation areas</strong> — USGS PAD-US, WI DNR State Natural Areas, DNR Managed Lands</li>
         <li><strong>Pesticide Pressure choropleth</strong> — on by default</li>
         <li><strong>Bee-Crop Field Fringe heatmap</strong> — on by default</li>
@@ -478,7 +478,6 @@
       <ul>
         <li><strong>NE WI Pollinator Corridor (GBCC)</strong> — amber filled polygons with circular site markers. Formal restoration plantings managed by the Green Bay Conservation Corps on public parks, rights-of-way, and institutional properties. Click any marker to open the full site dossier.</li>
         <li><strong>Monarch Watch Waystations</strong> — violet circles. 56 privately certified habitat sites; Monarch Watch certification requires a minimum milkweed and nectar planting.</li>
-        <li><strong>Homegrown National Park yards</strong> — teal triangles. Self-reported native plant yards from Doug Tallamy's HNP initiative. No inspection required — homeowner commitments to plant native species that support local food webs.</li>
         <li><strong>GBCC Habitat Treatments</strong> — teal polygon outlines. Sites where GBCC has recorded restoration treatments in their public feature service. Current data includes cut-stump and foliar treatments — the active restoration footprint separate from established corridor plantings.</li>
       </ul>
       <p><strong>Site marker outer ring:</strong> Encodes establishment status from source data — green = native/established planting, orange = introduced or early-stage, gray = status not recorded. This is a data attribute, not a quality rating assigned by Bay Hive.</p>
@@ -528,7 +527,7 @@
       <p>Six live stats updated after each observation load. Five are clickable and open a focused info drawer:</p>
       <ul>
         <li><strong>Corridor area</strong> — total GBCC corridor polygon area in acres. Click for a per-site breakdown.</li>
-        <li><strong>Habitat nodes</strong> — total active sites (corridor + waystations + HNP yards). Click for a count by type. The primary network density metric.</li>
+        <li><strong>Habitat nodes</strong> — total active sites (corridor + waystations). Click for a count by type. The primary network density metric.</li>
         <li><strong>Pollinators sighted</strong> — combined iNat + GBIF pollinator count for the current date range. Click for source breakdown and top species.</li>
         <li><strong>Season / GDD</strong> — current Growing Degree Days vs. 1991–2020 normal with deviation %. Click to open the full Climate Ribbon chart.</li>
         <li><strong>eBird sightings</strong> — eBird observation count (requires API key). Click for species list.</li>
@@ -542,14 +541,14 @@
       <ul>
         <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>PFAS Near Habitat</strong> — a PFAS contamination site is within 1 km of a corridor site or waystation. Names both the contaminant site and the affected habitat. <em>Action:</em> inform site managers; inspect nearby surface water sources.</li>
         <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Unsupported Sites</strong> — corridor sites with no pollinator sightings within 500 m. May indicate under-surveying. <em>Action:</em> schedule an iNaturalist bioblitz at those sites to establish baseline records.</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Opportunity Zones</strong> — ≥5 pollinator sightings in a ~1 km cell with no habitat program site within 800 m. Where pollinators are active but infrastructure isn't. <em>Action:</em> propose a new corridor site, waystation, or HNP yard there.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Opportunity Zones</strong> — ≥5 pollinator sightings in a ~1 km cell with no habitat program site within 800 m. Where pollinators are active but infrastructure isn't. <em>Action:</em> propose a new corridor site or waystation there.</li>
         <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>Declining Public Zone</strong> — an opportunity zone with &gt;30% year-over-year sighting decline AND a City or County parcel within 800 m. Highest-priority target: documented decline + public ownership = a strong data-backed pitch to Parks.</li>
         <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>Public Land Gap</strong> — a City or County parcel ≥0.5 acres inside an opportunity zone with no habitat within 500 m. Zoom to 13+ and enable Parcels to get the address and owner for a specific outreach pitch.</li>
         <li><span class="modal-badge modal-badge--pos"><i class="ph ph-check-circle" aria-hidden="true"></i></span> <strong>Connected Pairs</strong> — corridor site pairs within 300 m. Confirmed stepping-stone connections; more pairs = more resilient corridor.</li>
         <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Isolated Habitat</strong> — a corridor site with no other corridor site within 2 km. Most native bees can't reliably bridge &gt;2 km. <em>Action:</em> identify a new planting ≤2 km away to reconnect it.</li>
         <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Weak Nodes</strong> — nearest corridor neighbor is 700 m–2 km away. Within foraging range but near the limit. <em>Action:</em> a midpoint planting upgrades these from stressed to solid.</li>
         <li><span class="modal-badge modal-badge--info"><i class="ph ph-info" aria-hidden="true"></i></span> <strong>Connectivity Gap</strong> — longest edge in the Minimum Spanning Tree of all corridor sites exceeds 2.5 km. The true network bottleneck. <em>Action:</em> bridging that MST gap is the single highest-leverage new planting location.</li>
-        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Regional Gap</strong> — one or more geographic quadrants has no habitat sites. <em>Action:</em> even one HNP registration in that quadrant begins coverage.</li>
+        <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Regional Gap</strong> — one or more geographic quadrants has no habitat sites. <em>Action:</em> even one new waystation registration in that quadrant begins coverage.</li>
         <li><span class="modal-badge modal-badge--bal"><i class="ph ph-scales" aria-hidden="true"></i></span> <strong>Pollinator Mismatch</strong> — bee-dependent crop acreage is high relative to estimated habitat coverage. The economic leverage case for new sites — corridor additions near these fields improve crop yields.</li>
         <li><span class="modal-badge modal-badge--warn"><i class="ph ph-warning" aria-hidden="true"></i></span> <strong>High Pesticide Pressure</strong> — corridor sites or waystations in a Critical-band county. <em>Action:</em> prioritize pesticide-tolerant nurse species in plantings; avoid recommending nearby water sources.</li>
         <li><span class="modal-badge modal-badge--opp"><i class="ph ph-plant" aria-hidden="true"></i></span> <strong>Poor Nesting Habitat</strong> — corridor sites below 25/100 on the NLCD nesting index (little bare ground, shrubland, or grassland within 300 m). <em>Action:</em> add bare-soil patches, sand berms, or let mowed edges revert to grassland.</li>
@@ -660,7 +659,7 @@
       <p>Bay Hive is released under the <strong>GNU General Public License v3.0</strong> — free to use, modify, and distribute as a public good, with no warranty of any kind. There's nothing proprietary here. Every piece of data comes from public sources. Every algorithm is straightforward spatial analysis. The only thing this project adds is the assembly — putting all of it in one place so anyone working on pollinator habitat in the Green Bay area can see the full picture at once.</p>
 
       <h3>Data &amp; Documentation</h3>
-      <p>Data comes from iNaturalist, GBIF, USDA NASS, WI DNR, USGS PAD-US, GBCC, Monarch Watch, eBird, and Homegrown National Park — all public sources, all freely available.</p>
+      <p>Data comes from iNaturalist, GBIF, USDA NASS, WI DNR, USGS PAD-US, GBCC, Monarch Watch, and eBird — all public sources, all freely available.</p>
       <p style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem">
         <a href="/guide.html" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:0.35rem 0.75rem;background:var(--surface2,#f1f5f9);border-radius:4px;color:var(--text,#1e293b);text-decoration:none;font-size:0.85rem">Map Guide ↗</a>
         <a href="/reference.html#data" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:0.35rem 0.75rem;background:var(--surface2,#f1f5f9);border-radius:4px;color:var(--text,#1e293b);text-decoration:none;font-size:0.85rem">Data Sources ↗</a>

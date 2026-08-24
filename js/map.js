@@ -73,7 +73,6 @@ export function initMap(containerId) {
  * Icon IDs registered:
  *   icon-hummingbird         – Pollinator Corridor site pins (biggest)
  *   icon-butterfly-detailed  – Monarch Waystation markers
- *   icon-park                – Homegrown National Park yard markers
  *   icon-biohazard           – PFAS chemical hazard sites
  *   icon-butterfly           – Pollinator sightings (iNat + GBIF)
  *   icon-flower              – Native plant sightings (iNat + GBIF)
@@ -88,7 +87,6 @@ export async function registerSvgIcons() {
   const ICON_MAP = [
     ['icon-hummingbird',        'hummingbird'],
     ['icon-butterfly-detailed', 'butterfly-with-detailed-wings'],
-    ['icon-park',               'park'],
     ['icon-biohazard',          'biohazard'],
     ['icon-butterfly',          'butterfly'],
     ['icon-flower',             'flower'],
@@ -654,7 +652,7 @@ export function setRasterLayerVisibility(id, visible) {
  * Lines are colored by the node types they connect:
  *   same-type    — the type’s own color
  *   cross-type   — a blended midpoint between the two type colors
- *   corridor: #f59e0b (amber)  waystation: #8b5cf6 (violet)  hnp: #10b981 (emerald)
+ *   corridor: #f59e0b (amber)  waystation: #8b5cf6 (violet)
  *
  * Distance quality is shown through two visual channels:
  *   optimal  ≤300 m  — solid, thick (4px), full opacity  → clearly healthy
@@ -685,13 +683,8 @@ export function registerConnectivityMesh(visible) {
     'match', ['coalesce', ['get', 'pair_type'], 'unknown'],
     'corridor-corridor',     '#f59e0b',  // amber
     'waystation-waystation', '#8b5cf6',  // violet
-    'hnp-hnp',               '#10b981',  // emerald
     'corridor-waystation',   '#c07ad6',  // blend amber+violet → mauve
     'waystation-corridor',   '#c07ad6',
-    'corridor-hnp',          '#84be6e',  // blend amber+emerald → sage
-    'hnp-corridor',          '#84be6e',
-    'waystation-hnp',        '#4db6b8',  // blend violet+emerald → teal
-    'hnp-waystation',        '#4db6b8',
     /* fallback */ '#aaaaaa',
   ];
 
@@ -743,10 +736,9 @@ export function registerConnectivityMesh(visible) {
  *
  * @param {GeoJSON.Feature[]} corridorFeatures
  * @param {GeoJSON.Feature[]} waystationFeatures
- * @param {GeoJSON.Feature[]} hnpFeatures
- * @param {Set<string>}       activeLayers  — which of the 3 types to include
+ * @param {Set<string>}       activeLayers  — which of the 2 types to include
  */
-export function updateConnectivityMesh(corridorFeatures, waystationFeatures, hnpFeatures, activeLayers) {
+export function updateConnectivityMesh(corridorFeatures, waystationFeatures, activeLayers) {
   const solidSrc = _map.getSource('connectivity-mesh');
   const weakSrc  = _map.getSource('connectivity-mesh-weak');
   if (!solidSrc || !weakSrc) return;
@@ -776,9 +768,6 @@ export function updateConnectivityMesh(corridorFeatures, waystationFeatures, hnp
   if (activeLayers.has('waystations')) {
     for (const f of waystationFeatures) nodes.push({ coord: toCoord(f), type: 'waystation' });
   }
-  if (activeLayers.has('hnp')) {
-    for (const f of hnpFeatures)        nodes.push({ coord: toCoord(f), type: 'hnp' });
-  }
 
   const solid = [];
   const weak  = [];
@@ -806,7 +795,7 @@ export function updateConnectivityMesh(corridorFeatures, waystationFeatures, hnp
 
 /**
  * Registers the pollinator access traffic heatmap.
- * Fed from corridor sites + waystations + HNP yards combined.
+ * Fed from corridor sites + waystations combined.
  *
  * @param {boolean} visible
  */

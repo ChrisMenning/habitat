@@ -81,7 +81,11 @@ export async function fetchNestingScores(centroidFeatures) {
   }));
 
   try {
-    const res = await fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(JSON.stringify(sites))}`);
+    const res = await fetch('/api/nlcd-nesting', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ sites }),
+    });
     if (!res.ok) return new Map();
     const data = await res.json();
     const map = new Map();
@@ -170,13 +174,13 @@ export async function fetchGridNlcdScores(centerLng, centerLat, radiusKm, gridSt
     }
   }
 
-  // 40 sites × ~90 chars URL-encoded ≈ 3.5 KB per request — safely under
-  // nginx's default 8 KB large_client_header_buffers limit.  Requests are
-  // fired in parallel so the extra batches don't add wall time.
-  const BATCH = 40;
+  // POST + JSON body isn't subject to nginx's request-line length limit, so
+  // batches can go up to the server's own cap (600 sites) instead of the
+  // smaller size a GET query string would have required.
+  const BATCH = 500;
   const result = new Map();
 
-  // Fire all batches in parallel — typically 10–20 requests, each resolves in
+  // Fire all batches in parallel — typically 1–3 requests, each resolves in
   // ~200–500 ms against localhost, so total wall time stays under 1 s vs
   // 10–15 s when awaited sequentially.
   const batches = [];
@@ -186,8 +190,11 @@ export async function fetchGridNlcdScores(centerLng, centerLat, radiusKm, gridSt
 
   const responses = await Promise.allSettled(
     batches.map(batch =>
-      fetch(`/api/nlcd-nesting?sites=${encodeURIComponent(JSON.stringify(batch))}`)
-        .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+      fetch('/api/nlcd-nesting', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ sites: batch }),
+      }).then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
     )
   );
 

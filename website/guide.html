@@ -78,21 +78,6 @@
           <p class="site-count-sub">registered sites in 15 km radius</p>
         </div>
 
-        <div class="site-type-card site-hnp">
-          <div class="site-type-dot dot-hnp"></div>
-          <div class="site-source">Homegrown National Park · Guest API</div>
-          <h3>HNP Native Planting Yards</h3>
-          <p>
-            Yards and organizational properties enrolled in Doug Tallamy's Homegrown National Park
-            initiative, indicating committed native plantings. While not formally mapped as managed
-            habitat, HNP registrations reveal the latent network of private landowners already engaged
-            in biodiversity restoration — an existing base of potential partners for formal corridor
-            extension and restoration outreach.
-          </p>
-          <p class="site-count" id="guide-val-hnp">—</p>
-          <p class="site-count-sub">enrolled yards in region</p>
-        </div>
-
       </div>
     </div><!-- site types -->
 
@@ -108,14 +93,14 @@
           </p>
           <p style="font-size:0.82rem;line-height:1.7;color:var(--mist)">
             Dossiers are only available for active habitat program site markers —
-            Corridor, Waystation, and HNP. Observation points (iNaturalist, GBIF) use a
+            Corridor and Waystation. Observation points (iNaturalist, GBIF) use a
             smaller popup instead.
           </p>
         </div>
         <ul class="drawer-field-list" aria-label="Site dossier fields">
           <li class="drawer-field">
             <span class="drawer-field-key">Name &amp; Source</span>
-            <span class="drawer-field-val">Site name, data source (GBCC, Monarch Watch, or HNP), and registration date if available.</span>
+            <span class="drawer-field-val">Site name, data source (GBCC or Monarch Watch), and registration date if available.</span>
           </li>
           <li class="drawer-field">
             <span class="drawer-field-key">Sighting Count</span>
@@ -233,24 +218,9 @@
           <div class="conn-color-desc">Both endpoints are Monarch Watch registered sites.</div>
         </div>
         <div class="conn-color-cell">
-          <div class="conn-color-swatch" style="background:#10b981"></div>
-          <div class="conn-color-label">HNP ↔ HNP</div>
-          <div class="conn-color-desc">Both endpoints are Homegrown National Park yards.</div>
-        </div>
-        <div class="conn-color-cell">
           <div class="conn-color-swatch" style="background:#c07ad6"></div>
           <div class="conn-color-label">Corridor ↔ Waystation</div>
           <div class="conn-color-desc">Formal corridor site linked with a registered waystation — a bridge between the two programs.</div>
-        </div>
-        <div class="conn-color-cell">
-          <div class="conn-color-swatch" style="background:#84be6e"></div>
-          <div class="conn-color-label">Corridor ↔ HNP</div>
-          <div class="conn-color-desc">Managed corridor site adjacent to a native-planting yard — private engagement alongside formal sites.</div>
-        </div>
-        <div class="conn-color-cell">
-          <div class="conn-color-swatch" style="background:#4db6b8"></div>
-          <div class="conn-color-label">Waystation ↔ HNP</div>
-          <div class="conn-color-desc">Registered waystation linked with a native-planting yard — distributed private corridor pair.</div>
         </div>
       </div><!-- conn-color-grid -->
 
@@ -288,7 +258,7 @@
         </p>
         <ul class="guide-list">
           <li><strong>Corridor Expansion Candidate</strong> (green) — Within stepping-stone range of an existing Corridor site on public land. Suitable for a formal Pollinator Corridor planting. Coordinate with City of Green Bay Parks.</li>
-          <li><strong>Community Engagement Opportunity</strong> (purple) — Primarily near Waystation or HNP sites, suggesting private residential land. Consider outreach to property owners about Monarch Waystation registration or the Homegrown National Park program.</li>
+          <li><strong>Community Engagement Opportunity</strong> (purple) — Primarily near Waystation sites, suggesting private residential land. Consider outreach to property owners about Monarch Waystation registration or the Homegrown National Park program.</li>
           <li><strong>Dual-Pathway Opportunity</strong> (amber) — Mixed or unknown land character. Assess both formal Corridor eligibility and community engagement. A field visit is recommended.</li>
         </ul>
       </div>
@@ -536,12 +506,6 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
       setVal('guide-val-corridor-area', totalAcres);
     }
   } catch { /* GBCC service unreachable — keep "—" */ }
-  try {
-    const res   = await fetch('/api/hnp-count', { signal: AbortSignal.timeout(20000) });
-    const data  = res.ok ? await res.json() : {};
-    const count = data.count ?? null;
-    if (count != null) setVal('guide-val-hnp', count);
-  } catch { /* proxy unavailable — keep "—" */ }
 })();
 </script>
 </body>

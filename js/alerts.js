@@ -89,7 +89,6 @@ export function computeAlerts({
   waystationFeatures = [],
   pfasFeatures       = [],
   pollinatorSightings = [],
-  hnpFeatures        = [],
   cdlStats           = null,
   quickStats         = null,
   climateData        = null,
@@ -322,12 +321,11 @@ export function computeAlerts({
   // ── Alert: Isolated corridor sites — no corridor neighbour within 2 km ───
   // 2 km is the upper bound of bumble bee foraging range and the practical
   // limit for corridor continuity. Only corridor sites are evaluated; waystations
-  // and HNP yards are fixed private registrations outside active management.
+  // are fixed private registrations outside active management.
   const ISOLATION_KM = 2.0;
   const allHabitat = [
     ...corridorFeatures.map(f  => ({ coord: centroid(f),  name: f.properties.name || 'Corridor site',  kind: 'corridor'  })),
     ...waystationFeatures.map(f => ({ coord: centroid(f), name: f.properties.name || f.properties.registrant || 'Waystation', kind: 'waystation' })),
-    ...hnpFeatures.map(f        => ({ coord: centroid(f), name: f.properties.name || 'HNP yard',        kind: 'hnp'       })),
   ];
   if (corridorFeatures.length >= 2) {
     const corridorNodes = corridorFeatures.map(f => ({
@@ -502,7 +500,7 @@ export function computeAlerts({
         level:  'warn',
         icon:   '<i class="ph ph-scales"></i>',
         key:    'mismatch-high',
-        text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic HNP or corridor expansion near agricultural zones would have high economic leverage.`,
+        text:   `Pollinator mismatch — HIGH: ${beePct.toFixed(1)}% of Brown County land includes bee-dependent crops (${cropNames}), but current habitat covers an estimated ${coveragePct.toFixed(0)}% of the region.${colonyNote}${censusNote} Strategic waystation or corridor expansion near agricultural zones would have high economic leverage.`,
         coords: [],
         layers: [],
         heatmaps: ['cdl-fringe-heat'],
@@ -541,9 +539,9 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '<i class="ph ph-map-pin"></i>',
         key:    'regional-gap',
-        text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered HNP yard or waystation there would begin corridor coverage.`,
+        text:   `Service gap detected: no habitat program sites in the ${empty.map(q => q.name).join(' or ')} area. Adding even one registered waystation there would begin corridor coverage.`,
         coords: [],
-        layers: ['gbcc-corridor', 'waystations', 'hnp'],
+        layers: ['gbcc-corridor', 'waystations'],
       });
     }
   }
@@ -664,7 +662,7 @@ export function computeAlerts({
         level:  'opportunity',
         icon:   '<i class="ph ph-tree"></i>',
         key:    'shaded-habitat',
-        text:   `Shaded Habitat: ${shadedSites.length} corridor site${shadedSites.length > 1 ? 's have' : ' has'} >55% tree canopy coverage within 150 m — shading suppresses sun-loving pollinator plants and compacts soil, reducing bare-ground substrate for ground-nesting bees (~70% of bee species). Consider canopy thinning or selective edge management near: ${names.join(', ')}${extra}.`,
+        text:   `Shaded Habitat: ${shadedSites.length} corridor site${shadedSites.length > 1 ? 's have' : ' has'} >55% tree canopy coverage within 150 m — shading suppresses sun-loving pollinator plants and compacts soil, reducing bare-ground substrate for ground-nesting bees (~70% of bee species). Consider canopy thinning or selective edge management near: ${names.join(', ')}${extra}. Canopy data is from the 2022 WI DNR survey — the most recent available — and may not reflect canopy changes since then.`,
         coords: shadedSites.map(centroid),
         layers: ['gbcc-corridor'],
       });
@@ -922,7 +920,6 @@ function _getPesticideBandForCoord(coord, counties) {
 export function computeExpansionOpportunities({
   corridorFeatures   = [],
   waystationFeatures = [],
-  hnpFeatures        = [],
   pollinatorSightings = [],
   pfasFeatures       = [],
   pesticideCounties  = [],
@@ -932,7 +929,7 @@ export function computeExpansionOpportunities({
   // Pollinator sightings are used only as a FILTER (≥5 records → candidate location),
   // not as a primary suitability driver. The goal of a new site is to ATTRACT pollinators,
   // so their absence is not disqualifying — ecology (plants, nesting habitat) matters more.
-  const allSites       = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
+  const allSites       = [...corridorFeatures, ...waystationFeatures];
   const SITE_EXCLUSION_KM  = 0.8;  // skip if already has a registered site this close
   const CLUSTER_MIN        = 3;    // lower threshold — detect emerging hotspots
   const NESTING_PROXY_KM   = 3.0;  // use nearby corridor site's nesting score as proxy
@@ -981,19 +978,19 @@ export function computeExpansionOpportunities({
 
     // ── Land access classification ──────────────────────────────────────────
     // Corridor sites can only be placed on public / city-owned land.
-    // Waystations and HNP yards are on private residential land.
+    // Waystations are on private residential land.
     // Use which site types are near as a proxy for land character.
     const nearCorridorKm  = corridorFeatures.reduce((min, s) => {
       const c = centroid(s); return c ? Math.min(min, distKm(coord, c)) : min;
     }, Infinity);
-    const nearPrivateKm   = [...waystationFeatures, ...hnpFeatures].reduce((min, s) => {
+    const nearPrivateKm   = waystationFeatures.reduce((min, s) => {
       const c = centroid(s); return c ? Math.min(min, distKm(coord, c)) : min;
     }, Infinity);
 
     // In the corridor stepping-stone zone (0.8–3 km from a corridor site) →
     // contiguous public land is plausible; recommend Pollinator Corridor expansion.
     // Near only private habitat programs → site is likely residential; recommend
-    // engaging homeowners about native plantings (Waystations / HNP).
+    // engaging homeowners about native plantings (Waystations).
     // Both or neither → recommend both pathways; note field assessment needed.
     const corridorCandidate = nearCorridorKm > SITE_EXCLUSION_KM && nearCorridorKm <= 3.0;
     const communityZone     = nearPrivateKm  <= 2.0;
@@ -1117,7 +1114,6 @@ export function computeExpansionOpportunities({
 export function computeProblemFeatures({
   corridorFeatures   = [],
   waystationFeatures = [],
-  hnpFeatures        = [],
   pfasFeatures       = [],
   pollinatorSightings = [],
   nestingScores      = new Map(),
@@ -1127,7 +1123,7 @@ export function computeProblemFeatures({
   const features = [];
 
   // All registered habitat sites — used for connectivity / isolation checks
-  const allSites = [...corridorFeatures, ...waystationFeatures, ...hnpFeatures];
+  const allSites = [...corridorFeatures, ...waystationFeatures];
 
   function push(coord, problemType, severity, name, description) {
     if (!coord) return;
@@ -1231,7 +1227,7 @@ export function computeProblemFeatures({
       if (typeof pct === 'number' && pct > 55) {
         push(centroid(site), 'shaded-habitat', 'low',
           `Shaded Habitat: ${site.properties?.name || 'Site'}`,
-          `${pct.toFixed(0)}% tree canopy within 150 m \u2014 may suppress sun-loving pollinator plants`);
+          `${pct.toFixed(0)}% tree canopy within 150 m \u2014 may suppress sun-loving pollinator plants (2022 survey \u2014 may be outdated)`);
       }
     }
   }

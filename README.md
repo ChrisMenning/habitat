@@ -32,7 +32,6 @@ A browser-based public-data intelligence tool for pollinator habitat in the Gree
 | NE WI Pollinator Corridor | GBCC ArcGIS Feature Service |
 | GBCC Habitat Treatments | GBCC ArcGIS Feature Service |
 | Monarch Watch Waystations | `waystation_coords.json` (56 manually curated sites) |
-| Homegrown National Park yards | HNP API (proxied — no CORS) |
 | iNaturalist Sightings | iNaturalist API v1 |
 | GBIF Records | GBIF Occurrence API v1 |
 | Bee Distribution (FWS dataset) | GBIF occurrence records — 6 bee families |
@@ -128,7 +127,6 @@ habitat/
     ├── nesting.js           # Nesting habitat layer
     ├── pesticide.js         # Pesticide / chemical threat data
     ├── waystations.js       # Monarch Watch waystation layer
-    ├── hnp.js               # Homegrown National Park layer
     ├── classify.js          # Observation classification helpers
     ├── commons.js           # Wikimedia Commons sightings
     ├── history.js           # Observation history / timeline

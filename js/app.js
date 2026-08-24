@@ -10,7 +10,7 @@
  *   config.js — Layer/establishment definitions and constants
  */
 
-import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, HNP_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER, INAT_HISTORY_START_YEAR,
+import { LAYERS, GBIF_LAYERS, BEE_LAYERS, AREA_LAYERS, HAZARD_LAYERS, WAYSTATION_LAYER, RASTER_LAYERS, NLCD_LAYERS, EBIRD_LAYER, PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, TREE_CANOPY_LAYERS, EXPANSION_LAYER, PROBLEM_AREAS_LAYER, INVEST_LAYER, INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER, INAT_HISTORY_START_YEAR,
          LAYER_VINTAGES, LAYER_LABELS, STALENESS_THRESHOLD_YEARS, TEMPORAL_MISMATCH_THRESHOLD_YEARS,
          CENTER, RADIUS_KM, LAYER_PRESETS } from './config.js';
 import { fetchObservations, fetchObservationsForYear, observationsToGeoJSON,
@@ -26,7 +26,6 @@ import { fetchPadUs, fetchDnrSna, fetchDnrManagedLands,
          fetchChemicalHazards,
          corridorCentroids }                          from './areas.js';
 import { waystationGeoJSON }                          from './waystations.js';
-import { fetchHnpYards }                              from './hnp.js';
 import { fetchCdlStats, fetchQuickStats, fetchCdlFringe } from './landcover.js';
 import { initMap, registerLayer, registerAreaLayer,
          registerAreaMarkersLayer,
@@ -71,7 +70,7 @@ import { initMap, registerLayer, registerAreaLayer,
          getInteractiveLayerIds, getInteractiveAreaLayerIds,
          showPopup, closePopup, wireInteractions, wireHoverCursors, wireParcelClick,
          showAlertHighlight, clearAlertHighlight, fitToCoords,
-         zoomToCluster, getEffectiveClusteredCoords,
+         zoomToCluster,
          setWaystationApproxStyle,
          registerJourneyNorthLayer,
          setJourneyNorthFeatures,
@@ -142,7 +141,7 @@ function _updateAlertBadge(n) {
 }
 
 /** Populates the intel-bar summary strip with current data counts. */
-function updateIntelBar({ corridorSqFt, hnpCount, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
+function updateIntelBar({ corridorSqFt, habitatNodeCount, pollinatorCount, gddStat, ebirdCount, nativeSpeciesCount, alertCount }) {
   document.getElementById('intel-val-corridor').textContent  = formatArea(corridorSqFt);
   document.getElementById('intel-val-habitat').textContent   = habitatNodeCount > 0 ? habitatNodeCount : '—';
   document.getElementById('intel-val-inat').textContent      = pollinatorCount.toLocaleString();
@@ -240,8 +239,8 @@ function setLayerActive(id, visible) {
   if (visible) _activeLayerIds.add(id);
   else         _activeLayerIds.delete(id);
 
-  // Connectivity mesh re-renders when any of the three site-layer types changes
-  if (id === 'gbcc-corridor' || id === 'waystations' || id === 'hnp') {
+  // Connectivity mesh re-renders when either site-layer type changes
+  if (id === 'gbcc-corridor' || id === 'waystations') {
     if (visible) _activeSiteLayers.add(id);
     else         _activeSiteLayers.delete(id);
     setHeatmapVisibility('connectivity-mesh', _activeSiteLayers.size > 0);
@@ -282,7 +281,7 @@ function setLayerActive(id, visible) {
  */
 const _ALL_CONFIG_LAYERS = [
   ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
-  ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+  ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...NLCD_LAYERS,
   ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
   PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
   INVEST_URBAN_LAYER, FORAGING_BANDS_LAYER,
@@ -384,11 +383,10 @@ const _inatLoadedIds = new Set();
 let _corridorFeats            = [];
 let _waystationFeats          = [];
 let _confirmedWaystationFeats = [];  // approximate sites excluded
-let _hnpFeats                 = [];
 // Full unfiltered eBird features — retained for filter re-application without a network refetch.
 let _ebirdAllFeats      = [];
-// Active site-layer set — reflects current toggle state for the three site-layer types.
-const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations', 'hnp']);
+// Active site-layer set — reflects current toggle state for the two site-layer types.
+const _activeSiteLayers = new Set(['gbcc-corridor', 'waystations']);
 
 // Tracks all currently-visible layer ids — used for temporal-mismatch alert detection.
 // Initialised from defaultOn values after panels are built; updated on every toggle.
@@ -418,7 +416,6 @@ let _gbifPollinators  = [];    // GBIF pollinator features
 let _gbifNativePlants = [];    // GBIF native plant features
 let _allSightings     = [];    // combined pollinator sightings for heatmap — refreshed on full load
 let _allNativePlants  = [];    // combined native plant observations (iNat + GBIF, deduped) — refreshed on full load
-let _hnpCount         = 0;     // count of HNP yards in bbox — refreshed on full load
 let _lastAlertCount   = 0;     // most-recently rendered alert count for timeline-driven intel-bar updates
 
 /**
@@ -456,20 +453,8 @@ const map = initMap('map');
 // ── Connectivity mesh ──────────────────────────────────────────────────────────
 
 /**
- * Converts an array of [lng, lat] coordinates into minimal GeoJSON Point features
- * so they can be passed into updateConnectivityMesh.
- */
-function _coordsToFeatures(coords) {
-  return coords.map(c => ({
-    type: 'Feature',
-    geometry:   { type: 'Point', coordinates: c },
-    properties: {},
-  }));
-}
-
-/**
  * Rebuilds the connectivity mesh using the cluster-aware effective positions
- * of waystation and HNP nodes at the current zoom level.
+ * of waystation nodes at the current zoom level.
  *
  * When a layer is clustered at the current zoom, cluster centroids are used
  * as mesh nodes (so lines connect groups, not every underlying individual).
@@ -512,14 +497,12 @@ function _clusterCorridorFeats(feats, thresholdKm = 0.25) {
 function refreshConnectivityMesh() {
   // Foraging-range mesh uses confirmed-location waystations only — approximate
   // sites have no known address and would create false connectivity signals.
-  const hnpCoords = getEffectiveClusteredCoords('hnp');
-  const hnpFeats  = hnpCoords ? _coordsToFeatures(hnpCoords) : _hnpFeats;
 
   // Cluster nearby corridor sites (threshold 250 m) to treat dense groupings
   // like Farlin Park as a single network node rather than 9 individual points.
   const clusteredCorridor = _clusterCorridorFeats(_corridorFeats, 0.25);
 
-  updateConnectivityMesh(clusteredCorridor, _confirmedWaystationFeats, hnpFeats, _activeSiteLayers);
+  updateConnectivityMesh(clusteredCorridor, _confirmedWaystationFeats, _activeSiteLayers);
 }
 
 // ── Background iNaturalist historical loader ───────────────────────────────────
@@ -833,15 +816,13 @@ async function loadObservations() {
   try {
     // All sources run in parallel. Failures in one never block the others.
     // Each promise is wrapped to update the loading progress counter as sources settle.
-    const TOTAL_SOURCES = 17;
+    const TOTAL_SOURCES = 16;
     let   _settled      = 0;
     const _phases       = [
       // indices 0-4: observations
       ...[0,1,2,3,4].map(() => 'Fetching observations'),
-      // indices 5-15: area data
+      // indices 5-15: area data (incl. eBird and pesticide)
       ...[5,6,7,8,9,10,11,12,13,14,15].map(() => 'Loading area data'),
-      // index 16: pesticide
-      'Loading area data',
     ];
     function _tracked(p, idx) {
       return p.then(
@@ -853,7 +834,7 @@ async function loadObservations() {
     const [
       inatResult, gbifPollResult, gbifPlantResult, gbifWildlifeResult, beesResult,
       padusResult, snaResult, dnrResult,
-      corridorResult, treatmentResult, pfasResult, hnpResult, cdlStatsResult,
+      corridorResult, treatmentResult, pfasResult, cdlStatsResult,
       quickStatsResult, cdlFringeResult, ebirdResult, pesticideResult,
     ] = await Promise.allSettled([
 
@@ -902,16 +883,15 @@ async function loadObservations() {
       _tracked(withCache('area/gbcc-corridor',  AREA_TTL, fetchPollinatorCorridor), 8),
       _tracked(withCache('area/gbcc-treatment', AREA_TTL, fetchCorridorTreatments), 9),
       _tracked(withCache('area/dnr-pfas',       AREA_TTL, fetchChemicalHazards), 10),
-      _tracked(withCache('area/hnp',            AREA_TTL, fetchHnpYards), 11),
-      _tracked(withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats), 12),
-      _tracked(withCache('area/quickstats',        AREA_TTL, fetchQuickStats), 13),
-      _tracked(withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe), 14),
+      _tracked(withCache('area/cdl-stats',       AREA_TTL, fetchCdlStats), 11),
+      _tracked(withCache('area/quickstats',        AREA_TTL, fetchQuickStats), 12),
+      _tracked(withCache('area/cdl-fringe',        AREA_TTL, fetchCdlFringe), 13),
 
       // ── eBird recent bird observations (1 h TTL, always last 30 days) ───
-      _tracked(withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()), 15),
+      _tracked(withCache(`obs/ebird/all`, OBS_TTL, () => fetchEbirdObservations()), 14),
 
       // ── Pesticide county choropleth (24 h TTL, static county data) ──────────
-      _tracked(withCache('area/pesticide', AREA_TTL, fetchPesticideCounties), 16),
+      _tracked(withCache('area/pesticide', AREA_TTL, fetchPesticideCounties), 15),
     ]);
 
     setLoadingProgress(TOTAL_SOURCES, TOTAL_SOURCES, 'Rendering layers');
@@ -1131,15 +1111,6 @@ async function loadObservations() {
       console.warn('PFAS sites failed:', pfasResult.reason);
       counts['dnr-pfas'] = 0;
     }
-    // ── Homegrown National Park native planting yards ────────────────────
-    if (hnpResult.status === 'fulfilled') {
-      setLayerFeatures('hnp', hnpResult.value.features);
-      counts['hnp'] = hnpResult.value.features.length;
-    } else {
-      console.warn('HNP failed:', hnpResult.reason);
-      counts['hnp'] = 0;
-    }
-
     // ── eBird bird sightings ────────────────────────────────────────────────────
     let ebirdCount = 0;
     if (ebirdResult.status === 'fulfilled') {
@@ -1188,10 +1159,7 @@ async function loadObservations() {
     const waystationFeats     = _waystationFeats;
     const confirmedWaystationFeats = _confirmedWaystationFeats;
     const pfasFeats        = pfasResult.status      === 'fulfilled' ? pfasResult.value.features     : [];
-    _hnpFeats              = hnpResult.status       === 'fulfilled' ? hnpResult.value.features      : [];
-    _hnpCount              = _hnpFeats.length;
-    const hnpFeats         = _hnpFeats;
-    const allHabitatFeats  = [...corridorFeats, ...waystationFeats, ...hnpFeats];
+    const allHabitatFeats  = [...corridorFeats, ...waystationFeats];
 
     // Drawer data
     setDrawerSightings(allPollinatorFeatures);
@@ -1241,7 +1209,6 @@ async function loadObservations() {
       waystationFeatures:  confirmedWaystationFeats,
       pfasFeatures:        pfasFeats,
       pollinatorSightings: allPollinatorFeatures,
-      hnpFeatures:         hnpFeats,
       cdlStats,
       quickStats,
       climateData:         getClimateState(),
@@ -1298,7 +1265,6 @@ async function loadObservations() {
     const _analysisCtx = {
       corridorFeatures:    corridorFeats,
       waystationFeatures:  confirmedWaystationFeats,
-      hnpFeatures:         hnpFeats,
       pfasFeatures:        pfasFeats,
       pollinatorSightings: allPollinatorFeatures,
       pesticideCounties,
@@ -1364,8 +1330,8 @@ async function loadObservations() {
     // Corridor habitat area (sum of area_sqft across all corridor polygons)
     const corridorSqFt = _corridorFeats.reduce((sum, f) => sum + (+(f.properties?.area_sqft ?? 0)), 0);
 
-    // Total active habitat network nodes (corridor centroids + waystations + HNP yards)
-    const habitatNodeCount = _corridorFeats.length + _waystationFeats.length + _hnpFeats.length;
+    // Total active habitat network nodes (corridor centroids + waystations)
+    const habitatNodeCount = _corridorFeats.length + _waystationFeats.length;
 
     // Unique native plant species observed (iNat + GBIF native-plants, deduplicated by scientific name)
     const nativeSpeciesCount = new Set([
@@ -1376,7 +1342,6 @@ async function loadObservations() {
     // Intel bar
     updateIntelBar({
       corridorSqFt,
-      hnpCount:          _hnpCount,
       habitatNodeCount,
       pollinatorCount,
       gddStat:           getGddIntelStat(),
@@ -1411,7 +1376,6 @@ async function loadObservations() {
       mapCenter:          map.getCenter().toArray(),
       activeFilters:      [],
       // Extended fields
-      hnpCount:           _hnpFeats.length,
       ebirdCount,
       habitatNodeCount,
       pollinatorCount,
@@ -1739,12 +1703,7 @@ map.on('load', async () => {
   // Journey North historical monarch observations (off by default; requires pre-processed data file)
   registerJourneyNorthLayer(false);
 
-  // 2c. Homegrown National Park native planting yards — immediately after waystations
-  for (const layer of HNP_LAYER) {
-    registerLayer(layer.id, layer.defaultOn, {
-      radius: 13, strokeWidth: 2, opacity: 0.95, symbol: 'icon-park',      cluster: true, clusterColor: '#10b981',    });
-  }
-  // 2d. eBird bird sightings layer
+  // 2c. eBird bird sightings layer
   for (const layer of EBIRD_LAYER) {
     registerLayer(layer.id, layer.defaultOn, {
       radius: 7, symbol: 'icon-crow', iconSize: 0.50,
@@ -1809,7 +1768,6 @@ map.on('load', async () => {
     [
       { groupLabel: 'Pollinator Corridor · GBCC', layers: habitatAreaLayers  },
       { groupLabel: 'Monarch Watch Waystations',  layers: WAYSTATION_LAYER   },
-      { groupLabel: 'Homegrown National Park',    layers: HNP_LAYER          },
     ],
     setLayerActive,
     document.getElementById('panel-habitat-inner'),
@@ -1915,7 +1873,7 @@ map.on('load', async () => {
   // setLayerActive() keeps the set updated on subsequent toggles.
   for (const layer of [
     ...LAYERS, ...GBIF_LAYERS, ...BEE_LAYERS, ...AREA_LAYERS,
-    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...NLCD_LAYERS,
+    ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...NLCD_LAYERS,
     ...EBIRD_LAYER, ...EXPANSION_LAYER, ...PROBLEM_AREAS_LAYER,
     PESTICIDE_LAYER, PARCEL_LAYER, COMMONS_LAYER, INVEST_LAYER,
   ]) {
@@ -2152,8 +2110,7 @@ map.on('load', async () => {
       ]).size;
       updateIntelBar({
         corridorSqFt:     _corridorFeats.reduce((s, f) => s + (+(f.properties?.area_sqft ?? 0)), 0),
-        hnpCount:         _hnpCount,
-        habitatNodeCount: _corridorFeats.length + _waystationFeats.length + _hnpFeats.length,
+        habitatNodeCount: _corridorFeats.length + _waystationFeats.length,
         pollinatorCount,
         gddStat:          getGddIntelStat(),
         ebirdCount,
@@ -2234,16 +2191,15 @@ map.on('load', async () => {
 
   // Habitat stat → show habitat network summary
   const openHabitatDrawer = () => {
-    const total = _corridorFeats.length + _waystationFeats.length + _hnpFeats.length;
+    const total = _corridorFeats.length + _waystationFeats.length;
     if (!total) return;
     openIntelDrawer('Habitat Network',
       `<div class="drawer-intel-stat-grid">
          <div class="drawer-intel-stat-cell"><strong>${_corridorFeats.length}</strong><span>Corridor sites</span></div>
          <div class="drawer-intel-stat-cell"><strong>${_waystationFeats.length}</strong><span>Waystations</span></div>
-         <div class="drawer-intel-stat-cell"><strong>${_hnpFeats.length}</strong><span>HNP yards</span></div>
        </div>
-       <p class="drawer-intel-note">${total} total habitat nodes across 3 programs</p>`);
-    const coords = [..._corridorFeats, ..._waystationFeats, ..._hnpFeats].map(_featCentroid).filter(Boolean);
+       <p class="drawer-intel-note">${total} total habitat nodes across 2 programs</p>`);
+    const coords = [..._corridorFeats, ..._waystationFeats].map(_featCentroid).filter(Boolean);
     if (coords.length) { showAlertHighlight(coords, 'positive'); fitToCoords(coords, { padding: { top: 80, bottom: 80, left: 80, right: 340 } }); }
   };
   document.getElementById('intel-habitat')?.addEventListener('click', openHabitatDrawer);
@@ -2316,7 +2272,7 @@ map.on('load', async () => {
   });
 
   // Wire click interactions on all layers (points + polygon fills)
-  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...HNP_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
+  const pointLayerIds = getInteractiveLayerIds([...GBIF_LAYERS, ...LAYERS, ...HAZARD_LAYERS, ...WAYSTATION_LAYER, ...EBIRD_LAYER, ...BEE_LAYERS.filter(l => l.id !== 'bees-richness')]);
   const areaLayerIds  = getInteractiveAreaLayerIds(AREA_LAYERS);
   const alertLayerIds  = ['points-expansion-opportunities', 'points-problem-areas'];
   const investHitIds   = ['invest-urban-heat-hits-layer'];
@@ -2630,7 +2586,7 @@ function _expansionRecHtml(rec) {
       <div class="drawer-rec-icon">&#x1F3E0;</div>
       <div>
         <strong>Community Engagement Opportunity</strong>
-        <p>This area appears to be primarily private residential land (nearby Waystations or HNP yards rather than Corridor sites).
+        <p>This area appears to be primarily private residential land (nearby Waystations rather than Corridor sites).
         Rather than a formal Corridor planting, consider engaging nearby property owners about the benefits of native plants and pollinators.
         Residents can register their yards as a <strong>Monarch Waystation</strong> or join the <strong>Homegrown National Park</strong> program.</p>
       </div>
