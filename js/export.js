@@ -262,7 +262,7 @@ export function exportReport() {
       ${corridorCount} pollinator corridor sites · ${waystationCount} Monarch waystations
     </p>
     <table>
-      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban context</th></tr></thead>
+      <thead><tr><th>Corridor site</th><th class="num">Area</th><th>Nesting suitability</th><th class="num">Canopy</th><th>Urban opportunity</th></tr></thead>
       <tbody>${corrRows || `<tr><td colspan="5" class="empty">No corridor data</td></tr>`}</tbody>
     </table>
     <table>

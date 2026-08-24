@@ -498,18 +498,33 @@ export function computeInVESTHeatmap(gridData, centerLng, centerLat, radiusKm) {
   };
 }
 
-// ── Urban InVEST / Lonsdorf — intra-urban habitat index ──────────────────────
+// ── Urban InVEST / Lonsdorf — intra-urban planting-opportunity index ─────────
 //
-// Same Lonsdorf kernel as computeInVESTHeatmap but tuned for the urban context:
+// Same Lonsdorf kernel as computeInVESTHeatmap but tuned for the urban context,
+// and — as of 2026-08-24 — scored as an *opportunity* index rather than a raw
+// habitat-quality index. See decisions.md for why: at 330 m resolution, with
+// no spatial neighbourhood kernel (see performance note below), a cell's score
+// is driven entirely by the land cover inside that one cell. A low-density
+// cell at the city's edge that just clears the 20% "developed" threshold but
+// is otherwise mostly grass/shrub/farmland scored far higher than any dense
+// urban block ever could — technically correct (more natural cover really is
+// better bee habitat) but useless for answering "where in the city should we
+// plant," since it just re-discovered that the rural fringe beats downtown.
 //
 //   • Grid cells are filtered to those with ≥20% developed NLCD pixels —
 //     the analysis is only about the urban footprint.
 //   • Rural cells STILL participate in the foraging kernel (a park adjacent to
-//     farmland benefits from that floral resource) but do NOT appear in the output
-//     and do NOT set the normalization ceiling.
-//   • Normalization baseline is the max P(x) among urban cells — so a city park
-//     that is the best habitat for 2 km in every direction scores near 1.0 even
-//     if it would score 0.12 against Suamico grassland.
+//     farmland benefits from that floral resource) but do NOT appear in the
+//     output and do NOT set the normalization ceiling.
+//   • Quality baseline is the max P(x) among urban cells — so a city park
+//     that is the best habitat for 2 km in every direction has quality ~1.0
+//     even if it would score 0.12 against Suamico grassland.
+//   • Opportunity = urbanFrac × (1 − quality), then re-normalized to [0, 1]
+//     against the best urban cell. This rewards cells that are BOTH
+//     genuinely developed AND currently low-habitat — a dense, mostly-paved
+//     block scores high; a low-density fringe cell that already has plenty
+//     of natural cover scores low regardless of technically clearing the
+//     20% threshold, because it has little quality headroom left to gain.
 //   • Guild weights shift toward small and medium solitary bees — the species
 //     that realistically occupy urban green patches (Osmia, Lasioglossum).
 //   • No floor — all urban signal (even faint) is shown.
@@ -530,9 +545,15 @@ const INVEST_GUILDS_URBAN = [
 const URBAN_NLCD_THRESHOLD = 0.20;
 
 /**
- * Computes a relative InVEST pollinator index scoped to the urban landscape.
- * Output cells are restricted to developed areas; normalization ceiling is set
- * by the best urban cell — not by rural grassland.
+ * Computes a planting-opportunity index scoped to the urban landscape: which
+ * developed cells would most benefit from added pollinator habitat, not which
+ * cells already have the best habitat. Output cells are restricted to
+ * developed areas (≥20% developed NLCD pixels).
+ *
+ * `properties.weight` (0–1) is the opportunity score: high where a cell is
+ * both genuinely developed (high urbanFrac) and currently low-quality habitat
+ * relative to the best urban cell. `properties.quality` (0–1) is the older
+ * raw habitat-quality signal, kept for reference/display.
  *
  * @param {Map<string, {counts: object, total: number}>} gridData
  * @param {number} centerLng
@@ -593,18 +614,36 @@ export function computeInVESTHeatmapUrban(gridData, centerLng, centerLat, radius
     xi.p = totalPS;
   }
 
-  // Normalize against the best URBAN cell only.
+  // Quality baseline is the best URBAN cell only — not rural grassland.
   const urbanCells = cells.filter(c => c.urbanFrac >= URBAN_NLCD_THRESHOLD);
   if (!urbanCells.length) return { type: 'FeatureCollection', features: [] };
   const maxP = Math.max(...urbanCells.map(c => c.p));
   if (!maxP) return { type: 'FeatureCollection', features: [] };
+
+  // Opportunity = how developed the cell is × how much quality headroom is
+  // left before it matches the best urban cell we have. A low-density cell
+  // that just clears the urban threshold but is already near-quality-ceiling
+  // (common at the city's rural edge) scores near 0 here even though its raw
+  // quality is high — it has little room left to gain, and adding it to the
+  // "best places to plant" list wouldn't be useful. A dense, mostly-paved
+  // cell with quality near 0 scores high — exactly where planting would move
+  // the needle most.
+  for (const c of urbanCells) {
+    const quality = Math.min(1, c.p / maxP);
+    c.quality     = quality;
+    c.opportunity = c.urbanFrac * (1 - quality);
+  }
+  const maxOpportunity = Math.max(...urbanCells.map(c => c.opportunity));
 
   return {
     type: 'FeatureCollection',
     features: urbanCells.map(c => ({
       type: 'Feature',
       geometry:   { type: 'Point', coordinates: [c.lng, c.lat] },
-      properties: { weight: c.p / maxP },
+      properties: {
+        weight:  maxOpportunity > 0 ? c.opportunity / maxOpportunity : 0,
+        quality: c.quality,
+      },
     })),
   };
 }
@@ -613,11 +652,13 @@ export function computeInVESTHeatmapUrban(gridData, centerLng, centerLat, radius
 
 /**
  * For each corridor site (centroid coords), finds the nearest cell in a pre-computed
- * urban InVEST GeoJSON FeatureCollection and assigns that cell's weight as the
- * site's landscape context score.
+ * urban InVEST GeoJSON FeatureCollection and assigns that cell's opportunity weight
+ * as the site's landscape context score.
  *
  * Returns an array of { name, lng, lat, investScore } objects, suitable for
- * display in the corridor site dossier or for coloring site pins.
+ * display in the corridor site dossier or for coloring site pins. investScore
+ * is an *opportunity* score (0–1, high = high-value planting target), not a
+ * habitat-quality score — see computeInVESTHeatmapUrban.
  *
  * @param {GeoJSON.FeatureCollection} urbanGeojson — output of computeInVESTHeatmapUrban
  * @param {Array<{name:string, coords:[number,number]}>} corridorSites

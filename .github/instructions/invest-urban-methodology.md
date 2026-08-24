@@ -47,6 +47,15 @@ Rural wetlands and grasslands will always dominate this index.
 **Source:** `computeInVESTHeatmapUrban()` in `js/nesting.js`  
 **Export also:** `INVEST_GUILDS_URBAN`, `URBAN_NLCD_THRESHOLD`
 
+**As of 2026-08-24, this layer scores planting *opportunity*, not raw habitat quality.**
+See decisions.md for the full writeup. Short version: at 330 m resolution with no spatial
+neighbourhood kernel (see §5 performance note), a cell's raw quality score is driven entirely
+by the land cover inside that one cell. A low-density cell at the city's edge that just cleared
+the 20% developed threshold but was otherwise mostly grass/shrub/farmland scored higher than
+any dense urban block ever could — ecologically correct, but useless for identifying where in
+the city a new planting would matter most. The opportunity reframing fixes that without changing
+the underlying Lonsdorf kernel.
+
 ### Grid
 - Step: 0.003° ≈ 330 m
 - Same bounding box as landscape, 30 km radius
@@ -55,7 +64,9 @@ Rural wetlands and grasslands will always dominate this index.
 ### Urban Threshold
 `URBAN_NLCD_THRESHOLD = 0.20` — Only cells where ≥20% of NLCD pixels fall in developed classes
 (NLCD 21–24) are included in the output GeoJSON and appear on the heatmap.
-Rural grassland does **not** set the normalization ceiling.
+Rural grassland does **not** set the quality-normalization ceiling, and — since opportunity
+scales with `urbanFrac` — a cell that just barely clears 20% contributes very little even if it
+somehow had low quality, further suppressing rural-fringe cells from dominating the ranking.
 
 **Why 20%?** Most Green Bay grid cells at 330 m contain some impervious surface. 20% ensures
 we exclude purely agricultural and wetland cells without requiring a majority-developed threshold
@@ -74,9 +85,20 @@ Bumble bee weight is reduced from 0.40 → 0.15 in urban settings because:
 - Small and medium solitary bees are *more* sensitive to the local 100–700 m matrix, making
   them better discriminators of urban planting quality.
 
-### Normalization
-- Score ceiling is the **maximum P(x)** among urban cells only (urbanFrac ≥ 0.20).
-- No floor is applied — urban cells can score 0.
+### Scoring: Quality → Opportunity
+
+1. **Quality**: raw Lonsdorf P(x) for each urban cell, normalized against the **maximum P(x)**
+   among urban cells only (urbanFrac ≥ 0.20) → `quality ∈ [0, 1]`. This is the pre-2026-08-24
+   score, still computed and exposed as `properties.quality` on each output feature.
+2. **Opportunity**: `opportunity = urbanFrac × (1 − quality)`, then re-normalized against the
+   max opportunity among urban cells → `properties.weight ∈ [0, 1]`, the value the heatmap and
+   every downstream consumer (crosswalk, alerts, drawer, exports) actually render.
+   - High `urbanFrac` + low `quality` → high opportunity (dense, underserved — plant here).
+   - Low `quality` alone isn't enough — a barely-20%-developed fringe cell has small `urbanFrac`,
+     so it can't score high even if its quality happened to be low.
+   - `quality` near 1 (already close to the best urban habitat we have) → opportunity near 0,
+     regardless of `urbanFrac` — nothing left to gain by planting more there.
+- No floor is applied to either quality or opportunity — urban cells can score 0.
 
 ### Map Layer
 - Source ID: `invest-urban-heat` (heatmap), `invest-urban-heat-hits` (transparent hit targets for click)
@@ -99,15 +121,18 @@ Clicking the heatmap opens an Intel Drawer with:
 
 Takes `urbanGeojson` (the urban heatmap FeatureCollection) and `corridorSites` (array of `{name, lng, lat}`).
 For each corridor site, finds the nearest GeoJSON feature by Euclidean distance in degrees and
-returns `{name, lng, lat, investScore}`.
+returns `{name, lng, lat, investScore}` — `investScore` is the cell's *opportunity* weight
+(`properties.weight`), not its raw quality.
 
 The top-10 crosswalk results are logged to `console.log('[invest-crosswalk] top sites:', ...)` when
 the Urban Habitat Index loads. This is useful for identifying which corridor sites happen to sit near
-urban cells with relatively good habitat context.
+the highest-opportunity urban cells — i.e. developed, currently underserved areas — used by the
+"High Urban Planting Opportunity" alert (`alerts.js`) and the composite expansion-opportunity score.
 
 **Note:** Because individual plantings are below 330 m resolution, the crosswalk score reflects the
 *surrounding urban matrix*, not the planting quality. A high score means the area *around* the site
-has favorable land cover context.
+is both developed and currently low in floral/nesting resources — a high-value target, not a
+description of the site itself.
 
 ---
 
@@ -169,6 +194,13 @@ NLCD WCS. Slow network or server throttling is the dominant cost.
 
 5. **Urban threshold (20%)** is tunable but currently hardcoded as `URBAN_NLCD_THRESHOLD`.
    Lowering it includes more peri-urban fringe; raising it restricts to dense urban core.
+
+6. **Opportunity scoring assumes "developed + low-quality = should plant here"** — it has no
+   concept of land ownership, physical buildability, or foot traffic. A high-opportunity cell
+   might be, e.g., a highway interchange with no plantable land at all. This layer identifies
+   *where the ecological need is greatest within the developed footprint*, not a vetted, feasible
+   site list — pair it with the Parcel Ownership layer and a field visit before recommending a
+   specific location.
 
 ---
 

@@ -644,12 +644,12 @@ export function openDrawer(feature, alertFeatures = []) {
     const tier  = pct >= 70 ? 'High' : pct >= 35 ? 'Moderate' : 'Low';
     const color = pct >= 70 ? '#7c3aed' : pct >= 35 ? '#8b5cf6' : '#a78bfa';
     return `
-      <div class="drawer-section-label">Urban habitat context (adapted InVEST, 660\u202fm grid)</div>
+      <div class="drawer-section-label">Urban planting opportunity (adapted InVEST, 660\u202fm grid)</div>
       <div class="drawer-nesting-row">
         <div class="drawer-nesting-score" style="background:${color};">${pct}</div>
         <div class="drawer-nesting-detail">
-          <span class="drawer-nesting-label" style="color:${color};">Urban Habitat Index \u2014 ${tier}</span>
-          <span class="drawer-nesting-desc">Derived from the InVEST Lonsdorf\u00a0(2009) model, originally calibrated for farmland. Score is relative to other developed land in the study area \u2014 not to rural habitat. Reflects surrounding NLCD land cover within 660\u202fm, not the specific plantings here. Enable \u201cUrban Habitat Index\u201d in the Analysis pane to view the full heatmap.</span>
+          <span class="drawer-nesting-label" style="color:${color};">Urban Habitat Opportunity \u2014 ${tier}</span>
+          <span class="drawer-nesting-desc">How much this developed cell would benefit from added habitat \u2014 high where the surrounding land is both built-up and currently low in floral/nesting resources, near 0 where it's already close to the best urban habitat nearby (or isn't developed enough to be a meaningful target). Derived from the InVEST Lonsdorf\u00a0(2009) model, originally calibrated for farmland. Reflects surrounding NLCD land cover within 660\u202fm, not the specific plantings here. Enable \u201cUrban Habitat Index\u201d in the Analysis pane to view the full heatmap.</span>
         </div>
       </div>`;
   })();
