@@ -502,7 +502,7 @@ export function computeInVESTHeatmap(gridData, centerLng, centerLat, radiusKm) {
 //
 // Same Lonsdorf kernel as computeInVESTHeatmap but tuned for the urban context,
 // and — as of 2026-08-24 — scored as an *opportunity* index rather than a raw
-// habitat-quality index. See decisions.md for why: at 330 m resolution, with
+// habitat-quality index. See decisions.md for why: at 660 m resolution, with
 // no spatial neighbourhood kernel (see performance note below), a cell's score
 // is driven entirely by the land cover inside that one cell. A low-density
 // cell at the city's edge that just clears the 20% "developed" threshold but
@@ -597,11 +597,11 @@ export function computeInVESTHeatmapUrban(gridData, centerLng, centerLat, radius
 
   if (!cells.length) return { type: 'FeatureCollection', features: [] };
 
-  // At fine (330 m) grid resolution a full O(n²) neighbourhood kernel would
-  // iterate ~36 M pairs for a 15 km radius study area, freezing the browser
-  // for several seconds.  Instead, use each cell's own floral resource
-  // directly — equivalent to a kernel with weight=1 at distance=0 and 0
-  // elsewhere.  At 330 m this produces meaningful relative differences without
+  // At fine (660 m) grid resolution a full O(n²) neighbourhood kernel would
+  // iterate too many pairs for a 12 km radius study area to stay responsive.
+  // Instead, use each cell's own floral resource directly — equivalent to a
+  // kernel with weight=1 at distance=0 and 0 elsewhere. At 660 m this
+  // produces meaningful relative differences without
   // the computational cost, and the normalisation step ensures the relative
   // comparison across urban cells is still valid.
   for (const xi of cells) {

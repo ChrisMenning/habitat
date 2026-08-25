@@ -461,7 +461,7 @@ export const INVEST_LAYER = {
 
 /**
  * Urban InVEST — same Lonsdorf kernel but normalized against urban cells only.
- * 330 m fine grid. Scores planting *opportunity* within the developed footprint,
+ * 660 m fine grid. Scores planting *opportunity* within the developed footprint,
  * not raw habitat quality — see computeInVESTHeatmapUrban in nesting.js and
  * decisions.md (2026-08-24) for why.
  */

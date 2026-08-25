@@ -300,8 +300,9 @@
           </div>
           <span class="layer-emoji" aria-hidden="true"><i class="ph ph-buildings"></i></span>
           <span class="layer-label">Urban Habitat Index</span>
+          <span class="layer-count layer-count--loading" id="invest-urban-status" aria-live="polite" style="display:none;">—</span>
         </label>
-        <p class="layer-desc">The InVEST Lonsdorf model was designed and calibrated for agricultural and rural landscapes — it treats urban land as low habitat by default. This layer re-runs the same model at a finer 660&nbsp;m grid, restricts the comparison to developed NLCD classes, and normalizes scores against the best urban cell rather than against rural grassland. What you see is how this location compares to other developed land — not to nature. First load 5&ndash;10&nbsp;s; subsequent loads are instant.</p>
+        <p class="layer-desc">The InVEST Lonsdorf model was designed and calibrated for agricultural and rural landscapes — it treats urban land as low habitat by default. This layer re-runs the same model at a finer 660&nbsp;m grid, restricts the comparison to developed NLCD classes, and scores each cell's <strong>planting opportunity</strong> rather than raw habitat quality: a built-up block with little existing floral or nesting resource shows as a high-value target, while a low-density area that already has plenty of natural cover scores low even if its raw quality is high — it doesn't have much room left to improve. <strong>First load can take up to a minute</strong> (dozens of NLCD tile requests) — watch the status badge above; subsequent toggles are instant.</p>
         <label class="layer-row" for="toggle-foraging-bands">
           <div class="toggle">
             <input type="checkbox" id="toggle-foraging-bands"

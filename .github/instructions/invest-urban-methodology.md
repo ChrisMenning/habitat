@@ -7,7 +7,7 @@ Bay Hive implements **two complementary InVEST-derived heatmaps** plus a **Forag
 | Layer | Grid | Purpose |
 |---|---|---|
 | Landscape Suitability Index | ~1.3 km (0.012°) | Regional ecological context |
-| Urban Habitat Index | ~330 m (0.003°) | Within-city habitat comparison |
+| Urban Habitat Index | ~660 m (0.006°) | Within-city habitat comparison |
 | Foraging Range Bands | per-site polygons | Visual foraging range per corridor site |
 
 ---
@@ -19,7 +19,7 @@ Bay Hive implements **two complementary InVEST-derived heatmaps** plus a **Forag
 
 ### Grid
 - Step: 0.012° ≈ 1.3 km
-- Extent: bounding box of study area, radius 30 km from center
+- Extent: bounding box of study area, radius `RADIUS_KM` (15 km) from center
 
 ### Guilds
 
@@ -48,7 +48,7 @@ Rural wetlands and grasslands will always dominate this index.
 **Export also:** `INVEST_GUILDS_URBAN`, `URBAN_NLCD_THRESHOLD`
 
 **As of 2026-08-24, this layer scores planting *opportunity*, not raw habitat quality.**
-See decisions.md for the full writeup. Short version: at 330 m resolution with no spatial
+See decisions.md for the full writeup. Short version: at 660 m resolution with no spatial
 neighbourhood kernel (see §5 performance note), a cell's raw quality score is driven entirely
 by the land cover inside that one cell. A low-density cell at the city's edge that just cleared
 the 20% developed threshold but was otherwise mostly grass/shrub/farmland scored higher than
@@ -57,8 +57,10 @@ the city a new planting would matter most. The opportunity reframing fixes that 
 the underlying Lonsdorf kernel.
 
 ### Grid
-- Step: 0.003° ≈ 330 m
-- Same bounding box as landscape, 30 km radius
+- Step: 0.006° ≈ 660 m (2× finer than the landscape layer's 0.012°; hardcoded in the
+  `fetchGridNlcdScores()` call in `app.js`'s `_lazyComputeUrbanInVEST()`, not a named constant)
+- 12 km radius from center (narrower than the landscape layer's 15 km — keeps the ~40–80 tile
+  fetch tractable; see §5)
 - Lazy-fetched on first toggle, cached in `_urbanNlcdScores` / `_urbanInVESTGeojson` in `app.js`
 
 ### Urban Threshold
@@ -68,7 +70,7 @@ Rural grassland does **not** set the quality-normalization ceiling, and — sinc
 scales with `urbanFrac` — a cell that just barely clears 20% contributes very little even if it
 somehow had low quality, further suppressing rural-fringe cells from dominating the ranking.
 
-**Why 20%?** Most Green Bay grid cells at 330 m contain some impervious surface. 20% ensures
+**Why 20%?** Most Green Bay grid cells at 660 m contain some impervious surface. 20% ensures
 we exclude purely agricultural and wetland cells without requiring a majority-developed threshold
 that would exclude parks and greenways at the urban fringe.
 
@@ -110,7 +112,7 @@ Bumble bee weight is reduced from 0.40 → 0.15 in urban settings because:
 Clicking the heatmap opens an Intel Drawer with:
 - Score (0–100)
 - Percentile interpretation
-- Explanation of what the 330 m grid measures
+- Explanation of what the 660 m grid measures
 - Disclaimer that individual corridor sites are not resolved
 
 ---
@@ -129,7 +131,7 @@ the Urban Habitat Index loads. This is useful for identifying which corridor sit
 the highest-opportunity urban cells — i.e. developed, currently underserved areas — used by the
 "High Urban Planting Opportunity" alert (`alerts.js`) and the composite expansion-opportunity score.
 
-**Note:** Because individual plantings are below 330 m resolution, the crosswalk score reflects the
+**Note:** Because individual plantings are below 660 m resolution, the crosswalk score reflects the
 *surrounding urban matrix*, not the planting quality. A high score means the area *around* the site
 is both developed and currently low in floral/nesting resources — a high-value target, not a
 description of the site itself.
@@ -168,7 +170,7 @@ For each corridor site, generates 3 concentric **64-point polygon rings**:
 | Operation | Cell count | API calls | Approx load time |
 |---|---|---|---|
 | Landscape grid (0.012°) | ~650 | ~7 | 4–10 s |
-| Urban grid (0.003°) | ~4,000–7,500 | ~40–80 | 15–60 s |
+| Urban grid (0.006°) | ~1,400 raw / ~870 urban-qualifying | ~40–80 | 15–60 s |
 
 The urban grid is lazy-loaded on first toggle and cached for the session. Subsequent toggles are instant.
 
@@ -179,7 +181,7 @@ NLCD WCS. Slow network or server throttling is the dominant cost.
 
 ## 6. Known Limitations
 
-1. **Sub-acre corridor plantings are invisible** at both landscape (1.3 km) and urban (330 m) grids.
+1. **Sub-acre corridor plantings are invisible** at both landscape (1.3 km) and urban (660 m) grids.
    The maps show the habitat *matrix* pollinators travel through, not the planting quality itself.
 
 2. **No temporal variation in NLCD:** NLCD 2021 is a static snapshot. Recent plantings since 2021

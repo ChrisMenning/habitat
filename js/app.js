@@ -675,26 +675,51 @@ const _refreshParcelViewport = _debounce(async () => {
 // ── Lazy Urban InVEST + corridor crosswalk ───────────────────────────────────
 
 /**
- * Fetches/computes the Urban InVEST index at fine (0.003°) grid resolution.
- * Results are cached in _urbanNlcdScores / _urbanInVESTGeojson so re-toggling
- * the layer is instant.  Called from the toggle-invest-urban-heat change handler.
+ * Sets the small status badge next to the Urban Habitat Index toggle
+ * (#invest-urban-status, hardcoded in index.html — this layer's row isn't
+ * built via buildLayerPanel/updateCounts like most others, so it needed its
+ * own status element). Hidden until first toggled; pulses while loading via
+ * the shared `.layer-count--loading` class.
+ */
+function _setUrbanInvestBadge(text, loading) {
+  const el = document.getElementById('invest-urban-status');
+  if (!el) return;
+  el.style.display = '';
+  el.textContent = text;
+  el.classList.toggle('layer-count--loading', loading);
+}
+
+/**
+ * Fetches/computes the Urban InVEST index at fine (0.006° ≈ 660 m) grid
+ * resolution. Results are cached in _urbanNlcdScores / _urbanInVESTGeojson so
+ * re-toggling the layer is instant. Called from the toggle-invest-urban-heat
+ * change handler.
+ *
+ * This fetch/compute takes anywhere from ~15 s to ~60 s on first run (dozens
+ * of NLCD tile requests) — the layer row's count badge is used as a loading
+ * indicator throughout, since a silent multi-second wait with no feedback at
+ * all otherwise reads as "this doesn't work" (see decisions.md, 2026-08-24).
  */
 async function _lazyComputeUrbanInVEST() {
   if (_urbanInVESTGeojson) {
     // Already computed — just push the cached GeoJSON to the layer.
     updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    _setUrbanInvestBadge(_urbanInVESTGeojson.features.length.toLocaleString(), false);
     return;
   }
+  _setUrbanInvestBadge('…', true);
   try {
     if (!_urbanNlcdScores) {
       // Use 0.006° (≈660 m) grid over a 12 km radius — 2× finer than the
-      // landscape layer (0.012°) but ~10× fewer cells than 0.003° over 15 km.
-      // This keeps the fetch to ~3 API requests and compute to <200 ms.
+      // landscape layer (0.012°) but far fewer cells than a 0.003° grid would
+      // produce over the full 15 km study area. ~40-80 NLCD tile requests;
+      // see .github/instructions/invest-urban-methodology.md §5.
       console.debug('[urban-invest] fetching fine-grid NLCD scores (0.006°, 12 km)…');
       _urbanNlcdScores = await fetchGridNlcdScores(CENTER[0], CENTER[1], 12, 0.006);
     }
     _urbanInVESTGeojson = computeInVESTHeatmapUrban(_urbanNlcdScores, CENTER[0], CENTER[1], 12);
     updateInVESTUrbanHeatmap(_urbanInVESTGeojson);
+    _setUrbanInvestBadge(_urbanInVESTGeojson.features.length.toLocaleString(), false);
     console.debug('[urban-invest] computed', _urbanInVESTGeojson.features.length, 'urban cells');
 
     // Also run the corridor crosswalk and log scores for inspection.
@@ -713,6 +738,7 @@ async function _lazyComputeUrbanInVEST() {
     }
   } catch (err) {
     console.warn('[urban-invest] failed:', err.message);
+    _setUrbanInvestBadge('!', false);
   }
 }
 
