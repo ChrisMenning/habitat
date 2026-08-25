@@ -1169,11 +1169,22 @@ export function updateInVESTHeatmap(geojson) {
 // ── Urban InVEST heatmap ──────────────────────────────────────────────────────
 
 /**
- * Registers the urban InVEST habitat index heatmap.
- * Same Lonsdorf model but normalized against urban cells only, so quality
+ * Registers the urban InVEST habitat index layer.
+ * Same Lonsdorf model but normalized against urban cells only, so opportunity
  * variation within the developed footprint is visible instead of being washed
  * out by rural grassland.  Color ramp: violet → indigo → pink → yellow (peak).
- * Tighter radius than the landscape layer to match the 330 m fine grid.
+ *
+ * Rendered as data-driven circles, NOT a `heatmap` type layer. The urban grid
+ * is a dense, regular 660 m mesh covering most of the developed city (~900
+ * cells) — a `heatmap` layer colors by `heatmap-density`, a kernel-accumulated
+ * value summed across every nearby point, not by each point's own weight. With
+ * this many regularly-packed cells, density saturates to maximum almost
+ * everywhere there's any concentration of urban cells, regardless of
+ * individual scores — it rendered as one large yellow blob even though the
+ * underlying opportunity scores have real spread (see decisions.md,
+ * 2026-08-24). `circle-color` bound directly to `weight` shows each cell's
+ * actual score; `circle-blur` softens the grid into a continuous-looking
+ * surface without accumulating neighbors' values.
  */
 export function registerInVESTUrbanHeatmap(visible) {
   _map.addSource('invest-urban-heat', {
@@ -1182,37 +1193,39 @@ export function registerInVESTUrbanHeatmap(visible) {
   });
   _map.addLayer({
     id:     'invest-urban-heat-layer',
-    type:   'heatmap',
+    type:   'circle',
     source: 'invest-urban-heat',
     layout: { visibility: visible ? 'visible' : 'none' },
     paint: {
-      'heatmap-weight':    ['interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0], 0, 0, 1, 1],
-      'heatmap-intensity': [
-        'interpolate', ['linear'], ['zoom'],
-        8,  1.2,
-        12, 2.0,
-        14, 3.0,
-      ],
-      'heatmap-color': [
-        'interpolate', ['linear'], ['heatmap-density'],
-        0,    'rgba(0,0,0,0)',
-        0.06, 'rgba(139,92,246,0.20)',    // violet
-        0.25, 'rgba(167,139,250,0.55)',   // light violet
-        0.50, 'rgba(99,102,241,0.80)',    // indigo
-        0.72, 'rgba(192,132,252,0.92)',   // lavender
-        0.88, 'rgba(249,168,212,0.97)',   // pink
+      'circle-color': [
+        'interpolate', ['linear'], ['coalesce', ['get', 'weight'], 0],
+        0,    'rgba(30,27,75,0.55)',      // near-black indigo (lowest opportunity)
+        0.25, 'rgba(139,92,246,0.65)',    // violet
+        0.50, 'rgba(99,102,241,0.75)',    // indigo
+        0.72, 'rgba(192,132,252,0.85)',   // lavender
+        0.88, 'rgba(249,168,212,0.92)',   // pink
         1.0,  'rgba(250,204,21,1.0)',     // yellow (peak)
       ],
-      // 660 m grid cells — wider radius than the landscape layer but still
-      // fine enough to show within-city habitat variation.
-      'heatmap-radius': [
+      // 660 m grid cells (0.006° step, ~570 m average spacing at this latitude)
+      // — radius = roughly half the grid spacing in screen pixels at each
+      // zoom, so adjacent cells' circles touch without heavy overlap. These
+      // are NOT the old heatmap-radius values: a heatmap kernel wants a large
+      // overlapping radius by design (that's how density accumulates), but
+      // that same radius applied to direct per-cell circles was 4-17x the
+      // actual cell spacing at every zoom — neighboring cells' circles
+      // covered each other by several cell-widths, reading as a few giant
+      // smeared blobs instead of a legible per-cell mosaic (see decisions.md,
+      // 2026-08-24). A touch of padding over the exact half-spacing value
+      // keeps cells visible/clickable at low zoom without exaggerating overlap.
+      'circle-radius': [
         'interpolate', ['exponential', 2], ['zoom'],
-        8,  10,
-        10, 24,
-        12, 64,
-        14, 150,
+        8,  3,
+        10, 6,
+        12, 14,
+        14, 45,
       ],
-      'heatmap-opacity': 0.82,
+      'circle-blur':    0.15,
+      'circle-opacity': 0.85,
     },
   });
   // Invisible click-target layer so users can click the heatmap.
